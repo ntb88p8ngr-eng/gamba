@@ -30,6 +30,15 @@
     ],
     mount: function (root) {
       var stopped = false, racing = false, raf = null, pick = HORSES[0];
+      var spans = [];
+
+      /** Wie viele Pixel jedes Pferd bis zur Ziellinie zurücklegen muss. */
+      function measureSpans() {
+        spans = lanes.map(function (runner) {
+          var strip = runner.parentElement;
+          return Math.max(0, strip.clientWidth - runner.offsetWidth);
+        });
+      }
 
       var bet = GK.betPanel({ start: 25 });
       var lanes = [], bars = [];
@@ -108,7 +117,7 @@
         goBtn.disabled = true;
         bet.disable(true);
         GK.setResult(resultBox, 'Und sie laufen!', '');
-        GK.sfx('whoosh');
+        GK.sfx('startbell');
 
         var winner = chooseWinner();
         // Zielzeiten: Sieger zuerst, Rest gestaffelt dahinter
@@ -120,8 +129,13 @@
           return { h: h, t: times[i], phase: GK.rnd(0, 6.28), freq: GK.rnd(0.0012, 0.0022), amp: GK.rnd(0.05, 0.12), pos: 0 };
         });
 
+        // Laufweg in Pixeln: Bahnbreite minus Pferdebreite, damit die Nase
+        // bei pos = 1 genau auf der Ziellinie steht (Prozente im transform
+        // würden sich auf die Breite des Pferdes beziehen, nicht auf die Bahn)
+        measureSpans();
+
         var t0 = performance.now();
-        var lastLeader = null, lastHoof = 0;
+        var lastLeader = null, lastHoof = 0, hoofGap = 165;
 
         function frame(now) {
           if (stopped) return;
@@ -134,11 +148,17 @@
             var wob = Math.sin(r.phase + e * r.freq) * r.amp * (1 - base) * (1 - base);
             r.pos = GK.clamp(base + wob, 0, 1);
             if (base < 1) allDone = false;
-            lanes[i].style.transform = 'translateX(' + (r.pos * 100) + '%)';
+            lanes[i].style.transform = 'translateX(' + (r.pos * spans[i]) + 'px)';
             lanes[i].classList.toggle('galloping', base < 1);
           });
 
-          if (e - lastHoof > 260) { lastHoof = e; GK.sfx('tick'); }
+          // Hufgetrappel: leicht schwankender Abstand, damit es nach Feld
+          // klingt und nicht nach Metronom
+          if (e - lastHoof > hoofGap) {
+            lastHoof = e;
+            hoofGap = 140 + Math.random() * 70;
+            GK.sfx('hoof');
+          }
 
           var leader = runners.slice().sort(function (a, b) { return b.pos - a.pos; })[0];
           if (leader && leader.h.nr !== lastLeader && e < 5800) {
@@ -188,9 +208,16 @@
 
       goBtn.addEventListener('click', function () { GK.sfx('click'); start(); });
 
+      function onResize() {
+        if (!racing) return;
+        measureSpans();
+      }
+      window.addEventListener('resize', onResize);
+
       return function () {
         stopped = true;
         if (raf) cancelAnimationFrame(raf);
+        window.removeEventListener('resize', onResize);
       };
     }
   });

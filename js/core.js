@@ -505,6 +505,18 @@
     boom:    function () { Sound.noise({ dur: 0.55, freq: 380, vol: 0.4 }); Sound.tone({ freq: 120, to: 40, dur: 0.5, type: 'sawtooth', vol: 0.28 }); },
     gem:     function () { Sound.tone({ freq: 1200, to: 1900, dur: 0.13, type: 'sine', vol: 0.2 }); },
     rocket:  function () { Sound.noise({ dur: 0.35, freq: 700, vol: 0.14 }); },
+    /* dumpfer Hufschlag auf Rasen — leicht variiert, damit 5 Pferde nach Feld klingen */
+    hoof:    function () {
+      var v = 0.09 + Math.random() * 0.05;
+      Sound.noise({ dur: 0.05, freq: 300 + Math.random() * 120, filter: 'lowpass', vol: v });
+      Sound.tone({ freq: 92 + Math.random() * 26, to: 50, dur: 0.07, type: 'sine', vol: v * 1.2 });
+    },
+    /* Startglocke */
+    startbell: function () {
+      [1046, 1568].forEach(function (f, i) {
+        Sound.tone({ freq: f, dur: 0.28, type: 'triangle', vol: 0.16, delay: i * 0.09 });
+      });
+    },
     whoosh:  function () { Sound.noise({ dur: 0.3, freq: 1500, filter: 'bandpass', vol: 0.16 }); }
   };
 
