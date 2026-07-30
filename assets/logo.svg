@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="GambaKing Logo">
+  <defs>
+    <linearGradient id="gk-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff6b0"/>
+      <stop offset="45%" stop-color="#ffd12e"/>
+      <stop offset="100%" stop-color="#ff8a00"/>
+    </linearGradient>
+    <linearGradient id="gk-neon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff2fd0"/>
+      <stop offset="50%" stop-color="#8b3bff"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <radialGradient id="gk-chip" cx="50%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#3a1170"/>
+      <stop offset="100%" stop-color="#170037"/>
+    </radialGradient>
+    <filter id="gk-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- outer neon ring -->
+  <circle cx="60" cy="66" r="46" fill="none" stroke="url(#gk-neon)" stroke-width="6" filter="url(#gk-glow)"/>
+  <!-- chip body -->
+  <circle cx="60" cy="66" r="41" fill="url(#gk-chip)"/>
+  <!-- chip notches -->
+  <g fill="url(#gk-neon)" opacity=".95">
+    <rect x="56" y="25" width="8" height="12" rx="3"/>
+    <rect x="56" y="95" width="8" height="12" rx="3"/>
+    <rect x="19" y="62" width="12" height="8" rx="3"/>
+    <rect x="89" y="62" width="12" height="8" rx="3"/>
+    <rect x="30" y="34" width="8" height="12" rx="3" transform="rotate(-45 34 40)"/>
+    <rect x="82" y="34" width="8" height="12" rx="3" transform="rotate(45 86 40)"/>
+    <rect x="30" y="86" width="8" height="12" rx="3" transform="rotate(45 34 92)"/>
+    <rect x="82" y="86" width="8" height="12" rx="3" transform="rotate(-45 86 92)"/>
+  </g>
+  <!-- inner dashed ring -->
+  <circle cx="60" cy="66" r="33" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="1.5" stroke-dasharray="4 6"/>
+
+  <!-- spade suit behind crown -->
+  <path d="M60 84c-1.6-6-8-8-12-12.5-4.6-5.2-2.6-13 4-14.4 3.4-.7 6.4 1 8 3.4 1.6-2.4 4.6-4.1 8-3.4 6.6 1.4 8.6 9.2 4 14.4C68 76 61.6 78 60 84z"
+        fill="#ffffff" opacity=".10"/>
+
+  <!-- crown -->
+  <g filter="url(#gk-glow)">
+    <path d="M32 78 L26 44 L43 57 L60 33 L77 57 L94 44 L88 78 Z" fill="url(#gk-gold)" stroke="#7a3b00" stroke-width="2" stroke-linejoin="round"/>
+    <rect x="32" y="78" width="56" height="10" rx="4" fill="url(#gk-gold)" stroke="#7a3b00" stroke-width="2"/>
+    <circle cx="26" cy="42" r="5" fill="#ff2fd0" stroke="#7a3b00" stroke-width="1.5"/>
+    <circle cx="60" cy="31" r="6" fill="#00e5ff" stroke="#7a3b00" stroke-width="1.5"/>
+    <circle cx="94" cy="42" r="5" fill="#ff2fd0" stroke="#7a3b00" stroke-width="1.5"/>
+    <circle cx="47" cy="83" r="2.6" fill="#2b0a4d"/>
+    <circle cx="60" cy="83" r="2.6" fill="#2b0a4d"/>
+    <circle cx="73" cy="83" r="2.6" fill="#2b0a4d"/>
+  </g>
+</svg>

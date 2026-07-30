@@ -1,0 +1,204 @@
+/* ═══════════════════════════════════════════════════════════
+   GAMBAKING — game-specific styles
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─────────── 1. SLOTS ─────────── */
+.slot-machine{
+  background:linear-gradient(180deg,#3b0a6e,#1c0138);
+  border:5px solid var(--gold);border-radius:26px;padding:18px;
+  box-shadow:inset 0 0 40px rgba(0,0,0,.7),0 0 44px rgba(255,209,46,.4);position:relative
+}
+.slot-lights{display:flex;justify-content:space-around;margin-bottom:12px}
+.slot-lights i{width:12px;height:12px;border-radius:50%;background:var(--gold);box-shadow:0 0 14px var(--gold);animation:blink 1.1s infinite}
+.slot-lights i:nth-child(2n){background:var(--pink);box-shadow:0 0 14px var(--pink);animation-delay:.18s}
+.slot-lights i:nth-child(3n){background:var(--cyan);box-shadow:0 0 14px var(--cyan);animation-delay:.36s}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.28;transform:scale(.8)}}
+.reels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#0a0018;border-radius:18px;padding:10px;border:3px solid rgba(255,255,255,.15)}
+.reel{height:120px;overflow:hidden;border-radius:14px;background:linear-gradient(180deg,#1c0138,#2e0a5c);position:relative;box-shadow:inset 0 12px 22px rgba(0,0,0,.85),inset 0 -12px 22px rgba(0,0,0,.85)}
+.strip{display:flex;flex-direction:column;will-change:transform}
+.sym{height:120px;display:grid;place-items:center;font-size:clamp(2.4rem,9vw,3.6rem);flex:0 0 120px}
+.reel.hit{animation:reelhit .55s;box-shadow:inset 0 0 30px rgba(124,255,59,.85),0 0 24px var(--lime)}
+@keyframes reelhit{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+.payline{position:absolute;left:0;right:0;top:50%;height:3px;background:linear-gradient(90deg,transparent,var(--pink),transparent);transform:translateY(-50%);pointer-events:none;box-shadow:0 0 12px var(--pink)}
+.paytable{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:7px;margin-top:12px}
+.pay-item{background:rgba(0,0,0,.35);border:2px solid var(--line);border-radius:12px;padding:8px;text-align:center;font-size:.78rem}
+.pay-item .s{font-size:1.4rem;display:block}
+.pay-item .m{font-family:'Bungee',sans-serif;color:var(--gold);font-size:.82rem}
+
+/* ─────────── 2. ROULETTE ─────────── */
+.roul-wrap{display:grid;place-items:center;gap:14px}
+.roul-wheel{
+  position:relative;width:min(300px,78vw);aspect-ratio:1;border-radius:50%;
+  border:9px solid var(--gold);box-shadow:0 0 44px rgba(255,209,46,.55),inset 0 0 40px rgba(0,0,0,.85);
+  transition:transform 5.4s cubic-bezier(.15,.72,.16,1);will-change:transform
+}
+.roul-hub{position:absolute;inset:32%;border-radius:50%;background:linear-gradient(135deg,#3b0a6e,#12002b);border:4px solid var(--gold);display:grid;place-items:center;font-size:1.7rem}
+.roul-ptr{font-size:2rem;filter:drop-shadow(0 4px 8px rgba(0,0,0,.8));margin-bottom:-14px;z-index:2;animation:bounce 1.6s infinite}
+.roul-num{position:absolute;left:50%;top:6px;transform-origin:50% calc(min(150px,39vw) - 6px);font-family:'Bungee',sans-serif;font-size:.62rem;margin-left:-8px;width:16px;text-align:center}
+.roul-out{font-family:'Bungee',sans-serif;font-size:2.4rem;width:96px;height:96px;border-radius:50%;display:grid;place-items:center;border:4px solid var(--line);background:rgba(0,0,0,.45)}
+.roul-out.red{background:#c81b3c;border-color:#ff6b8b}
+.roul-out.black{background:#171021;border-color:#666}
+.roul-out.green{background:#0f8a3c;border-color:#7cff3b}
+.bet-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:7px}
+.rbet{
+  cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:11px 6px;
+  background:rgba(255,255,255,.06);font-weight:800;font-size:.8rem;transition:all .16s;text-align:center
+}
+.rbet:hover{transform:translateY(-3px);border-color:var(--gold)}
+.rbet.sel{border-color:var(--gold);background:rgba(255,209,46,.24);box-shadow:0 0 20px rgba(255,209,46,.55)}
+.rbet.red{background:rgba(200,27,60,.42)}
+.rbet.black{background:rgba(0,0,0,.55)}
+.rbet small{display:block;font-size:.62rem;color:var(--muted);font-weight:600}
+.num-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(34px,1fr));gap:4px;max-height:190px;overflow-y:auto;padding:4px;background:rgba(0,0,0,.28);border-radius:12px}
+.num-cell{cursor:pointer;border:1.5px solid var(--line);border-radius:8px;padding:7px 2px;text-align:center;font-weight:800;font-size:.76rem;transition:all .14s}
+.num-cell.red{background:rgba(200,27,60,.55)}
+.num-cell.black{background:rgba(0,0,0,.6)}
+.num-cell.green{background:rgba(15,138,60,.65)}
+.num-cell:hover{transform:scale(1.14);border-color:#fff}
+.num-cell.sel{border-color:var(--gold);box-shadow:0 0 14px var(--gold);transform:scale(1.14)}
+
+/* ─────────── 3. BLACKJACK ─────────── */
+.bj-felt{background:radial-gradient(circle at 50% 0%,#0d6b3a,#053b20);border:5px solid var(--gold);border-radius:24px;padding:18px;box-shadow:inset 0 0 60px rgba(0,0,0,.65)}
+.bj-side{margin-bottom:18px}
+.bj-side h4{font-family:'Bungee',sans-serif;font-size:.85rem;margin:0 0 8px;display:flex;gap:10px;align-items:center;color:#eafff2}
+.bj-score{background:rgba(0,0,0,.55);border:2px solid var(--gold);border-radius:999px;padding:3px 12px;font-size:.8rem;color:var(--gold)}
+.hand{display:flex;gap:9px;flex-wrap:wrap;min-height:118px}
+.card{
+  width:78px;height:112px;border-radius:11px;background:linear-gradient(160deg,#fff,#e2e8f5);
+  color:#12002b;display:flex;flex-direction:column;justify-content:space-between;padding:7px 9px;
+  font-family:'Outfit',sans-serif;font-weight:900;font-size:1.05rem;
+  box-shadow:0 8px 22px rgba(0,0,0,.55);animation:dealin .42s cubic-bezier(.2,1.4,.4,1) both;position:relative
+}
+@keyframes dealin{from{opacity:0;transform:translate(70px,-90px) rotate(28deg) scale(.7)}to{opacity:1;transform:none}}
+.card .mid{text-align:center;font-size:2rem;line-height:1}
+.card .bot{transform:rotate(180deg)}
+.card.red{color:#d81b45}
+.card.back{background:repeating-linear-gradient(45deg,#8b3bff 0 9px,#ff2fd0 9px 18px);color:transparent;border:3px solid var(--gold)}
+.card.back::after{content:"👑";position:absolute;inset:0;display:grid;place-items:center;font-size:2rem;color:#fff}
+.bj-actions{display:flex;gap:9px;flex-wrap:wrap}
+.bj-actions .btn{flex:1;min-width:104px}
+
+/* ─────────── 4. COINFLIP ─────────── */
+.coin-stage{display:grid;place-items:center;padding:26px 0;perspective:1000px}
+.coin{
+  width:min(190px,52vw);aspect-ratio:1;position:relative;transform-style:preserve-3d;
+  transition:transform 2.4s cubic-bezier(.24,.66,.2,1)
+}
+.coin-face{
+  position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;
+  font-size:clamp(3.4rem,14vw,5rem);backface-visibility:hidden;
+  border:8px solid #b8860b;box-shadow:0 0 50px rgba(255,209,46,.65),inset 0 0 30px rgba(0,0,0,.4)
+}
+.coin-front{background:radial-gradient(circle at 35% 30%,#fff6b0,#ffd12e 45%,#c98a00)}
+.coin-back{background:radial-gradient(circle at 35% 30%,#ffb3f0,#ff2fd0 45%,#8b1a6e);transform:rotateY(180deg)}
+.side-pick{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.side-btn{
+  cursor:pointer;border:3px solid var(--line);border-radius:18px;padding:18px 10px;
+  background:rgba(255,255,255,.06);text-align:center;transition:all .18s
+}
+.side-btn .e{font-size:2.6rem;display:block;transition:transform .2s}
+.side-btn .t{font-family:'Bungee',sans-serif;font-size:.85rem;margin-top:6px}
+.side-btn:hover{transform:translateY(-4px);border-color:var(--gold)}
+.side-btn:hover .e{transform:scale(1.2) rotate(-8deg)}
+.side-btn.sel{border-color:var(--gold);background:rgba(255,209,46,.2);box-shadow:0 0 26px rgba(255,209,46,.55)}
+.streak-bar{display:flex;gap:5px;flex-wrap:wrap;min-height:26px}
+.streak-dot{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-size:.7rem;font-weight:900;background:rgba(255,255,255,.08);border:2px solid var(--line)}
+.streak-dot.w{background:rgba(124,255,59,.28);border-color:var(--lime)}
+.streak-dot.l{background:rgba(255,59,107,.28);border-color:var(--red)}
+
+/* ─────────── 5. DICE ─────────── */
+.dice-table{display:grid;gap:16px}
+.dice-row{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap}
+.die{
+  width:74px;height:74px;border-radius:16px;background:linear-gradient(155deg,#fff,#d9def0);
+  display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:11px;gap:3px;
+  box-shadow:0 10px 26px rgba(0,0,0,.55),inset 0 -5px 10px rgba(0,0,0,.15)
+}
+.die.gold{background:linear-gradient(155deg,#fff6b0,#ffb700)}
+.die.rolling{animation:diroll .5s ease-in-out infinite}
+@keyframes diroll{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(-22deg) scale(1.1)}75%{transform:rotate(22deg) scale(.94)}}
+.pip{border-radius:50%;background:#12002b;box-shadow:inset 0 -2px 3px rgba(255,255,255,.35)}
+.pip.off{background:transparent;box-shadow:none}
+.die.gold .pip{background:#6b3b00}
+.vs-badge{font-family:'Bungee',sans-serif;font-size:1.5rem;color:var(--pink);text-shadow:var(--glow-pink)}
+.total-badge{font-family:'Bungee',sans-serif;font-size:1.6rem;background:rgba(0,0,0,.42);border:3px solid var(--gold);border-radius:16px;padding:8px 18px;color:var(--gold);min-width:80px;text-align:center}
+.mode-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
+
+/* ─────────── 6. CRASH ─────────── */
+.crash-screen{position:relative;background:linear-gradient(180deg,#05001a,#1a0138);border:3px solid var(--line);border-radius:20px;overflow:hidden;aspect-ratio:16/9;min-height:220px}
+.crash-screen canvas{position:absolute;inset:0;width:100%;height:100%}
+.crash-mult{
+  position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
+  font-family:'Bungee',sans-serif;font-size:clamp(2.4rem,10vw,4.6rem);
+  color:var(--lime);text-shadow:0 0 34px rgba(124,255,59,.85),0 5px 0 rgba(0,0,0,.5);transition:color .2s
+}
+.crash-mult.boom{color:var(--red);text-shadow:0 0 40px rgba(255,59,107,.9);animation:shakey .5s}
+.crash-mult.cashed{color:var(--gold);text-shadow:0 0 40px rgba(255,209,46,.9)}
+.crash-rocket{position:absolute;font-size:2rem;transition:none;pointer-events:none;filter:drop-shadow(0 0 12px rgba(255,138,0,.9))}
+.crash-hist{display:flex;gap:6px;flex-wrap:wrap}
+.ch-pill{font-family:'Bungee',sans-serif;font-size:.7rem;padding:5px 10px;border-radius:999px;border:2px solid var(--line);background:rgba(0,0,0,.35)}
+.ch-pill.low{color:var(--red);border-color:rgba(255,59,107,.5)}
+.ch-pill.mid{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.ch-pill.high{color:var(--gold);border-color:rgba(255,209,46,.6);box-shadow:0 0 14px rgba(255,209,46,.4)}
+
+/* ─────────── 7. MINES ─────────── */
+.mine-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:440px;margin:0 auto}
+.mine-cell{
+  aspect-ratio:1;border-radius:14px;cursor:pointer;border:3px solid var(--line);
+  background:linear-gradient(160deg,#3b0a6e,#1c0138);font-size:clamp(1.2rem,5vw,1.9rem);
+  display:grid;place-items:center;transition:transform .16s,box-shadow .2s,border-color .2s
+}
+.mine-cell:not(.done):hover{transform:translateY(-4px) scale(1.06);border-color:var(--cyan);box-shadow:var(--glow-cyan)}
+.mine-cell.gem{background:linear-gradient(160deg,#0d6b3a,#053b20);border-color:var(--lime);box-shadow:0 0 22px rgba(124,255,59,.55);animation:flipin .42s}
+.mine-cell.boom{background:linear-gradient(160deg,#8a1030,#3b0010);border-color:var(--red);animation:flipin .42s,shakey .5s .42s}
+.mine-cell.faded{opacity:.34}
+.mine-cell.done{cursor:default}
+@keyframes flipin{from{transform:rotateY(90deg) scale(.7)}to{transform:none}}
+.mine-stats{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+/* ─────────── 8. WHEEL OF FATE ─────────── */
+.wheel-wrap{display:grid;place-items:center;gap:10px;position:relative}
+.wheel{
+  position:relative;width:min(320px,80vw);aspect-ratio:1;border-radius:50%;
+  border:10px solid var(--gold);box-shadow:0 0 50px rgba(255,209,46,.55),inset 0 0 44px rgba(0,0,0,.6);
+  transition:transform 5.6s cubic-bezier(.12,.75,.14,1);will-change:transform;overflow:hidden
+}
+.wheel-seg{position:absolute;inset:0;clip-path:polygon(50% 50%,50% 0%,100% 0%);transform-origin:50% 50%}
+.wheel-lbl{
+  position:absolute;left:50%;top:8%;transform-origin:50% 500%;
+  font-family:'Bungee',sans-serif;font-size:clamp(.62rem,2.4vw,.86rem);
+  text-shadow:0 2px 4px rgba(0,0,0,.8);white-space:nowrap;margin-left:-18px;width:36px;text-align:center
+}
+.wheel-hub{position:absolute;inset:36%;border-radius:50%;background:linear-gradient(135deg,#3b0a6e,#12002b);border:5px solid var(--gold);display:grid;place-items:center;font-size:1.8rem;z-index:3;box-shadow:0 0 26px rgba(0,0,0,.7)}
+.wheel-ptr{font-size:2.2rem;margin-bottom:-16px;z-index:4;filter:drop-shadow(0 4px 8px rgba(0,0,0,.8))}
+.wheel-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px}
+.wl-item{display:flex;align-items:center;gap:6px;font-size:.75rem;background:rgba(0,0,0,.3);border-radius:10px;padding:6px 9px}
+.wl-dot{width:12px;height:12px;border-radius:4px;flex:0 0 auto}
+
+/* ─────────── 9. PLINKO ─────────── */
+.plinko-board{position:relative;background:linear-gradient(180deg,#1c0138,#05001a);border:3px solid var(--line);border-radius:20px;overflow:hidden;aspect-ratio:1/1.02;min-height:260px}
+.plinko-board canvas{position:absolute;inset:0;width:100%;height:100%}
+.plinko-buckets{display:flex;gap:3px;margin-top:8px}
+.pb{flex:1;text-align:center;font-family:'Bungee',sans-serif;font-size:.6rem;padding:7px 2px;border-radius:8px;background:rgba(0,0,0,.4);border:2px solid var(--line);transition:all .2s}
+.pb.hit{transform:translateY(-6px) scale(1.12);box-shadow:0 0 22px currentColor}
+.risk-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+
+/* ─────────── 10. SCRATCH ─────────── */
+.scratch-card{
+  background:linear-gradient(150deg,#ffd12e,#ff8a00 60%,#ff2fd0);
+  border-radius:22px;padding:16px;border:5px solid rgba(255,255,255,.35);
+  box-shadow:0 20px 50px rgba(0,0,0,.6),inset 0 0 40px rgba(255,255,255,.25)
+}
+.scratch-head{text-align:center;font-family:'Bungee',sans-serif;color:#3a1400;font-size:.9rem;margin-bottom:12px;letter-spacing:.05em}
+.scratch-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stile{position:relative;aspect-ratio:1;border-radius:14px;background:linear-gradient(160deg,#1c0138,#3b0a6e);display:grid;place-items:center;overflow:hidden;border:3px solid rgba(0,0,0,.35)}
+.stile .sym-under{font-size:clamp(1.8rem,8vw,2.8rem)}
+.stile canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none}
+.stile.revealed{box-shadow:0 0 26px var(--gold);animation:winpop .4s}
+.scratch-foot{text-align:center;color:#3a1400;font-weight:800;font-size:.8rem;margin-top:12px}
+
+/* shared small bits */
+.mult-badge{font-family:'Bungee',sans-serif;color:var(--lime);font-size:1.1rem}
+.center{text-align:center}
+.row-gap{display:flex;gap:10px;flex-wrap:wrap}
+.row-gap>.btn{flex:1;min-width:120px}

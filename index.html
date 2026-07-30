@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>GAMBAKING 👑 — Fantasy Casino</title>
+<meta name="description" content="GambaKing — das Fantasy-Casino ohne Echtgeld. 10 Spiele, Leaderboard und Chaos mit deinen Freunden." />
+<meta name="theme-color" content="#12002b" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bungee:wght@400&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/games.css" />
+</head>
+<body>
+
+<!-- ══════════ BACKGROUND FX ══════════ -->
+<div class="bg-fx" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+  <div class="grid-floor"></div>
+  <div class="scanlines"></div>
+</div>
+<canvas id="fx-canvas" aria-hidden="true"></canvas>
+<div id="emoji-rain" aria-hidden="true"></div>
+
+<!-- ══════════ HEADER ══════════ -->
+<header class="topbar">
+  <button class="brand" id="brand-btn" title="Zur Lobby">
+    <img src="assets/logo.svg" alt="GambaKing Logo" class="brand-logo" />
+    <span class="brand-text">
+      <span class="brand-name">GAMBA<span class="brand-king">KING</span></span>
+      <span class="brand-sub">fantasy casino · kein echtgeld</span>
+    </span>
+  </button>
+
+  <div class="topbar-right">
+    <button class="hud-chip hud-balance" id="hud-balance" title="Dein Guthaben">
+      <span class="hud-icon">🪙</span>
+      <span class="hud-value" id="balance-value">0</span>
+      <span class="hud-label">Chips</span>
+    </button>
+
+    <button class="hud-chip hud-player" id="hud-player" title="Spieler wechseln">
+      <span class="hud-avatar" id="player-avatar">👤</span>
+      <span class="hud-value" id="player-name">Gast</span>
+    </button>
+
+    <button class="icon-btn" id="btn-sound" title="Sound an/aus" aria-label="Sound umschalten">🔊</button>
+    <button class="icon-btn" id="btn-admin" title="Admin-Modus" aria-label="Admin">🛡️</button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ══════════ LOBBY ══════════ -->
+  <section id="view-lobby" class="view active">
+    <div class="hero">
+      <div class="hero-crown">👑</div>
+      <h1 class="hero-title" data-text="GAMBAKING">GAMBAKING</h1>
+      <p class="hero-tag">
+        <span class="tag-pill">10 SPIELE</span>
+        <span class="tag-pill">0 € ECHTGELD</span>
+        <span class="tag-pill">100% CHAOS</span>
+      </p>
+      <p class="hero-sub">Jeder startet mit <b>500 Chips</b>. Wer am Ende die dickste Krone trägt, gewinnt Ruhm, Ehre und ewiges Angeben-Recht.</p>
+      <div class="hero-actions">
+        <button class="btn btn-mega" id="btn-play-random">🎲 ZUFALLSSPIEL</button>
+        <button class="btn btn-ghost" id="btn-goto-board">🏆 LEADERBOARD</button>
+        <button class="btn btn-ghost" id="btn-daily">🎁 TAGESBONUS</button>
+      </div>
+    </div>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track" id="marquee-track"></div>
+    </div>
+
+    <h2 class="section-title"><span>🎰 DIE SPIELHALLE</span></h2>
+    <div class="game-grid" id="game-grid"></div>
+
+    <h2 class="section-title" id="board-anchor"><span>🏆 LEADERBOARD</span></h2>
+    <div class="board-wrap">
+      <div class="board-tabs" id="board-tabs">
+        <button class="board-tab active" data-sort="balance">💰 Chips</button>
+        <button class="board-tab" data-sort="profit">📈 Profit</button>
+        <button class="board-tab" data-sort="biggestWin">💥 Bester Win</button>
+        <button class="board-tab" data-sort="plays">🎮 Spiele</button>
+      </div>
+      <div class="board" id="leaderboard"></div>
+      <div class="board-actions">
+        <button class="btn btn-small" id="btn-new-player">➕ Neuer Spieler</button>
+      </div>
+    </div>
+
+    <h2 class="section-title"><span>📜 LETZTE AKTIONEN</span></h2>
+    <div class="feed" id="feed"></div>
+  </section>
+
+  <!-- ══════════ GAME VIEW ══════════ -->
+  <section id="view-game" class="view">
+    <div class="game-header">
+      <button class="btn btn-ghost btn-small" id="btn-back">← LOBBY</button>
+      <h2 class="game-title" id="game-title">Spiel</h2>
+      <button class="btn btn-ghost btn-small" id="btn-rules">❔ REGELN</button>
+    </div>
+    <div id="game-stage"></div>
+  </section>
+</main>
+
+<footer class="footer">
+  <p><b>GAMBAKING</b> ist ein Fantasy-Casino. Es wird <b>kein echtes Geld</b> eingesetzt, gewonnen oder ausgezahlt. Alle Chips sind wertlose Spielwährung — nur für Spaß &amp; Challenges unter Freunden.</p>
+  <p class="footer-small">18+ Vibes, 0 € Einsatz · Alle Daten bleiben lokal in deinem Browser · <button class="linkish" id="btn-wipe">Alle Daten löschen</button></p>
+</footer>
+
+<!-- ══════════ TOASTS ══════════ -->
+<div id="toasts" aria-live="polite"></div>
+
+<!-- ══════════ MODAL ROOT ══════════ -->
+<div id="modal-root" class="modal-root" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="modal-x" data-close aria-label="Schließen">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/games/slots.js"></script>
+<script src="js/games/roulette.js"></script>
+<script src="js/games/blackjack.js"></script>
+<script src="js/games/coinflip.js"></script>
+<script src="js/games/dice.js"></script>
+<script src="js/games/crash.js"></script>
+<script src="js/games/mines.js"></script>
+<script src="js/games/wheel.js"></script>
+<script src="js/games/plinko.js"></script>
+<script src="js/games/scratch.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

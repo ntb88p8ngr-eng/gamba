@@ -1,0 +1,203 @@
+/* ═══════════ 1. FANTASY REELS (Slots) ═══════════ */
+(function (GK) {
+  'use strict';
+  var el = GK.el;
+
+  var SYMS = [
+    { e: '🍒', w: 26, m3: 4,  m2: 1.2 },
+    { e: '🍀', w: 22, m3: 6,  m2: 1.4 },
+    { e: '🔔', w: 18, m3: 9,  m2: 1.6 },
+    { e: '⭐', w: 14, m3: 12, m2: 1.8 },
+    { e: '🐉', w: 10, m3: 18, m2: 2.2 },
+    { e: '💎', w: 7,  m3: 25, m2: 2.8 },
+    { e: '👑', w: 3,  m3: 50, m2: 4 }
+  ];
+  var TOTAL_W = SYMS.reduce(function (s, x) { return s + x.w; }, 0);
+  var ROW = 120;
+
+  function randSym() {
+    var r = Math.random() * TOTAL_W;
+    for (var i = 0; i < SYMS.length; i++) { r -= SYMS[i].w; if (r <= 0) return SYMS[i]; }
+    return SYMS[0];
+  }
+
+  GK.registerGame({
+    id: 'slots',
+    name: 'Fantasy Reels',
+    emoji: '🎰',
+    blurb: 'Drei Walzen voller Drachen, Kronen und Kirschen. Drei Gleiche = Regen aus Chips.',
+    badge: 'BIS 50×',
+    color: '#ff2fd0',
+    rules: [
+      '<b>3 gleiche Symbole</b> auf der Linie zahlen den großen Multiplikator.',
+      '<b>2 gleiche Symbole</b> geben einen kleinen Trostgewinn (1,2× bis 4×).',
+      'Die <b>Krone 👑</b> ist der Jackpot: 50× deinen Einsatz.',
+      'Auszahlung = Einsatz × Multiplikator.'
+    ],
+    mount: function (root) {
+      var stopped = false;
+      var bet = GK.betPanel({ start: 20 });
+
+      var reels = [], strips = [];
+      for (var i = 0; i < 3; i++) {
+        var strip = el('div', { class: 'strip' });
+        var reel = el('div', { class: 'reel' }, [strip]);
+        reels.push(reel); strips.push(strip);
+      }
+
+      function fillStrip(strip, finalSym, len) {
+        strip.innerHTML = '';
+        for (var i = 0; i < len - 1; i++) {
+          strip.appendChild(el('div', { class: 'sym', text: randSym().e }));
+        }
+        strip.appendChild(el('div', { class: 'sym', text: finalSym.e }));
+      }
+
+      // Startbild
+      strips.forEach(function (s) { fillStrip(s, randSym(), 1); });
+
+      var lights = el('div', { class: 'slot-lights' });
+      for (var L = 0; L < 9; L++) lights.appendChild(el('i'));
+
+      var machine = el('div', { class: 'slot-machine' }, [
+        lights,
+        el('div', { class: 'reels' }, reels.concat([el('div', { class: 'payline' })]))
+      ]);
+
+      var paytable = el('div', { class: 'paytable' },
+        SYMS.slice().reverse().map(function (s) {
+          return el('div', { class: 'pay-item' }, [
+            el('span', { class: 's', text: s.e }),
+            el('span', { class: 'm', text: s.m3 + '×' })
+          ]);
+        }));
+
+      var resultBox = GK.resultBox();
+      var spinBtn = el('button', { class: 'btn btn-gold btn-full', text: '🎰 SPIN' });
+      var autoBtn = el('button', { class: 'btn btn-ghost btn-full', text: '🔁 AUTO 10' });
+      var autoLeft = 0;
+
+      var stage = el('div', { class: 'stage split' }, [
+        el('div', {}, [machine, paytable]),
+        GK.panel([
+          bet.el,
+          el('div', { style: 'height:12px' }),
+          resultBox,
+          el('div', { style: 'height:12px' }),
+          spinBtn,
+          el('div', { style: 'height:8px' }),
+          autoBtn,
+          el('div', { style: 'height:12px' }),
+          el('p', { class: 'hint', html: '💡 Tipp: Die Krone 👑 zahlt <b>50×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz.' })
+        ])
+      ]);
+      root.appendChild(stage);
+
+      var spinning = false;
+
+      function spin() {
+        if (spinning || stopped) return;
+        var stake = bet.value();
+        if (!GK.wager(stake, 'Slots')) { autoLeft = 0; updateAuto(); return; }
+
+        spinning = true;
+        spinBtn.disabled = true;
+        bet.disable(true);
+        GK.setResult(resultBox, 'Die Walzen drehen…', '');
+        GK.sfx('spin');
+
+        // Ergebnis vorab würfeln (mit Luck-Bonus vom Admin)
+        var out = [randSym(), randSym(), randSym()];
+        if (GK.luckRoll(0.06)) { var s = randSym(); out = [s, s, s]; }
+        else if (GK.luckRoll(0.10)) { out[1] = out[0]; }
+
+        reels.forEach(function (r) { r.classList.remove('hit'); });
+
+        var lens = [26, 32, 38];
+        strips.forEach(function (strip, i) {
+          fillStrip(strip, out[i], lens[i]);
+          strip.style.transition = 'none';
+          strip.style.transform = 'translateY(0)';
+        });
+        void strips[0].offsetWidth; // reflow
+
+        strips.forEach(function (strip, i) {
+          strip.style.transition = 'transform ' + (1.7 + i * 0.55) + 's cubic-bezier(.14,.72,.16,1)';
+          strip.style.transform = 'translateY(-' + ((lens[i] - 1) * ROW) + 'px)';
+        });
+
+        [0, 1, 2].forEach(function (i) {
+          setTimeout(function () {
+            if (stopped) return;
+            GK.sfx('reel');
+            reels[i].classList.add('hit');
+            setTimeout(function () { reels[i].classList.remove('hit'); }, 400);
+          }, (1.7 + i * 0.55) * 1000);
+        });
+
+        setTimeout(function () {
+          if (stopped) return;
+          finish(out, stake);
+        }, (1.7 + 2 * 0.55) * 1000 + 260);
+      }
+
+      function finish(out, stake) {
+        var mult = 0, label = '';
+        if (out[0].e === out[1].e && out[1].e === out[2].e) {
+          mult = out[0].m3;
+          label = out[0].e + out[0].e + out[0].e + '  ' + mult + '× !!!';
+          reels.forEach(function (r) { r.classList.add('hit'); });
+        } else {
+          var pairSym = null;
+          if (out[0].e === out[1].e) pairSym = out[0];
+          else if (out[1].e === out[2].e) pairSym = out[1];
+          else if (out[0].e === out[2].e) pairSym = out[0];
+          if (pairSym) { mult = pairSym.m2; label = 'Zwei ' + pairSym.e + ' — ' + mult + '×'; }
+        }
+
+        var win = Math.floor(stake * mult);
+        GK.payout(win, { stake: stake });
+        GK.logPlay('Fantasy Reels', stake, win);
+
+        if (win > stake) {
+          GK.setResult(resultBox, label + '  →  +' + GK.fmt(win - stake), 'win');
+          GK.celebrate(win - stake, mult);
+          if (mult >= 50) GK.emojiRain(['👑', '💎', '🤑'], 40);
+        } else if (win > 0) {
+          GK.setResult(resultBox, label + '  →  ' + GK.fmt(win) + ' zurück', 'push');
+          GK.sfx('coin');
+        } else {
+          GK.setResult(resultBox, out.map(function (s) { return s.e; }).join(' ') + '  —  daneben!', 'lose');
+          GK.sfx('lose');
+          GK.shake(machine);
+        }
+
+        spinning = false;
+        spinBtn.disabled = false;
+        bet.disable(false);
+
+        if (autoLeft > 0) {
+          autoLeft--;
+          updateAuto();
+          var p = GK.player();
+          if (autoLeft > 0 && p && p.balance >= 1) setTimeout(spin, 700);
+        }
+      }
+
+      function updateAuto() {
+        autoBtn.textContent = autoLeft > 0 ? '⏹ STOP (' + autoLeft + ')' : '🔁 AUTO 10';
+        autoBtn.classList.toggle('btn-danger', autoLeft > 0);
+      }
+
+      spinBtn.addEventListener('click', function () { GK.sfx('click'); spin(); });
+      autoBtn.addEventListener('click', function () {
+        GK.sfx('click');
+        if (autoLeft > 0) { autoLeft = 0; updateAuto(); return; }
+        autoLeft = 10; updateAuto();
+        if (!spinning) spin();
+      });
+
+      return function () { stopped = true; autoLeft = 0; };
+    }
+  });
+})(window.GK);
