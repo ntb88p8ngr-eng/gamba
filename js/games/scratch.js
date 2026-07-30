@@ -70,7 +70,7 @@
           el('div', { style: 'height:8px' }),
           revealBtn,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 Halt die Maus gedrückt und wisch über die Felder. Ab <b>55%</b> freigerubbelt springt das Feld von selbst auf.' })
+          el('p', { class: 'hint', html: '💡 Halt die Maus gedrückt und wisch über die Felder. Ab rund <b>einem Drittel</b> freigerubbelt springt das Feld von selbst auf.' })
         ])
       ]);
       root.appendChild(stage);
@@ -80,7 +80,7 @@
         var cv = el('canvas');
         var wrap = el('div', { class: 'stile' }, [under, cv]);
         var ctx = cv.getContext('2d');
-        var drawing = false, strokes = 0, done = true;
+        var drawing = false, strokes = 0, done = true, lastP = null;
 
         function paintCover() {
           var r = wrap.getBoundingClientRect();
@@ -111,16 +111,37 @@
           };
         }
 
+        var BRUSH = 0.27;      // Pinselradius relativ zur Feldbreite
+        var REVEAL_AT = 0.32;  // ab hier springt das Feld von selbst auf
+
         function scratch(ev) {
           if (done) return;
           var p = pos(ev);
+          var r = cv.width * BRUSH;
           ctx.globalCompositeOperation = 'destination-out';
+
+          // Strich zwischen letztem und aktuellem Punkt ziehen, damit schnelles
+          // Wischen keine Lücken lässt (sonst muss man ewig nachrubbeln)
+          if (lastP) {
+            ctx.lineWidth = r * 2;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(lastP.x, lastP.y);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+          }
           ctx.beginPath();
-          ctx.arc(p.x, p.y, cv.width * 0.16, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           ctx.fill();
+          lastP = p;
+
           strokes++;
           if (strokes % 4 === 0) GK.sfx('hover');
-          if (strokes % 8 === 0 && progress() > 0.55) reveal();
+          if (strokes % 3 === 0) checkReveal();
+        }
+
+        function checkReveal() {
+          if (!done && progress() > REVEAL_AT) reveal();
         }
 
         function progress() {
@@ -141,12 +162,18 @@
           onRevealed();
         }
 
-        cv.addEventListener('mousedown', function (e) { drawing = true; scratch(e); });
+        function release() {
+          drawing = false;
+          lastP = null;
+          checkReveal();          // auch nach einem kurzen Wisch sofort prüfen
+        }
+
+        cv.addEventListener('mousedown', function (e) { drawing = true; lastP = null; scratch(e); });
         cv.addEventListener('mousemove', function (e) { if (drawing) scratch(e); });
-        window.addEventListener('mouseup', function () { drawing = false; });
-        cv.addEventListener('touchstart', function (e) { drawing = true; scratch(e); e.preventDefault(); }, { passive: false });
+        window.addEventListener('mouseup', function () { if (drawing) release(); });
+        cv.addEventListener('touchstart', function (e) { drawing = true; lastP = null; scratch(e); e.preventDefault(); }, { passive: false });
         cv.addEventListener('touchmove', function (e) { if (drawing) scratch(e); e.preventDefault(); }, { passive: false });
-        cv.addEventListener('touchend', function () { drawing = false; });
+        cv.addEventListener('touchend', function () { if (drawing) release(); });
 
         return {
           el: wrap,
@@ -155,6 +182,7 @@
             wrap.classList.remove('revealed');
             done = false;
             strokes = 0;
+            lastP = null;
             paintCover();
           },
           reveal: reveal,
