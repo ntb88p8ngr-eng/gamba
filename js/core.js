@@ -48,42 +48,112 @@
   GK.fmtX = function (n) { return (Math.round(n * 100) / 100).toFixed(2) + '×'; };
 
   /* ─────────────────────────── STATE ─────────────────────────── */
+  /*
+     Spieler, Chips und Feed liegen auf dem Server (siehe server.js) — nur so
+     sehen alle dasselbe Leaderboard. Lokal bleibt eine Kopie als Offline-
+     Fallback plus die Geräte-Einstellungen (wer hier gerade spielt, Ton an/aus).
+  */
+  var DEVICE_KEY = 'gambaking:device';
+
   var defaultState = function () {
     return {
       currentId: null,
       players: {},
       feed: [],
-      settings: { sound: true, adminPin: '1337', chaos: true },
+      settings: { sound: true, volume: 50, adminPin: '1337', chaos: true },
       admin: false
     };
   };
 
   var state = GK.state = defaultState();
 
-  GK.load = function () {
+  /** Nur dieses Gerät betreffend — nie auf dem Server. */
+  function loadDevice() {
+    try {
+      var d = JSON.parse(localStorage.getItem(DEVICE_KEY) || '{}');
+      if (d.currentId) state.currentId = d.currentId;
+      if (d.sound !== undefined) state.settings.sound = d.sound;
+      if (d.volume !== undefined) state.settings.volume = d.volume;
+    } catch (e) {}
+  }
+  function saveDevice() {
+    try {
+      localStorage.setItem(DEVICE_KEY, JSON.stringify({
+        currentId: state.currentId,
+        sound: state.settings.sound,
+        volume: state.settings.volume
+      }));
+    } catch (e) {}
+  }
+
+  /** Offline-Kopie (und Datenquelle, wenn kein Server läuft). */
+  function loadLocal() {
     try {
       var raw = localStorage.getItem(KEY);
       if (raw) {
         var parsed = JSON.parse(raw);
-        state = GK.state = Object.assign(defaultState(), parsed);
-        state.settings = Object.assign(defaultState().settings, parsed.settings || {});
-        state.admin = false; // Admin-Modus nie persistent
+        state.players = parsed.players || {};
+        state.feed = parsed.feed || [];
+        state.settings = Object.assign(state.settings, parsed.settings || {});
       }
     } catch (e) { /* korrupte Daten -> frischer Start */ }
-    return state;
-  };
-
-  GK.save = function () {
+  }
+  function saveLocal() {
     try {
-      var copy = Object.assign({}, state);
-      delete copy.admin;
-      localStorage.setItem(KEY, JSON.stringify(copy));
+      localStorage.setItem(KEY, JSON.stringify({
+        players: state.players, feed: state.feed,
+        settings: { adminPin: state.settings.adminPin }
+      }));
     } catch (e) { /* z.B. privater Modus */ }
+  }
+
+  GK.save = function () { saveDevice(); saveLocal(); };
+
+  /** Serverstand übernehmen. Gibt zurück, ob sich etwas geändert hat. */
+  GK.adoptState = function (s) {
+    if (!s || !s.players) return false;
+    var before = JSON.stringify([state.players, state.feed]);
+    state.players = s.players;
+    state.feed = s.feed || [];
+    if (state.currentId && !state.players[state.currentId]) state.currentId = null;
+    GK.save();
+    return JSON.stringify([state.players, state.feed]) !== before;
   };
 
+  /**
+   * Änderung festschreiben: lokal spiegeln und — wenn ein Server da ist —
+   * als Operation dorthin schicken. Der Server ist die verbindliche Quelle.
+   */
+  GK.commit = function (type, payload) {
+    GK.save();
+    if (GK.net && GK.net.online) return GK.net.op(type, payload);
+    return Promise.resolve(null);
+  };
+
+  /** Start: Server suchen, sonst lokal weitermachen. */
+  GK.init = function () {
+    loadDevice();
+    loadLocal();
+    state.admin = false;                       // Admin-Modus nie persistent
+    if (!GK.net) return Promise.resolve(false);
+    return GK.net.probe().then(function (online) {
+      if (!online) loadLocal();                // Serverstand hat lokale Kopie nicht ersetzt
+      return online;
+    });
+  };
+
+  /** Nur der Admin — löscht alles (Server oder lokal). */
   GK.wipe = function () {
+    if (GK.net && GK.net.online) {
+      return GK.net.op('wipe', {}).then(function () {
+        try { localStorage.removeItem(KEY); } catch (e) {}
+        try { localStorage.removeItem(DEVICE_KEY); } catch (e) {}
+      });
+    }
     try { localStorage.removeItem(KEY); } catch (e) {}
+    try { localStorage.removeItem(DEVICE_KEY); } catch (e) {}
     state = GK.state = defaultState();
+    return Promise.resolve();
   };
 
   /* ─────────────────────────── PLAYERS ─────────────────────────── */
@@ -104,12 +174,14 @@
       biggestWin: 0,
       peak: START_BALANCE,
       luck: 50,         // 0-100, nur der Admin dreht daran
+      xp: 0,
+      claimedLevel: 1,
       lastBonus: 0,
       created: Date.now()
     };
     state.players[p.id] = p;
     state.currentId = p.id;
-    GK.save();
+    GK.commit('create', { id: p.id, name: p.name, avatar: p.avatar });
     return p;
   };
 
@@ -130,8 +202,87 @@
       var rest = GK.playerList();
       state.currentId = rest.length ? rest[0].id : null;
     }
-    GK.save();
+    GK.commit('deletePlayer', { id: id });
     GK.emit('player-changed');
+  };
+
+  /* ─────────────────────────── LEVEL & XP ─────────────────────────── */
+  /*
+     XP gibt es fürs Spielen — Einsatz zählt, Gewinne zählen extra. Jedes Level
+     bringt Chips und schaltet irgendwann neue Spiele frei. Die Formel steht
+     identisch in server.js, damit beide Seiten dasselbe rechnen.
+  */
+  GK.MAX_LEVEL = 30;
+
+  /** Gesamt-XP, die man braucht, um dieses Level zu erreichen. */
+  GK.xpForLevel = function (level) {
+    if (level <= 1) return 0;
+    var n = level - 1;
+    return 100 * n + 25 * n * (n - 1);
+  };
+
+  GK.levelOf = function (xp) {
+    var l = 1;
+    while (l < GK.MAX_LEVEL && (xp || 0) >= GK.xpForLevel(l + 1)) l++;
+    return l;
+  };
+
+  GK.TITLES = [
+    { min: 20, title: 'GambaKing', icon: '👑' },
+    { min: 15, title: 'Legende', icon: '🌟' },
+    { min: 10, title: 'Casino-Hai', icon: '🦈' },
+    { min: 6, title: 'Hochroller', icon: '💸' },
+    { min: 3, title: 'Zocker', icon: '🎲' },
+    { min: 1, title: 'Chip-Küken', icon: '🐣' }
+  ];
+  GK.titleOf = function (level) {
+    for (var i = 0; i < GK.TITLES.length; i++) if (level >= GK.TITLES[i].min) return GK.TITLES[i];
+    return GK.TITLES[GK.TITLES.length - 1];
+  };
+
+  /** Fortschritt im aktuellen Level: {level, xp, need, have, pct, title} */
+  GK.levelInfo = function (p) {
+    p = p || GK.player();
+    if (!p) return null;
+    var xp = p.xp || 0;
+    var lvl = GK.levelOf(xp);
+    var base = GK.xpForLevel(lvl);
+    var next = GK.xpForLevel(lvl + 1);
+    var span = Math.max(1, next - base);
+    return {
+      level: lvl,
+      xp: xp,
+      have: xp - base,
+      need: span,
+      pct: lvl >= GK.MAX_LEVEL ? 100 : GK.clamp(((xp - base) / span) * 100, 0, 100),
+      max: lvl >= GK.MAX_LEVEL,
+      title: GK.titleOf(lvl)
+    };
+  };
+
+  /** Belohnung fürs Aufsteigen. */
+  GK.levelReward = function (level) { return 100 * level; };
+
+  /** XP gutschreiben; steigt der Spieler auf, gibt es Chips und Konfetti. */
+  GK.addXP = function (amount) {
+    var p = GK.player();
+    if (!p || amount <= 0) return;
+    amount = Math.floor(amount);
+    var before = GK.levelOf(p.xp || 0);
+    p.xp = (p.xp || 0) + amount;
+    var after = GK.levelOf(p.xp);
+
+    if (after > before) {
+      var reward = 0;
+      for (var l = before + 1; l <= after; l++) reward += GK.levelReward(l);
+      p.balance += reward;
+      p.granted = (p.granted || 0) + reward;
+      p.peak = Math.max(p.peak, p.balance);
+      p.claimedLevel = after;
+      GK.emit('level-up', { level: after, reward: reward });
+    }
+    GK.commit('xp', { id: p.id, amount: amount });
+    GK.emit('xp');
   };
 
   /* profit = alles was der Spieler selbst erspielt hat (ohne Admin-Geschenke) */
@@ -163,7 +314,10 @@
     p.balance -= amount;
     p.wagered += amount;
     p.plays++;
-    GK.save();
+    GK.commit('wager', { id: p.id, amount: amount });
+    // XP fürs Mitspielen — gedeckelt, damit ein einzelner Riesen-Einsatz
+    // nicht sofort alles freischaltet (der Server deckelt identisch).
+    GK.addXP(Math.min(150, Math.max(2, Math.floor(amount / 4))));
     GK.updateHUD(-amount);
     return true;
   };
@@ -180,10 +334,11 @@
       var net = amount - ((meta && meta.stake) || 0);
       if (net > p.biggestWin) p.biggestWin = net;
       p.wins++;
+      if (net > 0) GK.addXP(12 + Math.min(40, Math.floor(net / 25)));  // Bonus-XP für Gewinne
     } else {
       p.losses++;
     }
-    GK.save();
+    GK.commit('payout', { id: p.id, amount: amount, stake: (meta && meta.stake) || 0 });
     GK.updateHUD(amount > 0 ? amount : 0);
     GK.checkBroke();
   };
@@ -194,11 +349,25 @@
     if (!p || p.balance >= 1) return;
     p.balance = BAILOUT;
     p.granted = (p.granted || 0) + BAILOUT;
-    GK.save();
+    GK.commit('bailout', { id: p.id });
     GK.updateHUD(BAILOUT);
     GK.toast('Komplett pleite! Die Krone leiht dir ' + BAILOUT + ' Chips 👑', 'gold', '🆘');
     GK.logFeed(p.name + ' war pleite und bekam ' + BAILOUT + ' Mitleids-Chips', 'admin');
     GK.sfx('coin');
+  };
+
+  /** Tagesbonus — darf jeder selbst holen, der Server prüft den Abstand. */
+  GK.claimBonus = function () {
+    var p = GK.player();
+    if (!p) return Promise.resolve(false);
+    var DAY = 24 * 3600 * 1000;
+    if (Date.now() - (p.lastBonus || 0) < DAY) return Promise.resolve(false);
+    p.lastBonus = Date.now();
+    p.balance += 250;
+    p.granted = (p.granted || 0) + 250;
+    p.peak = Math.max(p.peak, p.balance);
+    GK.updateHUD(250);
+    return GK.commit('bonus', { id: p.id }).then(function () { return true; });
   };
 
   /** Admin: Chips schenken/abziehen. */
@@ -209,7 +378,7 @@
     p.balance = Math.max(0, p.balance + amount);
     p.granted = (p.granted || 0) + amount;
     p.peak = Math.max(p.peak, p.balance);
-    GK.save();
+    GK.commit('grant', { id: p.id, amount: amount, silent: !!silent });
     GK.updateHUD(amount);
     if (!silent) {
       GK.logFeed('👑 ADMIN: ' + p.name + ' ' + (amount >= 0 ? 'bekommt ' : 'verliert ') + GK.fmt(Math.abs(amount)) + ' Chips', 'admin');
@@ -237,7 +406,7 @@
   GK.logFeed = function (text, type) {
     state.feed.unshift({ t: Date.now(), text: text, type: type || '' });
     if (state.feed.length > 40) state.feed.length = 40;
-    GK.save();
+    GK.commit('feed', { text: text, kind: type || '' });
     GK.emit('feed');
   };
 
@@ -264,10 +433,15 @@
       try {
         this.ctx = new AC();
         this.master = this.ctx.createGain();
-        this.master.gain.value = 0.22;
         this.master.connect(this.ctx.destination);
         this.ready = true;
+        this.applyVolume();
       } catch (e) { this.ready = false; }
+    },
+    applyVolume: function () {
+      if (!this.master) return;
+      var v = state.settings.volume;
+      this.master.gain.value = (v === undefined ? 50 : v) / 100 * 0.45;
     },
     resume: function () {
       if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
@@ -346,6 +520,16 @@
     if (state.settings.sound) GK.sfx('coin');
     return state.settings.sound;
   };
+
+  /** Lautstärke 0–100 → Master-Gain. */
+  GK.setVolume = function (v, preview) {
+    state.settings.volume = GK.clamp(Math.round(Number(v) || 0), 0, 100);
+    Sound.applyVolume();
+    saveDevice();
+    if (preview && state.settings.sound && state.settings.volume > 0) GK.sfx('tick');
+    return state.settings.volume;
+  };
+  GK.volume = function () { return state.settings.volume; };
 
   /* ─────────────────────────── VISUAL FX ─────────────────────────── */
   var canvas, ctx2d, particles = [], rafId = null;
@@ -512,7 +696,8 @@
     var root = $('#modal-root'), content = $('#modal-content');
     if (!root || !content) return;
     content.innerHTML = '';
-    if (opts.emoji) content.appendChild(GK.el('span', { class: 'modal-emoji', text: opts.emoji }));
+    if (opts.icon && GK.hasIcon(opts.icon)) content.appendChild(GK.el('div', { class: 'modal-icon', html: GK.iconHTML(opts.icon) }));
+    else if (opts.emoji) content.appendChild(GK.el('span', { class: 'modal-emoji', text: opts.emoji }));
     if (opts.title) content.appendChild(GK.el('h3', { text: opts.title }));
     if (opts.text) content.appendChild(GK.el('p', { html: opts.text }));
     (opts.nodes || []).forEach(function (n) { content.appendChild(n); });
@@ -610,6 +795,14 @@
     for (var i = 0; i < GK.games.length; i++) if (GK.games[i].id === id) return GK.games[i];
     return null;
   };
+
+  /** Spiele mit minLevel sind erst ab dem passenden Level spielbar. */
+  GK.isUnlocked = function (game) {
+    if (!game || !game.minLevel) return true;
+    var p = GK.player();
+    return GK.levelOf(p ? p.xp : 0) >= game.minLevel;
+  };
+  GK.unlockedGames = function () { return GK.games.filter(GK.isUnlocked); };
 
   /** kleine Helfer für Spiel-Module */
   GK.panel = function (children, cls) { return GK.el('div', { class: 'panel ' + (cls || '') }, children); };

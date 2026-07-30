@@ -5,9 +5,9 @@
 
   var ROWS = 12;
   var RISKS = {
-    low:  { label: '😌 Chill',  mults: [4, 2, 1.5, 1.2, 1.1, 1, 0.5, 1, 1.1, 1.2, 1.5, 2, 4] },
-    mid:  { label: '😎 Normal', mults: [15, 6, 3, 1.5, 1.1, 0.7, 0.4, 0.7, 1.1, 1.5, 3, 6, 15] },
-    high: { label: '🤯 Irre',   mults: [40, 18, 6, 3, 0.5, 0.4, 0.2, 0.4, 0.5, 3, 6, 18, 40] }
+    low:  { label: '😌 Chill',  mults: [4, 2, 1.5, 1.2, 1.05, 0.95, 0.4, 0.95, 1.05, 1.2, 1.5, 2, 4] },
+    mid:  { label: '😎 Normal', mults: [15, 6, 3, 1.5, 1, 0.7, 0.4, 0.7, 1, 1.5, 3, 6, 15] },
+    high: { label: '🤯 Irre',   mults: [40, 18, 6, 3, 0.5, 0.3, 0.15, 0.3, 0.5, 3, 6, 18, 40] }
   };
 
   function multColor(m) {
@@ -22,6 +22,7 @@
     id: 'plinko',
     name: 'Plinko Palast',
     emoji: '🔻',
+    icon: 'plinko',
     blurb: 'Kugel rein, Nerven raus. 12 Reihen Chaos entscheiden, wo dein Einsatz landet.',
     badge: 'BIS 40×',
     color: '#ff8a00',

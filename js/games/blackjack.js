@@ -46,12 +46,13 @@
     id: 'blackjack',
     name: 'Royal Blackjack',
     emoji: '🃏',
+    icon: 'cards',
     blurb: 'Komm auf 21 — oder so nah wie möglich. Der Dealer zieht bis 17. Nerven aus Stahl nötig.',
-    badge: '3:2',
+    badge: '6:5',
     color: '#7cff3b',
     rules: [
       'Ziel: näher an <b>21</b> als der Dealer, ohne zu überkaufen.',
-      'Ein <b>Blackjack</b> (Ass + Bild/10) zahlt <b>3:2</b>.',
+      'Ein <b>Blackjack</b> (Ass + Bild/10) zahlt <b>6:5</b>.',
       'Der Dealer zieht bis <b>17</b> und bleibt dann stehen.',
       '<b>Doppeln</b>: Einsatz verdoppeln, genau eine Karte, dann automatisch stehen.',
       'Gleichstand = <b>Push</b>, du bekommst deinen Einsatz zurück.'
@@ -96,7 +97,7 @@
           el('div', { style: 'height:10px' }),
           actions,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 6 Decks, Dealer bleibt auf <b>17</b> stehen. Blackjack zahlt <b>3:2</b>.' })
+          el('p', { class: 'hint', html: '💡 6 Decks, Dealer bleibt auf <b>17</b> stehen. Blackjack zahlt <b>6:5</b>.' })
         ])
       ]);
       root.appendChild(stage);
@@ -210,7 +211,7 @@
         var win = 0, msg, kind;
 
         if (pv > 21) { win = 0; msg = 'Überkauft mit ' + pv + '! 💥'; kind = 'lose'; }
-        else if (isBJ(player) && !isBJ(dealer)) { win = Math.floor(stake * 2.5); msg = 'BLACKJACK! ' + pv + ' 🃏 3:2'; kind = 'win'; }
+        else if (isBJ(player) && !isBJ(dealer)) { win = Math.floor(stake * 2.2); msg = 'BLACKJACK! ' + pv + ' 🃏 6:5'; kind = 'win'; }
         else if (isBJ(dealer) && !isBJ(player)) { win = 0; msg = 'Dealer hat Blackjack 😤'; kind = 'lose'; }
         else if (dv > 21) { win = stake * 2; msg = 'Dealer überkauft mit ' + dv + '! 🎉'; kind = 'win'; }
         else if (pv > dv) { win = stake * 2; msg = pv + ' schlägt ' + dv + ' — gewonnen!'; kind = 'win'; }

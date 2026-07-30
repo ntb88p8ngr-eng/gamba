@@ -19,23 +19,24 @@
   }
 
   var MODES = [
-    { id: 'duel', label: '⚔️ Duell', mult: 1.95, hint: 'Deine Summe muss die des Dealers schlagen. Gleichstand = Einsatz zurück.' },
-    { id: 'over', label: '⬆️ Über 7', mult: 2.3, hint: 'Deine beiden Würfel zusammen müssen mehr als 7 ergeben.' },
-    { id: 'under', label: '⬇️ Unter 7', mult: 2.3, hint: 'Deine beiden Würfel zusammen müssen weniger als 7 ergeben.' },
-    { id: 'seven', label: '🎯 Exakt 7', mult: 5.5, hint: 'Genau 7 — der riskante Held-Move.' }
+    { id: 'duel', label: '⚔️ Duell', mult: 1.8, hint: 'Deine Summe muss die des Dealers schlagen. Gleichstand = Einsatz zurück.' },
+    { id: 'over', label: '⬆️ Über 7', mult: 2.15, hint: 'Deine beiden Würfel zusammen müssen mehr als 7 ergeben.' },
+    { id: 'under', label: '⬇️ Unter 7', mult: 2.15, hint: 'Deine beiden Würfel zusammen müssen weniger als 7 ergeben.' },
+    { id: 'seven', label: '🎯 Exakt 7', mult: 5.1, hint: 'Genau 7 — der riskante Held-Move.' }
   ];
 
   GK.registerGame({
     id: 'dice',
     name: 'Würfelduell',
     emoji: '🎲',
+    icon: 'dice',
     blurb: 'Zwei Würfel, vier Wettarten und ein Dealer, der dich auslachen will.',
-    badge: 'BIS 5.5×',
+    badge: 'BIS 5.1×',
     color: '#8b3bff',
     rules: [
-      '<b>Duell:</b> deine 2 Würfel gegen die des Dealers — höhere Summe gewinnt (1,95×). Gleichstand = Push.',
-      '<b>Über 7 / Unter 7:</b> zahlt 2,3× wenn deine Summe passt. Eine exakte 7 verliert hier.',
-      '<b>Exakt 7:</b> zahlt fette 5,5× — trifft aber nur in einem von sechs Würfen.'
+      '<b>Duell:</b> deine 2 Würfel gegen die des Dealers — höhere Summe gewinnt (1,8×). Gleichstand = Push.',
+      '<b>Über 7 / Unter 7:</b> zahlt 2,15× wenn deine Summe passt. Eine exakte 7 verliert hier.',
+      '<b>Exakt 7:</b> zahlt fette 5,1× — trifft aber nur in einem von sechs Würfen.'
     ],
     mount: function (root) {
       var stopped = false, rolling = false, mode = MODES[0];

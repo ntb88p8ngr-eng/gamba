@@ -5,7 +5,7 @@
   var SVGNS = 'http://www.w3.org/2000/svg';
 
   // 20 Segmente, gemischt angeordnet
-  var SEGS = [0, 1, 0, 2, 0, 0.5, 1.5, 0, 5, 0, 1, 0, 3, 0.5, 2, 0, 1, 1.5, 0, 0.5];
+  var SEGS = [0, 1, 0, 2, 0, 0.5, 1.5, 0, 5, 0, 0, 0, 2, 0.5, 2, 0, 1, 1.5, 0, 0.5];
   var STEP = 360 / SEGS.length;
 
   function colorFor(m) {
@@ -57,6 +57,7 @@
     id: 'wheel',
     name: 'Rad des Schicksals',
     emoji: '🎡',
+    icon: 'fortune',
     blurb: 'Ein Dreh, ein Schicksal. Zwischen Totenkopf und 5× liegt nur ein bisschen Karma.',
     badge: 'BIS 5×',
     color: '#7cff3b',
@@ -76,7 +77,7 @@
 
       var tiers = [
         { m: 0, t: '☠ Nichts' }, { m: 0.5, t: '0,5× Trost' }, { m: 1, t: '1× zurück' },
-        { m: 1.5, t: '1,5×' }, { m: 2, t: '2×' }, { m: 3, t: '3×' }, { m: 5, t: '5× Jackpot' }
+        { m: 1.5, t: '1,5×' }, { m: 2, t: '2×' }, { m: 5, t: '5× Jackpot' }
       ];
       var legend = el('div', { class: 'wheel-legend' }, tiers.map(function (x) {
         var count = SEGS.filter(function (s) { return s === x.m; }).length;

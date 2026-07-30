@@ -9,6 +9,7 @@
     id: 'mines',
     name: 'Drachenhöhle',
     emoji: '💎',
+    icon: 'gem',
     blurb: 'Sammle Edelsteine im Drachenhort. Hinter jedem Feld lauert vielleicht ein Drache.',
     badge: 'BIS 200×',
     color: '#00e5ff',
@@ -28,7 +29,7 @@
       var cells = [];
       for (var i = 0; i < SIZE; i++) {
         (function (i) {
-          var c = el('button', { class: 'mine-cell', text: '❔' });
+          var c = el('button', { class: 'mine-cell', html: GK.iconHTML('question') });
           c.addEventListener('click', function () { pickCell(i); });
           cells.push(c);
           grid.appendChild(c);
@@ -83,7 +84,7 @@
         var safe = SIZE - mineCount;
         var m = 1;
         for (var i = 0; i < k; i++) m *= (SIZE - i) / (safe - i);
-        return Math.round(m * 0.97 * 100) / 100; // kleiner Hausvorteil
+        return Math.round(m * 0.92 * 100) / 100; // Hausvorteil
       }
 
       function syncStats() {
@@ -114,7 +115,7 @@
 
         cells.forEach(function (c) {
           c.className = 'mine-cell';
-          c.textContent = '❔';
+          c.innerHTML = GK.iconHTML('question');
           c.disabled = false;
         });
         startBtn.disabled = true;
@@ -133,7 +134,7 @@
 
         if (mines.indexOf(i) >= 0) {
           c.classList.add('boom', 'done');
-          c.textContent = '🐉';
+          c.innerHTML = GK.iconHTML('dragon');
           GK.sfx('boom');
           GK.shake(grid, true);
           endRound(false);
@@ -142,7 +143,7 @@
 
         picks++;
         c.classList.add('gem', 'done');
-        c.textContent = '💎';
+        c.innerHTML = GK.iconHTML('gem');
         GK.sfx('gem');
         cashBtn.disabled = false;
         syncStats();
@@ -182,7 +183,7 @@
           c.classList.add('done');
           if (revealed.indexOf(i) < 0) {
             c.classList.add('faded');
-            c.textContent = mines.indexOf(i) >= 0 ? '🐉' : '💎';
+            c.innerHTML = GK.iconHTML(mines.indexOf(i) >= 0 ? 'dragon' : 'gem');
           }
         });
       }

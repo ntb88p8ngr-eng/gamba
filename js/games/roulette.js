@@ -52,18 +52,19 @@
     id: 'roulette',
     name: 'Neon Roulette',
     emoji: '🎡',
+    icon: 'roulettewheel',
     blurb: 'Rot, Schwarz oder die eine mutige Zahl. Das Rad entscheidet über Ruhm und Elend.',
-    badge: 'BIS 36×',
+    badge: 'BIS 32×',
     color: '#00e5ff',
     rules: [
-      '<b>Rot / Schwarz / Gerade / Ungerade / 1-18 / 19-36</b> zahlen 2× (Einsatz verdoppelt).',
-      '<b>Dutzend</b> (1-12, 13-24, 25-36) zahlt 3×.',
-      '<b>Einzelne Zahl</b> zahlt 36×.',
+      '<b>Rot / Schwarz / Gerade / Ungerade / 1-18 / 19-36</b> zahlen 1,9× — knapp unter dem doppelten Einsatz.',
+      '<b>Dutzend</b> (1-12, 13-24, 25-36) zahlt 2,8×.',
+      '<b>Einzelne Zahl</b> zahlt 32×.',
       'Die <b>grüne 0</b> schlägt alle einfachen Chancen — außer du hast sie direkt gesetzt.'
     ],
     mount: function (root) {
       var stopped = false, spinning = false, rot = 0;
-      var selected = { type: 'red', value: null, label: 'Rot', mult: 2 };
+      var selected = { type: 'red', value: null, label: 'Rot', mult: 1.9 };
 
       var bet = GK.betPanel({ start: 25 });
       var wheel = el('div', { class: 'roul-wheel' }, [buildWheel(), el('div', { class: 'roul-hub', text: '👑' })]);
@@ -71,15 +72,15 @@
       var resultBox = GK.resultBox();
 
       var typeDefs = [
-        { type: 'red', label: 'Rot', sub: '2×', cls: 'red' },
-        { type: 'black', label: 'Schwarz', sub: '2×', cls: 'black' },
-        { type: 'even', label: 'Gerade', sub: '2×' },
-        { type: 'odd', label: 'Ungerade', sub: '2×' },
-        { type: 'low', label: '1–18', sub: '2×' },
-        { type: 'high', label: '19–36', sub: '2×' },
-        { type: 'd1', label: '1–12', sub: '3×' },
-        { type: 'd2', label: '13–24', sub: '3×' },
-        { type: 'd3', label: '25–36', sub: '3×' }
+        { type: 'red', label: 'Rot', sub: '1.9×', cls: 'red' },
+        { type: 'black', label: 'Schwarz', sub: '1.9×', cls: 'black' },
+        { type: 'even', label: 'Gerade', sub: '1.9×' },
+        { type: 'odd', label: 'Ungerade', sub: '1.9×' },
+        { type: 'low', label: '1–18', sub: '1.9×' },
+        { type: 'high', label: '19–36', sub: '1.9×' },
+        { type: 'd1', label: '1–12', sub: '2.8×' },
+        { type: 'd2', label: '13–24', sub: '2.8×' },
+        { type: 'd3', label: '25–36', sub: '2.8×' }
       ];
 
       var typeBtns = [];
@@ -88,7 +89,7 @@
           d.label, el('small', { text: d.sub })
         ]);
         b.addEventListener('click', function () {
-          selected = { type: d.type, value: null, label: d.label, mult: d.sub === '3×' ? 3 : 2 };
+          selected = { type: d.type, value: null, label: d.label, mult: d.sub === '2.8×' ? 2.8 : 1.9 };
           syncSel();
           GK.sfx('chip');
         });
@@ -102,7 +103,7 @@
         (function (n) {
           var b = el('button', { class: 'num-cell ' + colorOf(n), text: String(n) });
           b.addEventListener('click', function () {
-            selected = { type: 'num', value: n, label: 'Zahl ' + n, mult: 36 };
+            selected = { type: 'num', value: n, label: 'Zahl ' + n, mult: 32 };
             syncSel();
             GK.sfx('chip');
           });
@@ -135,7 +136,7 @@
           el('div', { style: 'height:8px' }),
           betTypes,
           el('div', { style: 'height:10px' }),
-          el('div', { class: 'bet-label', text: 'ODER EINE EINZELNE ZAHL (36×)' }),
+          el('div', { class: 'bet-label', text: 'ODER EINE EINZELNE ZAHL (32×)' }),
           el('div', { style: 'height:8px' }),
           numGrid,
           el('div', { style: 'height:12px' }),

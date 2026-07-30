@@ -7,13 +7,14 @@
     id: 'coinflip',
     name: 'Drachenmünze',
     emoji: '🪙',
+    icon: 'coin',
     blurb: 'Krone oder Drache. 50/50, keine Ausreden. Serien geben fette Bonus-Multiplikatoren.',
-    badge: '1.95× +',
+    badge: '1.9× + SERIE',
     color: '#ffd12e',
     rules: [
-      'Wähle <b>Krone 👑</b> oder <b>Drache 🐉</b> und wirf die Münze.',
-      'Richtig getippt zahlt <b>1,95×</b> deinen Einsatz.',
-      'Ab <b>3 Siegen in Folge</b> steigt der Multiplikator um je <b>0,15×</b> (max. 3×).',
+      'Wähle <b>Krone</b> oder <b>Drache</b> und wirf die Münze.',
+      'Richtig getippt zahlt <b>1,9×</b> deinen Einsatz.',
+      'Ab <b>3 Siegen in Folge</b> gibt es feste <b>Bonus-Chips</b>: 50, 100, 200, 400, 700, 1200 …',
       'Ein Fehlschlag setzt die Serie zurück auf null.'
     ],
     mount: function (root) {
@@ -23,37 +24,43 @@
       var bet = GK.betPanel({ start: 20 });
 
       var coin = el('div', { class: 'coin' }, [
-        el('div', { class: 'coin-face coin-front', text: '👑' }),
-        el('div', { class: 'coin-face coin-back', text: '🐉' })
+        el('div', { class: 'coin-face coin-front', html: GK.iconHTML('crown') }),
+        el('div', { class: 'coin-face coin-back', html: GK.iconHTML('dragon') })
       ]);
 
       var crownBtn = el('button', { class: 'side-btn sel' }, [
-        el('span', { class: 'e', text: '👑' }), el('span', { class: 't', text: 'KRONE' })
+        el('span', { class: 'e', html: GK.iconHTML('crown') }), el('span', { class: 't', text: 'KRONE' })
       ]);
       var dragonBtn = el('button', { class: 'side-btn' }, [
-        el('span', { class: 'e', text: '🐉' }), el('span', { class: 't', text: 'DRACHE' })
+        el('span', { class: 'e', html: GK.iconHTML('dragon') }), el('span', { class: 't', text: 'DRACHE' })
       ]);
 
       var streakBar = el('div', { class: 'streak-bar' });
       var multBox = el('div', { class: 'info-box' }, [
-        el('b', { text: '1.95×' }), el('span', { text: 'Auszahlung' })
+        el('b', { text: '1.9×' }), el('span', { text: 'Auszahlung' })
       ]);
       var streakBox = el('div', { class: 'info-box' }, [
         el('b', { text: '0' }), el('span', { text: 'Serie' })
       ]);
+      var bonusBox = el('div', { class: 'info-box' }, [
+        el('b', { text: '–' }), el('span', { text: 'Nächster Bonus' })
+      ]);
       var resultBox = GK.resultBox();
       var flipBtn = el('button', { class: 'btn btn-gold btn-full', text: '🪙 MÜNZE WERFEN' });
 
-      function currentMult() {
-        var m = 1.95 + Math.max(0, streak - 2) * 0.15;
-        return Math.min(3, Math.round(m * 100) / 100);
-      }
+      var MULT = 1.9;
+      // Feste Bonus-Chips statt Multiplikator: sonst könnte man mit 1 Chip eine
+      // Serie aufbauen und dann All-In gehen — das wäre über 100% Auszahlung.
+      var STREAK_BONUS = { 3: 50, 4: 100, 5: 200, 6: 400, 7: 700, 8: 1200 };
+      function bonusFor(s) { return STREAK_BONUS[s] || (s > 8 ? 2000 : 0); }
 
       function syncUI() {
         crownBtn.classList.toggle('sel', side === 'crown');
         dragonBtn.classList.toggle('sel', side === 'dragon');
-        multBox.querySelector('b').textContent = currentMult() + '×';
+        multBox.querySelector('b').textContent = MULT + '×';
         streakBox.querySelector('b').textContent = streak;
+        var nb = bonusFor(streak + 1);
+        bonusBox.querySelector('b').textContent = nb ? '+' + GK.fmt(nb) : '–';
         streakBar.innerHTML = '';
         history.slice(-14).forEach(function (h) {
           streakBar.appendChild(el('div', { class: 'streak-dot ' + (h ? 'w' : 'l'), text: h ? 'W' : 'L' }));
@@ -72,7 +79,7 @@
           el('div', { style: 'height:14px' }),
           bet.el,
           el('div', { style: 'height:12px' }),
-          el('div', { class: 'info-grid' }, [multBox, streakBox]),
+          el('div', { class: 'info-grid' }, [multBox, streakBox, bonusBox]),
           el('div', { style: 'height:10px' }),
           streakBar,
           el('div', { style: 'height:10px' }),
@@ -87,7 +94,6 @@
       function flip() {
         if (flipping || stopped) return;
         var stake = bet.value();
-        var mult = currentMult();
         if (!GK.wager(stake, 'Coinflip')) return;
 
         flipping = true;
@@ -106,20 +112,25 @@
         setTimeout(function () {
           if (stopped) return;
           GK.sfx('coin');
-          var payout = win ? Math.floor(stake * mult) : 0;
+          var bonus = 0;
+          if (win) { streak++; bonus = bonusFor(streak); }
+          var payout = win ? Math.floor(stake * MULT) + bonus : 0;
           GK.payout(payout, { stake: stake });
           GK.logPlay('Drachenmünze', stake, payout);
           history.push(win);
           if (history.length > 40) history.shift();
 
           if (win) {
-            streak++;
-            GK.setResult(resultBox, (landed === 'crown' ? '👑 KRONE' : '🐉 DRACHE') + ' — richtig! +' + GK.fmt(payout - stake), 'win');
-            GK.celebrate(payout - stake, mult);
-            if (streak >= 5) GK.toast(streak + 'er Serie! Du bist unaufhaltsam 🔥', 'gold', '🔥');
+            GK.setResult(resultBox, (landed === 'crown' ? 'KRONE' : 'DRACHE') + ' — richtig! +' + GK.fmt(payout - stake) +
+              (bonus ? '  (inkl. ' + GK.fmt(bonus) + ' Serien-Bonus)' : ''), 'win');
+            GK.celebrate(payout - stake, MULT);
+            if (bonus) {
+              GK.toast(streak + 'er Serie! +' + GK.fmt(bonus) + ' Bonus-Chips 🔥', 'gold', '🔥');
+              GK.emojiRain(['🔥', '🪙'], 16);
+            }
           } else {
             streak = 0;
-            GK.setResult(resultBox, (landed === 'crown' ? '👑 KRONE' : '🐉 DRACHE') + ' — daneben!', 'lose');
+            GK.setResult(resultBox, (landed === 'crown' ? 'KRONE' : 'DRACHE') + ' — daneben!', 'lose');
             GK.sfx('lose');
             GK.shake(coin.parentElement);
           }

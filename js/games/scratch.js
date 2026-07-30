@@ -5,29 +5,34 @@
 
   // Gewinntabelle: Wahrscheinlichkeit für 3 Gleiche
   var PRIZES = [
-    { sym: '🍀', mult: 2,  p: 0.150 },
-    { sym: '🔥', mult: 3,  p: 0.070 },
-    { sym: '💎', mult: 5,  p: 0.040 },
-    { sym: '⭐', mult: 10, p: 0.012 },
-    { sym: '👑', mult: 20, p: 0.004 }
+    { sym: 'clover', name: 'Kleeblatt', mult: 2,  p: 0.140 },
+    { sym: 'flame',  name: 'Flamme',    mult: 3,  p: 0.066 },
+    { sym: 'gem',    name: 'Juwel',     mult: 5,  p: 0.038 },
+    { sym: 'star',   name: 'Stern',     mult: 10, p: 0.011 },
+    { sym: 'crown',  name: 'Krone',     mult: 20, p: 0.0036 }
   ];
   var ALL = PRIZES.map(function (p) { return p.sym; });
+  function nameOf(id) {
+    for (var i = 0; i < PRIZES.length; i++) if (PRIZES[i].sym === id) return PRIZES[i].name;
+    return id;
+  }
 
   GK.registerGame({
     id: 'scratch',
     name: 'Runen-Rubbellos',
     emoji: '🎫',
+    icon: 'ticket',
     blurb: 'Freirubbeln mit der Maus. Drei gleiche Runen und die Chips gehören dir.',
     badge: 'BIS 20×',
     color: '#ffd12e',
     rules: [
       'Kaufe ein Los und <b>rubbel die drei Felder frei</b> (Maus gedrückt halten oder wischen).',
       '<b>Drei gleiche Runen</b> zahlen den Multiplikator der Rune aus.',
-      '👑 20× · ⭐ 10× · 💎 5× · 🔥 3× · 🍀 2×',
+      'Krone 20× · Stern 10× · Juwel 5× · Flamme 3× · Kleeblatt 2×',
       'Alles andere ist eine Niete — aber Rubbeln macht trotzdem Spaß.'
     ],
     mount: function (root) {
-      var stopped = false, active = false, stake = 0, symbols = ['❔', '❔', '❔'], revealedCount = 0;
+      var stopped = false, active = false, stake = 0, symbols = ['question', 'question', 'question'], revealedCount = 0;
 
       var bet = GK.betPanel({ start: 20 });
       var tiles = [];
@@ -44,7 +49,7 @@
 
       var payTable = el('div', { class: 'paytable' }, PRIZES.slice().reverse().map(function (p) {
         return el('div', { class: 'pay-item' }, [
-          el('span', { class: 's', text: p.sym }),
+          el('span', { class: 's', html: GK.iconHTML(p.sym) }),
           el('span', { class: 'm', text: p.mult + '×' })
         ]);
       }));
@@ -71,7 +76,7 @@
       root.appendChild(stage);
 
       function makeTile(idx) {
-        var under = el('div', { class: 'sym-under', text: '❔' });
+        var under = el('div', { class: 'sym-under', html: GK.iconHTML('question') });
         var cv = el('canvas');
         var wrap = el('div', { class: 'stile' }, [under, cv]);
         var ctx = cv.getContext('2d');
@@ -146,7 +151,7 @@
         return {
           el: wrap,
           arm: function (sym) {
-            under.textContent = sym;
+            under.innerHTML = GK.iconHTML(sym);
             wrap.classList.remove('revealed');
             done = false;
             strokes = 0;
@@ -154,7 +159,7 @@
           },
           reveal: reveal,
           isDone: function () { return done; },
-          reset: function () { under.textContent = '❔'; done = true; cv.style.display = 'none'; wrap.classList.remove('revealed'); }
+          reset: function () { under.innerHTML = GK.iconHTML('question'); done = true; cv.style.display = 'none'; wrap.classList.remove('revealed'); }
         };
       }
 
@@ -211,10 +216,10 @@
         GK.logPlay('Runen-Rubbellos', stake, win);
 
         if (win > 0) {
-          GK.setResult(resultBox, symbols.join(' ') + ' — ' + prize.mult + '× → +' + GK.fmt(win - stake), 'win');
+          GK.setResult(resultBox, '3× ' + nameOf(symbols[0]) + ' — ' + prize.mult + '× → +' + GK.fmt(win - stake), 'win');
           GK.celebrate(win - stake, prize.mult);
         } else {
-          GK.setResult(resultBox, symbols.join(' ') + ' — Niete! Nächstes Los?', 'lose');
+          GK.setResult(resultBox, symbols.map(nameOf).join(' · ') + ' — Niete!', 'lose');
           GK.sfx('lose');
           GK.shake(card);
         }

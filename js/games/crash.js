@@ -7,6 +7,7 @@
     id: 'crash',
     name: 'Raketen-Crash',
     emoji: '🚀',
+    icon: 'rocket',
     blurb: 'Der Multiplikator steigt und steigt. Cash out bevor die Rakete explodiert — oder verlier alles.',
     badge: '∞ RISIKO',
     color: '#ff3b6b',
@@ -146,8 +147,8 @@
 
       function rollCrash() {
         var u = Math.random();
-        if (u < 0.01) return 1.00; // Sofort-Crash
-        var c = 0.99 / (1 - u);
+        if (u < 0.04) return 1.00; // Sofort-Crash
+        var c = 0.92 / (1 - u);
         // Admin-Luck schiebt den Crashpunkt nach oben
         var p = GK.player();
         if (p && p.luck > 50) c *= 1 + ((p.luck - 50) / 50) * 0.8;

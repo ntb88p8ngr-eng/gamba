@@ -17,8 +17,13 @@
   function openGame(id) {
     var g = GK.gameById(id);
     if (!g) return;
+    if (!GK.isUnlocked(g)) {
+      GK.toast(g.name + ' ist noch gesperrt — ab Level ' + g.minLevel, 'bad', '🔒');
+      GK.sfx('error');
+      return;
+    }
     closeGame();
-    $('#game-title').textContent = g.emoji + ' ' + g.name;
+    $('#game-title').innerHTML = (g.icon ? GK.iconHTML(g.icon, 'title-ic') : '') + '<span>' + g.name + '</span>';
     var stageEl = $('#game-stage');
     stageEl.innerHTML = '';
     document.documentElement.style.setProperty('--game-color', g.color);
@@ -40,7 +45,7 @@
       return el('li', { html: r });
     }));
     GK.modal({
-      emoji: g.emoji,
+      icon: g.icon,
       title: g.name,
       text: g.blurb,
       nodes: [ul, el('p', { class: 'hint', html: '⚠️ Alle Chips sind <b>reine Fantasie</b> — kein echtes Geld, keine Auszahlung.' })]
@@ -52,18 +57,115 @@
     var grid = $('#game-grid');
     grid.innerHTML = '';
     GK.games.forEach(function (g, i) {
-      var card = el('button', { class: 'game-card', style: '--c1:' + g.color + ';animation-delay:' + (i * 40) + 'ms' }, [
+      var open = GK.isUnlocked(g);
+      var kids = [
         el('span', { class: 'game-badge', text: g.badge }),
-        el('span', { class: 'game-emoji', text: g.emoji }),
+        el('span', { class: 'game-emoji', html: g.icon ? GK.iconHTML(g.icon) : '' }),
         el('div', {}, [
           el('div', { class: 'game-name', text: g.name }),
           el('div', { class: 'game-blurb', text: g.blurb })
         ])
-      ]);
-      card.addEventListener('click', function () { GK.sfx('click'); openGame(g.id); });
+      ];
+      if (!open) {
+        kids.push(el('div', { class: 'lock-veil' }, [
+          el('span', { class: 'lk', html: GK.iconHTML('lock') }),
+          el('span', { class: 'lt', text: 'AB LEVEL ' + g.minLevel })
+        ]));
+      }
+      var card = el('button', {
+        class: 'game-card' + (open ? '' : ' locked'),
+        style: '--c1:' + g.color + ';animation-delay:' + (i * 40) + 'ms'
+      }, kids);
+
+      card.addEventListener('click', function () {
+        if (!GK.isUnlocked(g)) {
+          var info = GK.levelInfo();
+          GK.sfx('error');
+          GK.shake(card);
+          GK.toast(g.name + ' öffnet sich ab Level ' + g.minLevel + ' — du bist Level ' + (info ? info.level : 1), 'bad', '🔒');
+          return;
+        }
+        GK.sfx('click');
+        openGame(g.id);
+      });
       card.addEventListener('mouseenter', function () { GK.sfx('hover'); });
       grid.appendChild(card);
     });
+  }
+
+  /* ─────────────── LEVEL ─────────────── */
+  function nextUnlock(level) {
+    var best = null;
+    GK.games.forEach(function (g) {
+      if (g.minLevel && g.minLevel > level && (!best || g.minLevel < best.minLevel)) best = g;
+    });
+    return best;
+  }
+
+  function renderLevel() {
+    var info = GK.levelInfo();
+    var lv = $('#level-value'), fill = $('#xp-fill'), card = $('#level-card');
+
+    if (!info) {
+      if (lv) lv.textContent = '1';
+      if (fill) fill.style.width = '0%';
+      if (card) card.innerHTML = '';
+      return;
+    }
+    if (lv) lv.textContent = info.level;
+    if (fill) fill.style.width = info.pct + '%';
+    if (!card) return;
+
+    var nxt = nextUnlock(info.level);
+    card.innerHTML = '';
+    card.appendChild(el('div', { class: 'lc-top' }, [
+      el('span', { class: 'lc-badge', text: 'LEVEL ' + info.level }),
+      el('span', { class: 'lc-title', text: info.title.icon + ' ' + info.title.title }),
+      el('span', { class: 'lc-xp', text: info.max ? 'MAX' : GK.fmt(info.have) + ' / ' + GK.fmt(info.need) + ' XP' })
+    ]));
+    var bar = el('div', { class: 'lc-bar' }, [el('i')]);
+    card.appendChild(bar);
+    requestAnimationFrame(function () { bar.firstChild.style.width = info.pct + '%'; });
+    card.appendChild(el('div', {
+      class: 'lc-next',
+      html: nxt
+        ? '🔒 <b>' + nxt.name + '</b> schaltet auf Level ' + nxt.minLevel + ' frei — noch ' +
+          GK.fmt(GK.xpForLevel(nxt.minLevel) - info.xp) + ' XP'
+        : '✅ Alle Spiele freigeschaltet. Jedes Level bringt weiter Chips.'
+    }));
+  }
+
+  function celebrateLevel(data) {
+    var pop = el('div', { class: 'levelup-pop' }, [
+      el('div', { class: 'levelup-inner' }, [
+        el('div', { class: 'l1', text: 'LEVEL ' + data.level + '!' }),
+        el('div', { class: 'l2', text: '+' + GK.fmt(data.reward) + ' Chips geschenkt' }),
+        el('div', { class: 'l3', text: GK.titleOf(data.level).icon + ' ' + GK.titleOf(data.level).title })
+      ])
+    ]);
+    document.body.appendChild(pop);
+    setTimeout(function () { pop.remove(); }, 2700);
+
+    GK.sfx('jackpot');
+    GK.confetti(200);
+    GK.emojiRain(['⭐', '🎉', '👑', '💎'], 26);
+    $('#hud-level').classList.add('levelup');
+    setTimeout(function () { $('#hud-level').classList.remove('levelup'); }, 700);
+
+    var freshly = GK.games.filter(function (g) { return g.minLevel === data.level; });
+    freshly.forEach(function (g) {
+      GK.toast(g.name + ' ist jetzt freigeschaltet!', 'gold', '🔓');
+      GK.logFeed(GK.player().name + ' schaltet ' + g.name + ' frei (Level ' + data.level + ')', 'admin');
+    });
+    renderGames();
+    if (freshly.length) {
+      setTimeout(function () {
+        $$('.game-card').forEach(function (c, i) {
+          if (GK.games[i] && freshly.indexOf(GK.games[i]) >= 0) c.classList.add('fresh');
+        });
+      }, 60);
+    }
+    renderLevel();
   }
 
   function renderMarquee() {
@@ -72,8 +174,9 @@
     var lines = [
       '👑 GAMBAKING — DAS FANTASY CASINO',
       '💸 KEIN ECHTGELD · NUR EHRE',
-      '🎰 10 SPIELE · 1 KRONE',
+      '🎰 13 SPIELE · 1 KRONE',
       '🔥 WER TRAUT SICH ALL IN?',
+      '⭐ LEVEL STEIGEN · SPIELE FREISCHALTEN',
       '🃏 HAUS GEWINNT? NICHT HEUTE',
       '🚀 CASH OUT IST FÜR FEIGLINGE'
     ];
@@ -118,7 +221,8 @@
           el('span', { class: 'board-av', text: p.avatar }),
           el('div', { class: 'board-meta' }, [
             el('div', { class: 'board-nm', text: p.name + (me && me.id === p.id ? ' (du)' : '') }),
-            el('div', { class: 'board-stats', text: p.plays + ' Spiele · ' + p.wins + ' Siege · Peak ' + GK.fmt(p.peak) })
+            el('div', { class: 'board-stats', text: '⭐ Lv ' + GK.levelOf(p.xp) + ' ' + GK.titleOf(GK.levelOf(p.xp)).title +
+              ' · ' + p.plays + ' Spiele · ' + p.wins + ' Siege' })
           ])
         ]),
         el('div', { class: 'board-val ' + (boardSort === 'profit' ? (profit >= 0 ? 'pos' : 'neg') : '') }, [
@@ -164,6 +268,7 @@
     renderBoard();
     renderFeed();
     renderMarquee();
+    renderLevel();
     GK.updateHUD();
   }
 
@@ -269,14 +374,85 @@
       GK.sfx('error');
       return;
     }
-    p.lastBonus = Date.now();
-    GK.grant(p.id, 250, true);
-    GK.logFeed(p.name + ' hat den Tagesbonus (+250) abgeholt', 'admin');
-    GK.toast('Tagesbonus! +250 Chips 🎁', 'gold', '🎁');
-    GK.sfx('cash');
-    GK.confetti(90);
-    GK.emojiRain(['🎁', '🪙'], 16);
-    renderAll();
+    GK.claimBonus().then(function (ok) {
+      if (!ok) return;
+      GK.logFeed(p.name + ' hat den Tagesbonus (+250) abgeholt', 'admin');
+      GK.toast('Tagesbonus! +250 Chips 🎁', 'gold', '🎁');
+      GK.sfx('cash');
+      GK.confetti(90);
+      GK.emojiRain(['🎁', '🪙'], 16);
+      renderAll();
+    });
+  }
+
+  /* ─────────────── SOUND & MUSIK ─────────────── */
+  function soundMenu() {
+    GK.sfx('click');
+    var M = GK.music;
+
+    var trackRows = [];
+    var list = el('div', { class: 'track-list' }, M.tracks.map(function (t, i) {
+      var row = el('button', { class: 'track-row' + (i === M.trackIdx && M.enabled ? ' playing' : '') }, [
+        el('span', { class: 'tr-eq' }, [el('i'), el('i'), el('i')]),
+        el('span', { class: 'tr-meta' }, [
+          el('span', { class: 'tr-name', text: t.name }),
+          el('span', { class: 'tr-mood', text: t.mood + ' · ' + t.bpm + ' BPM' })
+        ]),
+        el('span', { class: 'tr-play', text: i === M.trackIdx && M.enabled ? '⏸' : '▶' })
+      ]);
+      row.addEventListener('click', function () {
+        if (i === M.trackIdx && M.enabled) { M.stop(); }
+        else { M.setTrack(i); }
+        sync();
+        GK.sfx('chip');
+      });
+      trackRows.push(row);
+      return row;
+    }));
+
+    var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: M.volume });
+    var musicVolLabel = el('b', { text: M.volume });
+    var sfxVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: GK.volume() });
+    var sfxVolLabel = el('b', { text: GK.volume() });
+    var offBtn = el('button', { class: 'btn btn-danger btn-full', text: '🔇 MUSIK AUS' });
+
+    function sync() {
+      trackRows.forEach(function (r, i) {
+        var on = i === M.trackIdx && M.enabled;
+        r.classList.toggle('playing', on);
+        r.querySelector('.tr-play').textContent = on ? '⏸' : '▶';
+      });
+      offBtn.textContent = M.enabled ? '🔇 MUSIK AUS' : '🎵 MUSIK AN';
+      offBtn.className = 'btn btn-full ' + (M.enabled ? 'btn-danger' : 'btn-lime');
+      musicVolLabel.textContent = M.volume;
+      sfxVolLabel.textContent = GK.volume();
+      if ($('#vol-slider')) $('#vol-slider').value = GK.volume();
+    }
+
+    musicVol.addEventListener('input', function () { M.setVolume(musicVol.value); sync(); });
+    sfxVol.addEventListener('input', function () { GK.setVolume(sfxVol.value); sync(); });
+    sfxVol.addEventListener('change', function () { GK.sfx('coin'); });
+    offBtn.addEventListener('click', function () { M.toggle(); sync(); GK.sfx('click'); });
+
+    GK.modal({
+      emoji: '🎵',
+      title: 'Musik & Sound',
+      text: 'Vier minimalistische Loops, live im Browser erzeugt — keine Downloads. Jederzeit abschaltbar.',
+      nodes: [
+        el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
+        el('div', { style: 'height:8px' }),
+        list,
+        el('div', { style: 'height:14px' }),
+        el('div', { class: 'bet-label', text: 'MUSIK-LAUTSTÄRKE' }),
+        el('div', { class: 'range-row' }, [musicVol, el('div', { class: 'info-box', style: 'min-width:66px' }, [musicVolLabel, el('span', { text: 'Musik' })])]),
+        el('div', { style: 'height:10px' }),
+        el('div', { class: 'bet-label', text: 'SPIEL-SOUNDS' }),
+        el('div', { class: 'range-row' }, [sfxVol, el('div', { class: 'info-box', style: 'min-width:66px' }, [sfxVolLabel, el('span', { text: 'Effekte' })])]),
+        el('div', { style: 'height:14px' }),
+        offBtn
+      ]
+    });
+    sync();
   }
 
   /* ─────────────── ADMIN ─────────────── */
@@ -289,20 +465,25 @@
     var ok = el('button', { class: 'btn btn-full', text: '🔓 EINLOGGEN' });
 
     function tryPin() {
-      if (pin.value === GK.state.settings.adminPin) {
-        GK.state.admin = true;
-        GK.closeModal();
-        $('#btn-admin').classList.add('admin-on');
-        GK.toast('Admin-Modus aktiv 👑 Du bist jetzt der König.', 'gold', '🛡️');
-        GK.sfx('jackpot');
-        GK.emojiRain(['👑', '🛡️', '💸'], 20);
-        setTimeout(adminPanel, 400);
-      } else {
-        err.style.display = '';
-        pin.value = '';
-        GK.sfx('error');
-        GK.shake($('#modal-root').querySelector('.modal'));
-      }
+      var entered = pin.value;
+      ok.disabled = true;
+      GK.net.adminLogin(entered).then(function (good) {
+        ok.disabled = false;
+        if (good) {
+          GK.state.admin = true;
+          GK.closeModal();
+          $('#btn-admin').classList.add('admin-on');
+          GK.toast('Admin-Modus aktiv 👑 Du bist jetzt der König.', 'gold', '🛡️');
+          GK.sfx('jackpot');
+          GK.emojiRain(['👑', '🛡️', '💸'], 20);
+          setTimeout(adminPanel, 400);
+        } else {
+          err.style.display = '';
+          pin.value = '';
+          GK.sfx('error');
+          GK.shake($('#modal-root').querySelector('.modal'));
+        }
+      });
     }
     pin.addEventListener('keydown', function (e) { if (e.key === 'Enter') tryPin(); });
     ok.addEventListener('click', tryPin);
@@ -381,6 +562,70 @@
       renderList(); renderAll();
     }
 
+    /* ── XP verschenken ── */
+    var xpAmount = el('input', { class: 'input', type: 'number', value: '250', step: '50' });
+
+    function giveXp(sign) {
+      var p = target();
+      if (!p) { GK.toast('Erst einen Spieler auswählen!', 'bad', '👆'); return; }
+      var amt = Math.floor(Number(xpAmount.value) || 0) * sign;
+      if (!amt) return;
+
+      var beforeLvl = GK.levelOf(p.xp || 0);
+      p.xp = Math.max(0, (p.xp || 0) + amt);
+      var afterLvl = GK.levelOf(p.xp);
+      if (afterLvl < (p.claimedLevel || 1)) p.claimedLevel = afterLvl;
+      if (afterLvl > beforeLvl) {
+        var reward = 0;
+        for (var l = beforeLvl + 1; l <= afterLvl; l++) reward += GK.levelReward(l);
+        p.balance += reward;
+        p.granted = (p.granted || 0) + reward;
+        p.peak = Math.max(p.peak, p.balance);
+        p.claimedLevel = afterLvl;
+      }
+      GK.commit('grantXp', { id: p.id, amount: amt });
+
+      GK.logFeed('👑 ADMIN: ' + p.name + (amt >= 0 ? ' bekommt ' : ' verliert ') + GK.fmt(Math.abs(amt)) + ' XP', 'admin');
+      GK.toast(p.name + ': ' + GK.fmtSigned(amt) + ' XP  (Level ' + afterLvl + ')', amt >= 0 ? 'gold' : 'bad', '⭐');
+      GK.sfx(amt >= 0 ? 'cash' : 'error');
+      if (amt >= 0) GK.emojiRain(['⭐', '✨'], 14);
+
+      // War der aktive Spieler gemeint, feiern wir den Aufstieg richtig
+      var me = GK.player();
+      if (me && me.id === p.id && afterLvl > beforeLvl) {
+        celebrateLevel({ level: afterLvl, reward: reward || 0 });
+      }
+      renderList(); renderAll(); syncLuck();
+    }
+
+    var xpQuick = el('div', { class: 'bet-quick' }, [
+      el('button', { class: 'chip-btn', text: '+100 XP', onClick: function () { xpAmount.value = 100; giveXp(1); } }),
+      el('button', { class: 'chip-btn', text: '+500 XP', onClick: function () { xpAmount.value = 500; giveXp(1); } }),
+      el('button', { class: 'chip-btn', text: '+2000 XP', onClick: function () { xpAmount.value = 2000; giveXp(1); } }),
+      el('button', { class: 'chip-btn', text: '➖ abziehen', onClick: function () { giveXp(-1); } })
+    ]);
+    var xpGiveBtn = el('button', { class: 'btn btn-lime btn-full', text: '⭐ XP GEBEN', onClick: function () { giveXp(1); } });
+
+    var xpAllBtn = el('button', { class: 'btn btn-ghost btn-small', text: '⭐ ALLEN XP GEBEN', onClick: function () {
+      var amt = Math.floor(Number(xpAmount.value) || 0);
+      if (!amt) return;
+      GK.playerList().forEach(function (p) {
+        p.xp = Math.max(0, (p.xp || 0) + amt);
+        var lvl = GK.levelOf(p.xp);
+        var claimed = p.claimedLevel || 1;
+        var rew = 0;
+        while (claimed < lvl) { claimed++; rew += GK.levelReward(claimed); }
+        if (rew) { p.balance += rew; p.granted = (p.granted || 0) + rew; }
+        p.claimedLevel = claimed;
+        GK.commit('grantXp', { id: p.id, amount: amt });
+      });
+      GK.logFeed('👑 ADMIN: Alle bekommen ' + GK.fmt(amt) + ' XP!', 'admin');
+      GK.toast('XP-Regen für alle! ⭐', 'gold', '⭐');
+      GK.sfx('jackpot');
+      GK.confetti(160);
+      renderList(); renderAll();
+    } });
+
     var luckSlider = el('input', { type: 'range', min: '0', max: '100', step: '5', value: '50' });
     var luckVal = el('b', { text: '50' });
     function syncLuck() {
@@ -392,9 +637,14 @@
       var p = target();
       if (!p) return;
       p.luck = Number(luckSlider.value);
-      GK.save();
       syncLuck();
       renderList();
+    });
+    // erst beim Loslassen zum Server, nicht bei jedem Pixel
+    luckSlider.addEventListener('change', function () {
+      var p = target();
+      if (!p) return;
+      GK.commit('luck', { id: p.id, luck: p.luck });
     });
 
     var quick = el('div', { class: 'bet-quick' }, [
@@ -427,8 +677,9 @@
         p.granted = 0; p.wagered = 0; p.returned = 0;
         p.plays = 0; p.wins = 0; p.losses = 0;
         p.biggestWin = 0; p.peak = GK.START_BALANCE;
+        p.xp = 0; p.claimedLevel = 1;
       });
-      GK.save();
+      GK.commit('resetAll', {});
       GK.logFeed('👑 ADMIN: Neue Runde — alle zurück auf ' + GK.START_BALANCE, 'admin');
       GK.toast('Alle Konten zurückgesetzt ♻️', 'gold', '♻️');
       GK.sfx('cash');
@@ -441,8 +692,14 @@
       np = String(np).trim();
       if (!np) { GK.toast('PIN darf nicht leer sein', 'bad', '⚠️'); return; }
       GK.state.settings.adminPin = np;
-      GK.save();
+      GK.commit('setPin', { pin: np });
       GK.toast('Neue PIN gespeichert 🔑', 'gold', '🔑');
+    } });
+
+    var wipeBtn = el('button', { class: 'btn btn-danger btn-small', text: '🗑 ALLE DATEN LÖSCHEN', onClick: function () {
+      if (!window.confirm('Wirklich ALLE Spieler, Chips und Statistiken unwiderruflich löschen?')) return;
+      if (!window.confirm('Ganz sicher? Das trifft alle Spieler auf dem Server.')) return;
+      GK.wipe().then(function () { location.reload(); });
     } });
 
     var exitBtn = el('button', { class: 'btn btn-ghost btn-small', text: '🚪 ADMIN VERLASSEN', onClick: function () {
@@ -469,6 +726,16 @@
         quick,
         el('div', { style: 'height:12px' }),
         el('div', { class: 'modal-actions' }, [giveBtn, takeBtn, setBtn]),
+        el('div', { style: 'height:18px' }),
+        el('div', { class: 'bet-label', text: 'ERFAHRUNG (XP & LEVEL)' }),
+        el('div', { style: 'height:6px' }),
+        el('div', { class: 'field' }, [el('label', { text: 'XP-BETRAG' }), xpAmount]),
+        xpQuick,
+        el('div', { style: 'height:10px' }),
+        xpGiveBtn,
+        el('div', { style: 'height:8px' }),
+        el('div', { class: 'modal-actions' }, [xpAllBtn]),
+        el('p', { class: 'hint', text: 'Level bringen Chips und schalten Spiele frei. XP abziehen kann ein Spiel auch wieder sperren.' }),
         el('div', { style: 'height:16px' }),
         el('div', { class: 'bet-label', text: 'GLÜCKS-REGLER (HEIMLICHER CHEAT)' }),
         el('div', { style: 'height:6px' }),
@@ -477,17 +744,39 @@
         el('div', { style: 'height:16px' }),
         el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
         el('div', { style: 'height:8px' }),
-        el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
+        el('div', { class: 'modal-actions' }, [pinBtn, exitBtn]),
+        el('div', { style: 'height:16px' }),
+        el('div', { class: 'admin-note', html: '⚠️ <b>Gefahrenzone:</b> löscht alle Spieler, Chips und Statistiken — für alle, auf dem Server. Nicht rückgängig zu machen.' }),
+        el('div', { class: 'modal-actions' }, [wipeBtn])
       ]
     });
   }
 
   /* ─────────────── BOOT ─────────────── */
+  function fillStaticIcons() {
+    $$('[data-icon]').forEach(function (n) {
+      if (!n.firstChild) n.innerHTML = GK.iconHTML(n.getAttribute('data-icon'));
+    });
+  }
+
   function boot() {
-    GK.load();
     GK.initFX();
+    fillStaticIcons();
     renderGames();
-    renderAll();
+
+    GK.init().then(function (online) {
+      var note = $('#storage-note');
+      if (note) {
+        note.textContent = online
+          ? 'Spielstände liegen auf dem Casino-Server'
+          : 'Offline-Modus: Spielstände nur in diesem Browser';
+      }
+      if (!online) {
+        GK.toast('Kein Server gefunden — Leaderboard bleibt lokal', 'bad', '📡');
+      }
+      renderAll();
+      afterLoad();
+    });
 
     // Header
     $('#brand-btn').addEventListener('click', function () { GK.sfx('click'); closeGame(); showView('view-lobby'); });
@@ -498,18 +787,34 @@
       var p = GK.player();
       if (p) GK.toast('Du hast ' + GK.fmt(p.balance) + ' Chips · ' + GK.fmtSigned(GK.profitOf(p)) + ' Profit', 'gold', '🪙');
     });
+    var volSlider = $('#vol-slider');
+    function syncSoundUI() {
+      var on = GK.state.settings.sound !== false;
+      var vol = GK.volume();
+      $('#btn-sound').textContent = !on || vol === 0 ? '🔇' : (vol < 40 ? '🔉' : '🔊');
+      $('#btn-sound').classList.toggle('off', !on);
+      $('.sound-box').classList.toggle('muted', !on);
+      volSlider.value = vol;
+    }
     $('#btn-sound').addEventListener('click', function () {
       var on = GK.toggleSound();
-      $('#btn-sound').textContent = on ? '🔊' : '🔇';
-      $('#btn-sound').classList.toggle('off', !on);
+      syncSoundUI();
       GK.toast(on ? 'Sound an 🔊' : 'Sound aus 🔇', '', on ? '🔊' : '🔇');
     });
+    volSlider.addEventListener('input', function () {
+      GK.setVolume(volSlider.value);
+      syncSoundUI();
+    });
+    volSlider.addEventListener('change', function () {
+      GK.setVolume(volSlider.value, true);   // kurzer Ton als Hörprobe
+    });
     $('#btn-admin').addEventListener('click', adminEntry);
+    $('#btn-music').addEventListener('click', soundMenu);
 
     // Lobby-Aktionen
     $('#btn-play-random').addEventListener('click', function () {
       GK.sfx('click');
-      openGame(GK.pick(GK.games).id);
+      openGame(GK.pick(GK.unlockedGames()).id);
     });
     $('#btn-goto-board').addEventListener('click', function () {
       GK.sfx('click');
@@ -528,11 +833,7 @@
       });
     });
 
-    $('#btn-wipe').addEventListener('click', function () {
-      if (!window.confirm('Wirklich ALLE Spieler, Chips und Statistiken löschen?')) return;
-      GK.wipe();
-      location.reload();
-    });
+    // Daten löschen gibt es nur noch im Admin-Panel
 
     // Modal schließen
     $$('[data-close]').forEach(function (b) { b.addEventListener('click', GK.closeModal); });
@@ -540,29 +841,40 @@
       if (e.key === 'Escape') GK.closeModal();
     });
 
-    // Sound-Button initial
-    if (GK.state.settings.sound === false) {
-      $('#btn-sound').textContent = '🔇';
-      $('#btn-sound').classList.add('off');
-    }
+    syncSoundUI();
 
     // Audio erst nach erster Interaktion starten (Browser-Policy)
+    GK.music.load();
     var unlock = function () {
       GK.sound.init();
       GK.sound.resume();
+      if (GK.music.wanted) GK.music.start();   // war beim letzten Mal an
       document.removeEventListener('pointerdown', unlock);
       document.removeEventListener('keydown', unlock);
     };
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
 
-    GK.on('player-changed', renderAll);
+    GK.on('player-changed', function () {
+      renderAll();
+      // Vom Admin auf einem anderen Gerät gelöscht? Dann neu anmelden.
+      if (!GK.player() && $('#modal-root').hidden) askName(true);
+    });
     GK.on('feed', renderFeed);
+    GK.on('xp', renderLevel);
+    GK.on('level-up', celebrateLevel);
 
     // Feed-Zeiten frisch halten
     setInterval(renderFeed, 60000);
 
-    // Der wichtigste Teil: Name abfragen
+    // Regelmäßig den Stand der anderen holen, solange die Lobby offen ist
+    GK.net.startPolling(function () {
+      return $('#view-lobby').classList.contains('active');
+    });
+  }
+
+  /** läuft, sobald Server- oder Offline-Daten geladen sind */
+  function afterLoad() {
     if (!GK.player()) setTimeout(function () { askName(true); }, 450);
     else {
       GK.updateHUD();

@@ -4,13 +4,13 @@
   var el = GK.el;
 
   var SYMS = [
-    { e: '🍒', w: 26, m3: 4,  m2: 1.2 },
-    { e: '🍀', w: 22, m3: 6,  m2: 1.4 },
-    { e: '🔔', w: 18, m3: 9,  m2: 1.6 },
-    { e: '⭐', w: 14, m3: 12, m2: 1.8 },
-    { e: '🐉', w: 10, m3: 18, m2: 2.2 },
-    { e: '💎', w: 7,  m3: 25, m2: 2.8 },
-    { e: '👑', w: 3,  m3: 50, m2: 4 }
+    { id: 'cherry', name: 'Kirsche', w: 26, m3: 4,  m2: 1.1 },
+    { id: 'clover', name: 'Klee',    w: 22, m3: 6,  m2: 1.3 },
+    { id: 'bell',   name: 'Glocke',  w: 18, m3: 9,  m2: 1.5 },
+    { id: 'star',   name: 'Stern',   w: 14, m3: 13, m2: 1.7 },
+    { id: 'dragon', name: 'Drache',  w: 10, m3: 18, m2: 2.1 },
+    { id: 'gem',    name: 'Juwel',   w: 7,  m3: 26, m2: 2.6 },
+    { id: 'crown',  name: 'Krone',   w: 3,  m3: 50, m2: 3.5 }
   ];
   var TOTAL_W = SYMS.reduce(function (s, x) { return s + x.w; }, 0);
   var ROW = 120;
@@ -25,13 +25,14 @@
     id: 'slots',
     name: 'Fantasy Reels',
     emoji: '🎰',
+    icon: 'slotmachine',
     blurb: 'Drei Walzen voller Drachen, Kronen und Kirschen. Drei Gleiche = Regen aus Chips.',
     badge: 'BIS 50×',
     color: '#ff2fd0',
     rules: [
       '<b>3 gleiche Symbole</b> auf der Linie zahlen den großen Multiplikator.',
-      '<b>2 gleiche Symbole</b> geben einen kleinen Trostgewinn (1,2× bis 4×).',
-      'Die <b>Krone 👑</b> ist der Jackpot: 50× deinen Einsatz.',
+      '<b>2 gleiche Symbole</b> geben einen kleinen Trostgewinn (1,1× bis 3,5×) — meist weniger als der Einsatz.',
+      'Die <b>Krone</b> ist der Jackpot: 50× deinen Einsatz.',
       'Auszahlung = Einsatz × Multiplikator.'
     ],
     mount: function (root) {
@@ -48,9 +49,9 @@
       function fillStrip(strip, finalSym, len) {
         strip.innerHTML = '';
         for (var i = 0; i < len - 1; i++) {
-          strip.appendChild(el('div', { class: 'sym', text: randSym().e }));
+          strip.appendChild(el('div', { class: 'sym', html: GK.iconHTML(randSym().id) }));
         }
-        strip.appendChild(el('div', { class: 'sym', text: finalSym.e }));
+        strip.appendChild(el('div', { class: 'sym', html: GK.iconHTML(finalSym.id) }));
       }
 
       // Startbild
@@ -67,7 +68,7 @@
       var paytable = el('div', { class: 'paytable' },
         SYMS.slice().reverse().map(function (s) {
           return el('div', { class: 'pay-item' }, [
-            el('span', { class: 's', text: s.e }),
+            el('span', { class: 's', html: GK.iconHTML(s.id) }),
             el('span', { class: 'm', text: s.m3 + '×' })
           ]);
         }));
@@ -88,7 +89,7 @@
           el('div', { style: 'height:8px' }),
           autoBtn,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 Tipp: Die Krone 👑 zahlt <b>50×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz.' })
+          el('p', { class: 'hint', html: '💡 Tipp: Die Krone zahlt <b>50×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz.' })
         ])
       ]);
       root.appendChild(stage);
@@ -143,16 +144,16 @@
 
       function finish(out, stake) {
         var mult = 0, label = '';
-        if (out[0].e === out[1].e && out[1].e === out[2].e) {
+        if (out[0].id === out[1].id && out[1].id === out[2].id) {
           mult = out[0].m3;
-          label = out[0].e + out[0].e + out[0].e + '  ' + mult + '× !!!';
+          label = '3× ' + out[0].name + '  —  ' + mult + '×!';
           reels.forEach(function (r) { r.classList.add('hit'); });
         } else {
           var pairSym = null;
-          if (out[0].e === out[1].e) pairSym = out[0];
-          else if (out[1].e === out[2].e) pairSym = out[1];
-          else if (out[0].e === out[2].e) pairSym = out[0];
-          if (pairSym) { mult = pairSym.m2; label = 'Zwei ' + pairSym.e + ' — ' + mult + '×'; }
+          if (out[0].id === out[1].id) pairSym = out[0];
+          else if (out[1].id === out[2].id) pairSym = out[1];
+          else if (out[0].id === out[2].id) pairSym = out[0];
+          if (pairSym) { mult = pairSym.m2; label = 'Zwei ' + pairSym.name + ' — ' + mult + '×'; }
         }
 
         var win = Math.floor(stake * mult);
@@ -167,7 +168,7 @@
           GK.setResult(resultBox, label + '  →  ' + GK.fmt(win) + ' zurück', 'push');
           GK.sfx('coin');
         } else {
-          GK.setResult(resultBox, out.map(function (s) { return s.e; }).join(' ') + '  —  daneben!', 'lose');
+          GK.setResult(resultBox, out.map(function (s) { return s.name; }).join(' · ') + '  —  daneben!', 'lose');
           GK.sfx('lose');
           GK.shake(machine);
         }

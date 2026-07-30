@@ -141,6 +141,76 @@ img{max-width:100%}
 .icon-btn.admin-on{border-color:var(--lime);box-shadow:0 0 22px rgba(124,255,59,.6);animation:pulse 1.4s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.62}}
 
+/* ═══════════ LEVEL & SOUND ═══════════ */
+.hud-level{background:linear-gradient(135deg,rgba(124,255,59,.2),rgba(0,229,255,.12));border-color:rgba(124,255,59,.5)}
+.hud-level .hud-value{font-family:'Bungee',sans-serif;color:var(--lime);text-shadow:0 0 12px rgba(124,255,59,.7)}
+.hud-level.levelup{animation:balpop .6s cubic-bezier(.2,1.6,.4,1)}
+
+.xp-strip{position:absolute;left:0;right:0;bottom:-2px;height:4px;background:rgba(0,0,0,.5);overflow:hidden}
+.xp-strip i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--cyan),var(--pink));
+  box-shadow:0 0 14px var(--lime);transition:width .6s cubic-bezier(.2,1,.3,1)}
+
+.sound-box{display:flex;align-items:center;gap:7px;padding:0 8px 0 0;border-radius:14px;background:rgba(255,255,255,.05);border:2px solid var(--line)}
+.sound-box .icon-btn{border:0;background:none;width:36px;height:36px}
+.sound-box .icon-btn:hover{transform:none;box-shadow:none}
+.vol-slider{
+  -webkit-appearance:none;appearance:none;width:78px;height:6px;border-radius:99px;cursor:pointer;
+  background:linear-gradient(90deg,var(--lime),var(--cyan));outline:none
+}
+.vol-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;
+  background:#fff;border:2px solid var(--cyan);box-shadow:0 0 10px var(--cyan);cursor:pointer
+}
+.vol-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--cyan);box-shadow:0 0 10px var(--cyan);cursor:pointer}
+.sound-box.muted .vol-slider{filter:grayscale(1);opacity:.4}
+@media(max-width:760px){.vol-slider{display:none}.sound-box{border:2px solid var(--line);padding:0}}
+
+.level-card{
+  max-width:520px;margin:0 auto 20px;padding:14px 18px;border-radius:18px;
+  background:rgba(0,0,0,.34);border:2px solid var(--line);text-align:left
+}
+.lc-top{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
+.lc-badge{
+  font-family:'Bungee',sans-serif;font-size:.86rem;padding:5px 12px;border-radius:999px;
+  background:var(--neon);box-shadow:var(--glow-pink);white-space:nowrap
+}
+.lc-title{font-weight:900;font-size:.94rem;color:var(--gold)}
+.lc-xp{margin-left:auto;font-size:.76rem;color:var(--muted);white-space:nowrap}
+.lc-bar{height:12px;border-radius:99px;background:rgba(0,0,0,.55);overflow:hidden;border:1px solid var(--line)}
+.lc-bar i{display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--lime),var(--cyan),var(--pink));background-size:200% 100%;
+  animation:rainbow 3s linear infinite;transition:width .7s cubic-bezier(.2,1,.3,1)}
+.lc-next{margin-top:8px;font-size:.76rem;color:var(--muted)}
+.lc-next b{color:var(--cyan)}
+
+/* Level-Up-Overlay */
+.levelup-pop{
+  position:fixed;inset:0;z-index:95;display:grid;place-items:center;pointer-events:none;
+  animation:lvlfade 2.6s forwards
+}
+.levelup-inner{
+  text-align:center;padding:26px 40px;border-radius:26px;
+  background:linear-gradient(160deg,rgba(43,6,88,.96),rgba(26,1,56,.96));
+  border:3px solid var(--gold);box-shadow:0 0 70px rgba(255,209,46,.7)
+}
+.levelup-inner .l1{font-family:'Bungee',sans-serif;font-size:clamp(1.5rem,6vw,2.6rem);
+  background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.levelup-inner .l2{font-size:1rem;color:var(--lime);font-weight:800;margin-top:6px}
+.levelup-inner .l3{font-size:.85rem;color:var(--muted);margin-top:4px}
+@keyframes lvlfade{0%{opacity:0;transform:scale(.7)}12%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(1.1)}}
+
+/* gesperrte Spiele */
+.game-card.locked{filter:grayscale(.75) brightness(.62);cursor:not-allowed}
+.game-card.locked:hover{transform:translateY(-3px) scale(1);box-shadow:var(--shadow)}
+.lock-veil{
+  position:absolute;inset:0;display:grid;place-items:center;gap:4px;
+  background:rgba(6,0,20,.6);backdrop-filter:blur(1.5px);z-index:2
+}
+.lock-veil .lk{font-size:1.9rem;filter:drop-shadow(0 3px 6px #000)}
+.lock-veil .lt{font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--gold);text-align:center;padding:0 10px}
+.game-card.fresh{animation:freshpop .8s cubic-bezier(.2,1.5,.4,1)}
+@keyframes freshpop{0%{transform:scale(.8) rotate(-6deg)}60%{transform:scale(1.08) rotate(3deg)}100%{transform:none}}
+
 /* ═══════════ VIEWS ═══════════ */
 main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,26px) 60px}
 .view{display:none;animation:viewin .4s ease both}
@@ -454,3 +524,48 @@ input[type=range]{flex:1;accent-color:var(--pink)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
+
+/* ═══════════ EIGENE ICONS ═══════════ */
+.gk-icon{display:inline-flex;align-items:center;justify-content:center;line-height:0}
+.gk-icon>svg,svg.gk-ic{width:1em;height:1em;display:block;overflow:visible}
+[data-icon]{display:inline-flex;align-items:center;justify-content:center;line-height:0}
+[data-icon]>svg{width:1em;height:1em;display:block}
+
+/* Größen an den bisherigen Emoji-Stellen */
+.hud-icon{font-size:1.15rem;line-height:0}
+.hero-crown{font-size:clamp(2.6rem,9vw,4.6rem);line-height:0;display:flex;justify-content:center;
+  filter:drop-shadow(0 0 26px rgba(255,209,46,.85))}
+.hero-crown>svg{width:1em;height:1em}
+.game-emoji{font-size:3rem;line-height:0;display:block}
+.game-emoji>svg{width:1em;height:1em;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6))}
+.lock-veil .lk{font-size:1.9rem;line-height:0}
+.modal-icon{display:flex;justify-content:center;font-size:3.4rem;line-height:0;margin-bottom:8px;
+  filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));animation:bounce 2.4s ease-in-out infinite}
+.modal-icon>svg{width:1em;height:1em}
+.game-title{display:flex;align-items:center;justify-content:center;gap:12px}
+.game-title svg.title-ic{width:1.15em;height:1.15em;flex:0 0 auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+.game-title span{background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* Symbole in den Spielen — feste Größen, damit sie die Walzen füllen */
+.sym{line-height:0}
+.sym>svg{width:86px;height:86px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.55))}
+.oc-sym>svg{width:68px;height:68px}
+@media(max-width:620px){.sym>svg{width:64px;height:64px}.oc-sym>svg{width:46px;height:46px}}
+.pay-item{display:flex;flex-direction:column;align-items:center;gap:2px}
+.pay-item .s{line-height:0;display:flex;justify-content:center}
+.pay-item .s>svg{width:34px;height:34px}
+.pay-item .m{display:block}
+.pay-item>span:last-child{display:block;line-height:1.2}
+.mine-cell>svg{width:1em;height:1em;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+.floe>svg{width:1.35em;height:1.35em}
+.stile .sym-under{line-height:0;display:flex;justify-content:center}
+.stile .sym-under>svg{width:1em;height:1em}
+.coin-face>svg{width:.72em;height:.72em;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))}
+.side-btn .e{font-size:2.6rem;line-height:0;display:flex;justify-content:center}
+.side-btn .e>svg{width:1em;height:1em}
+.r-icon{font-size:1.9rem;line-height:0}
+.r-icon>svg{width:1em;height:1em;filter:drop-shadow(0 3px 5px rgba(0,0,0,.7))}
+.hb-icon{font-size:1.7rem;line-height:0}
+.hb-icon>svg{width:1em;height:1em}
+.bear-swim{font-size:1.7rem;line-height:0}
+.bear-swim>svg{width:1em;height:1em}

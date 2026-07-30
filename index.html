@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>GAMBAKING 👑 — Fantasy Casino</title>
-<meta name="description" content="GambaKing — das Fantasy-Casino ohne Echtgeld. 10 Spiele, Leaderboard und Chaos mit deinen Freunden." />
+<meta name="description" content="GambaKing — das Fantasy-Casino ohne Echtgeld. 13 Spiele, Level-System, Leaderboard und Chaos mit deinen Freunden." />
 <meta name="theme-color" content="#12002b" />
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -39,9 +39,14 @@
 
   <div class="topbar-right">
     <button class="hud-chip hud-balance" id="hud-balance" title="Dein Guthaben">
-      <span class="hud-icon">🪙</span>
+      <span class="hud-icon" data-icon="coin"></span>
       <span class="hud-value" id="balance-value">0</span>
       <span class="hud-label">Chips</span>
+    </button>
+
+    <button class="hud-chip hud-level" id="hud-level" title="Dein Level">
+      <span class="hud-icon" data-icon="star"></span>
+      <span class="hud-value" id="level-value">1</span>
     </button>
 
     <button class="hud-chip hud-player" id="hud-player" title="Spieler wechseln">
@@ -49,9 +54,16 @@
       <span class="hud-value" id="player-name">Gast</span>
     </button>
 
-    <button class="icon-btn" id="btn-sound" title="Sound an/aus" aria-label="Sound umschalten">🔊</button>
+    <div class="sound-box">
+      <button class="icon-btn" id="btn-sound" title="Sound an/aus" aria-label="Sound umschalten">🔊</button>
+      <input type="range" class="vol-slider" id="vol-slider" min="0" max="100" step="5" value="50"
+             title="Lautstärke" aria-label="Lautstärke" />
+      <button class="icon-btn" id="btn-music" title="Musik &amp; Sound" aria-label="Musik">🎵</button>
+    </div>
     <button class="icon-btn" id="btn-admin" title="Admin-Modus" aria-label="Admin">🛡️</button>
   </div>
+
+  <div class="xp-strip" title="Fortschritt bis zum nächsten Level"><i id="xp-fill"></i></div>
 </header>
 
 <main id="main">
@@ -59,14 +71,15 @@
   <!-- ══════════ LOBBY ══════════ -->
   <section id="view-lobby" class="view active">
     <div class="hero">
-      <div class="hero-crown">👑</div>
+      <div class="hero-crown" data-icon="crown"></div>
       <h1 class="hero-title" data-text="GAMBAKING">GAMBAKING</h1>
       <p class="hero-tag">
-        <span class="tag-pill">10 SPIELE</span>
+        <span class="tag-pill">13 SPIELE</span>
         <span class="tag-pill">0 € ECHTGELD</span>
         <span class="tag-pill">100% CHAOS</span>
       </p>
       <p class="hero-sub">Jeder startet mit <b>500 Chips</b>. Wer am Ende die dickste Krone trägt, gewinnt Ruhm, Ehre und ewiges Angeben-Recht.</p>
+      <div id="level-card" class="level-card"></div>
       <div class="hero-actions">
         <button class="btn btn-mega" id="btn-play-random">🎲 ZUFALLSSPIEL</button>
         <button class="btn btn-ghost" id="btn-goto-board">🏆 LEADERBOARD</button>
@@ -112,7 +125,7 @@
 
 <footer class="footer">
   <p><b>GAMBAKING</b> ist ein Fantasy-Casino. Es wird <b>kein echtes Geld</b> eingesetzt, gewonnen oder ausgezahlt. Alle Chips sind wertlose Spielwährung — nur für Spaß &amp; Challenges unter Freunden.</p>
-  <p class="footer-small">18+ Vibes, 0 € Einsatz · Alle Daten bleiben lokal in deinem Browser · <button class="linkish" id="btn-wipe">Alle Daten löschen</button></p>
+  <p class="footer-small">18+ Vibes, 0 € Einsatz · <span id="storage-note">Spielstände liegen auf dem Casino-Server</span> · Löschen kann nur der Admin</p>
 </footer>
 
 <!-- ══════════ TOASTS ══════════ -->
@@ -128,6 +141,9 @@
 </div>
 
 <script src="js/core.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/net.js"></script>
+<script src="js/music.js"></script>
 <script src="js/games/slots.js"></script>
 <script src="js/games/roulette.js"></script>
 <script src="js/games/blackjack.js"></script>
@@ -138,6 +154,9 @@
 <script src="js/games/wheel.js"></script>
 <script src="js/games/plinko.js"></script>
 <script src="js/games/scratch.js"></script>
+<script src="js/games/horses.js"></script>
+<script src="js/games/icebear.js"></script>
+<script src="js/games/ocean.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
