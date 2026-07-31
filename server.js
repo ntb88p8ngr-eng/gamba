@@ -16,6 +16,22 @@ var crypto = require('crypto');
 var PORT = Number(process.env.PORT) || 3000;
 var HOST = process.env.HOST || '0.0.0.0';
 
+/* ─────────────── Betrieb hinter einem Reverse-Proxy ───────────────
+   BASE_PATH=/gamba  → die Seite liegt nicht auf der Wurzel der Domain,
+   sondern in einem Unterpfad. Der Server nimmt dann sowohl /gamba/api/state
+   als auch /api/state an — je nachdem, ob der Proxy den Prefix schon
+   entfernt hat. Alle Pfade im HTML sind relativ, deshalb reicht das.
+   TRUST_PROXY=1     → die echte Besucher-IP steht in X-Forwarded-For.
+   Ohne das teilen sich alle Besucher die Brute-Force-Bremse, weil aus
+   Sicht des Servers jede Anfrage vom Proxy-Container kommt. */
+var BASE_PATH = (function (b) {
+  b = String(b || '').trim();
+  if (!b || b === '/') return '';
+  if (b.charAt(0) !== '/') b = '/' + b;
+  return b.replace(/\/+$/, '');
+})(process.env.BASE_PATH);
+var TRUST_PROXY = /^(1|true|yes)$/i.test(String(process.env.TRUST_PROXY || ''));
+
 /* ─────────────── TLS (Let's Encrypt) ───────────────
    Entweder die beiden Pfade direkt setzen:
      SSL_CERT=/etc/letsencrypt/live/deine.domain/fullchain.pem
@@ -43,7 +59,9 @@ function readTLS() {
   }
 }
 var ROOT = __dirname;
-var DATA_DIR = path.join(ROOT, 'data');
+/* Im Container zeigt DATA_DIR auf ein Volume, damit die Konten ein
+   `docker compose up --build` ueberleben. */
+var DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(ROOT, 'data'));
 var DATA_FILE = path.join(DATA_DIR, 'gambaking.json');
 
 var START_BALANCE = 500;
@@ -77,19 +95,31 @@ function loadDB() {
 var db = loadDB();
 var saveTimer = null;
 
+function writeDB() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    var tmp = DATA_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
+    fs.renameSync(tmp, DATA_FILE);            // atomar ersetzen
+  } catch (e) {
+    console.error('[gambaking] Speichern fehlgeschlagen:', e.message);
+  }
+}
+
 function saveDB() {
   if (saveTimer) return;                      // gebündelt schreiben
   saveTimer = setTimeout(function () {
     saveTimer = null;
-    try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-      var tmp = DATA_FILE + '.tmp';
-      fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
-      fs.renameSync(tmp, DATA_FILE);          // atomar ersetzen
-    } catch (e) {
-      console.error('[gambaking] Speichern fehlgeschlagen:', e.message);
-    }
+    writeDB();
   }, 120);
+}
+
+/** Beim Beenden sofort schreiben — sonst faellt der letzte Spielzug weg. */
+function flushDB() {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  writeDB();
 }
 
 /* ─────────────── Passwoerter ─────────────── */
@@ -118,9 +148,16 @@ var LOGIN_MAX = 8;
 var LOGIN_WINDOW = 15 * 60 * 1000;
 var loginTries = new Map();
 
+/** Echte Besucher-IP — hinter Traefik steckt sie in X-Forwarded-For. */
+function clientIP(req) {
+  if (TRUST_PROXY) {
+    var fwd = req.headers['x-forwarded-for'];
+    if (fwd) return String(fwd).split(',')[0].trim();
+  }
+  return (req.socket && req.socket.remoteAddress) || '?';
+}
 function loginKey(req, name) {
-  var ip = (req.socket && req.socket.remoteAddress) || '?';
-  return ip + '|' + String(name || '').toLowerCase();
+  return clientIP(req) + '|' + String(name || '').toLowerCase();
 }
 function loginBlocked(key) {
   var e = loginTries.get(key);
@@ -471,11 +508,29 @@ function readBody(req) {
   });
 }
 
+/* Nur diese Ordner gehen nach draussen. Alles andere im Projektordner —
+   server.js, Dockerfile, .env, data/ — bleibt privat, auch wenn jemand den
+   Pfad errät. */
+var PUBLIC_DIRS = { css: 1, js: 1, assets: 1 };
+var PUBLIC_FILES = { 'index.html': 1, 'favicon.ico': 1, 'robots.txt': 1 };
+
 function serveStatic(req, res, urlPath) {
-  var rel = decodeURIComponent(urlPath.split('?')[0]);
+  var rel;
+  try { rel = decodeURIComponent(urlPath.split('?')[0]); }
+  catch (e) { res.writeHead(400); res.end('Ungültiger Pfad'); return; }
   if (rel === '/' || rel === '') rel = '/index.html';
-  var file = path.join(ROOT, path.normalize(rel));
-  if (file.indexOf(ROOT) !== 0 || file.indexOf(DATA_DIR) === 0) {   // kein Ausbruch, keine DB
+
+  var parts = path.normalize(rel).split('/').filter(Boolean);
+  var ok = parts.length > 1
+    ? (PUBLIC_DIRS[parts[0]] === 1)
+    : (parts.length === 1 && PUBLIC_FILES[parts[0]] === 1);
+  if (!ok || parts.indexOf('..') >= 0) {
+    res.writeHead(404); res.end('Nicht gefunden');
+    return;
+  }
+
+  var file = path.join(ROOT, parts.join('/'));
+  if (file.indexOf(ROOT + path.sep) !== 0) {          // kein Ausbruch
     res.writeHead(403); res.end('Verboten');
     return;
   }
@@ -492,6 +547,27 @@ function serveStatic(req, res, urlPath) {
 
 function handleRequest(req, res) {
   var url = req.url || '/';
+
+  /* Liegt die Seite in einem Unterpfad, kommt der auch in der URL an —
+     ausser der Proxy hat ihn schon abgeschnitten. Beides ist erlaubt. */
+  if (BASE_PATH) {
+    if (url === BASE_PATH || url.indexOf(BASE_PATH + '?') === 0) {
+      // Ohne Schrägstrich am Ende würde der Browser "css/style.css" auf der
+      // Domain-Wurzel suchen statt im Unterpfad.
+      res.writeHead(301, { Location: BASE_PATH + '/' + url.slice(BASE_PATH.length) });
+      return res.end();
+    }
+    if (url.indexOf(BASE_PATH + '/') === 0) url = url.slice(BASE_PATH.length);
+  }
+
+  /* Für Healthcheck und Monitoring — verrät nichts über die Spieler. */
+  if (url === '/api/health') {
+    return sendJSON(res, 200, {
+      ok: true,
+      players: Object.keys(db.players).length,
+      uptime: Math.round(process.uptime())
+    });
+  }
 
   if (url === '/api/state' && req.method === 'GET') {
     return sendJSON(res, 200, publicState());
@@ -652,8 +728,20 @@ server.listen(PORT, HOST, function () {
   } else {
     console.log('   Ohne TLS — für HTTPS: SSL_DOMAIN=deine.domain node server.js');
   }
+  if (BASE_PATH) console.log('   Unterpfad: ' + BASE_PATH + '/ (hinter Reverse-Proxy)');
+  if (TRUST_PROXY) console.log('   X-Forwarded-For wird ausgewertet');
   console.log('   Daten: ' + DATA_FILE);
   console.log('   Admin-PIN: ' + db.settings.adminPin + '  (überschreibbar mit GAMBAKING_PIN=…)');
+});
+
+/* Docker schickt beim Stoppen SIGTERM — vorher noch schnell speichern. */
+['SIGTERM', 'SIGINT'].forEach(function (sig) {
+  process.on(sig, function () {
+    console.log('[gambaking] ' + sig + ' — Daten sichern und beenden.');
+    flushDB();
+    server.close(function () { process.exit(0); });
+    setTimeout(function () { process.exit(0); }, 3000).unref();
+  });
 });
 
 server.on('error', function (e) {

@@ -1,0 +1,72 @@
+# ═══════════════════════════════════════════════════════════
+#  GAMBAKING hinter Traefik, als Unterpfad einer bestehenden Domain:
+#      https://deine-domain.ddns.net/gamba
+#
+#  Voraussetzung: Traefik läuft schon (eigene Compose-Datei) und hängt
+#  in einem externen Netz — hier "proxy" genannt. Läuft dein Traefik in
+#  einem anders benannten Netz, unten beide Stellen anpassen.
+#
+#      cp .env.example .env      # Domain und Admin-PIN eintragen
+#      docker compose up -d --build
+#
+#  Anleitung mit dem kompletten Aufbau: docs/DOCKER.md
+# ═══════════════════════════════════════════════════════════
+# Fester Projektname, damit das Volume immer gambaking_gambaking-data heisst
+name: gambaking
+
+services:
+  gambaking:
+    build: .
+    image: gambaking:latest
+    container_name: gambaking
+    restart: unless-stopped
+
+    environment:
+      # Die Seite liegt unter /gamba — der Server beantwortet dann sowohl
+      # /gamba/api/... als auch /api/..., je nachdem was Traefik durchreicht.
+      BASE_PATH: ${BASE_PATH:-/gamba}
+      # Echte Besucher-IP aus X-Forwarded-For lesen (Brute-Force-Bremse)
+      TRUST_PROXY: "1"
+      # Admin-PIN. Gilt nur beim allerersten Start — danach steht sie in der
+      # Datenbank und wird im Admin-Panel geändert.
+      GAMBAKING_PIN: ${GAMBAKING_PIN:-1337}
+      TZ: ${TZ:-Europe/Berlin}
+
+    volumes:
+      # Konten, Chips und Feed. Ohne das Volume ist nach jedem Rebuild alles weg.
+      - gambaking-data:/data
+
+    networks:
+      - proxy
+
+    # Kein "ports:" — nur Traefik darf an den Container.
+    expose:
+      - "3000"
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: proxy
+
+      # ── Router: alles unter /gamba geht an dieses Casino ──
+      traefik.http.routers.gambaking.rule: "Host(`${DOMAIN:-deine-domain.ddns.net}`) && PathPrefix(`/gamba`)"
+      traefik.http.routers.gambaking.entrypoints: websecure
+      traefik.http.routers.gambaking.tls: "true"
+      traefik.http.routers.gambaking.tls.certresolver: ${CERT_RESOLVER:-letsencrypt}
+      # Höhere Priorität als der Router der Hauptseite, damit /gamba zuerst greift
+      traefik.http.routers.gambaking.priority: "100"
+      traefik.http.routers.gambaking.service: gambaking
+      traefik.http.services.gambaking.loadbalancer.server.port: "3000"
+
+      # Der Prefix wird NICHT gestrippt — der Server kennt ihn über BASE_PATH
+      # und schickt /gamba selbst auf /gamba/ weiter. Ein StripPrefix hier
+      # würde diese Weiterleitung kaputtmachen.
+
+volumes:
+  gambaking-data:
+
+networks:
+  proxy:
+    external: true

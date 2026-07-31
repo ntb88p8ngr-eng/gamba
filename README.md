@@ -64,6 +64,31 @@ Reverse-Proxy davorsetzen.
 Sobald der Server öffentlich steht, greift außerdem eine **Brute-Force-Bremse**: nach
 8 Fehlversuchen ist die Kombination aus IP und Spielername 15 Minuten gesperrt.
 
+### Im Docker-Container, neben einer bestehenden Website
+
+```bash
+cp .env.example .env      # Domain, Unterpfad und Admin-PIN eintragen
+docker compose up -d --build
+```
+
+Damit läuft das Casino als Container hinter Traefik unter
+`https://deine-domain.ddns.net/gamba/`, während deine bisherige Seite auf `/` bleibt.
+TLS macht dann Traefik, der Container selbst spricht HTTP.
+
+Drei Umgebungsvariablen sind dafür da:
+
+| Variable | Bedeutung |
+|---|---|
+| `BASE_PATH=/gamba` | die Seite liegt in einem Unterpfad; der Server nimmt `/gamba/api/…` **und** `/api/…` an und leitet `/gamba` auf `/gamba/` weiter |
+| `TRUST_PROXY=1` | echte Besucher-IP aus `X-Forwarded-For` — sonst teilen sich alle dieselbe Brute-Force-Bremse |
+| `DATA_DIR=/data` | Spielstände ins Volume statt ins Image |
+
+Zum Ausprobieren ohne Traefik:
+`docker compose -f docker-compose.local.yml up --build` → `http://localhost:8080/gamba/`
+
+Die komplette Anleitung inklusive Traefik-Beispiel, bestehendem certbot-Zertifikat,
+nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
+
 ---
 
 ## Die 13 Spiele
@@ -174,6 +199,10 @@ In der Lobby aktualisiert sich alles alle 6 Sekunden vom Server.
 server.js           Node-Server ohne Abhängigkeiten: liefert die Seite, hält die Daten,
                     optional mit TLS und automatischem Zertifikats-Nachladen
 data/               wird beim ersten Start angelegt (gambaking.json)
+
+Dockerfile          Image auf Basis node:22-alpine, läuft als Benutzer node
+docker-compose.yml  Casino hinter Traefik unter /gamba
+docs/DOCKER.md      Anleitung für den Betrieb neben einer bestehenden Website
 
 index.html          Grundgerüst
 css/style.css       Layout, Neon-Look, Level-Leiste, Modals, Responsive

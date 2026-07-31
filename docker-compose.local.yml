@@ -1,0 +1,22 @@
+# Zum Ausprobieren auf dem eigenen Rechner — ohne Traefik, ohne Domain.
+#     docker compose -f docker-compose.local.yml up --build
+#     → http://localhost:8080/gamba/
+name: gambaking-local
+
+services:
+  gambaking:
+    build: .
+    image: gambaking:latest
+    container_name: gambaking-local
+    restart: unless-stopped
+    environment:
+      BASE_PATH: /gamba
+      GAMBAKING_PIN: "1337"
+      TZ: Europe/Berlin
+    ports:
+      - "8080:3000"
+    volumes:
+      - gambaking-data-local:/data
+
+volumes:
+  gambaking-data-local:
