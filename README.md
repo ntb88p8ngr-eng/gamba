@@ -4,7 +4,7 @@ Ein knallbuntes Fantasy-Casino für Challenges unter Freunden. **Kein Echtgeld, 
 Einzahlung, keine Auszahlung** — alle Chips sind wertlose Spielwährung. Es geht nur um
 Angeben, Ehre und die Krone im Leaderboard.
 
-13 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon-Set, prozedural
+14 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon-Set, prozedural
 erzeugte Hintergrundmusik und ein gemeinsames Leaderboard über einen kleinen Server.
 
 ---
@@ -91,7 +91,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 ---
 
-## Die 13 Spiele
+## Die 14 Spiele
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
@@ -108,6 +108,13 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 11 | **Königliches Pferderennen** 🔒 Lv2 | 5 Pferde mit eigenen Quoten, Live-Rennen mit Führungswechseln | 11× | 88 % |
 | 12 | **Eisbär auf dem Eis** 🔒 Lv4 | Scholle für Scholle nach oben, 3 Schwierigkeiten, jederzeit aussteigen | 233× | 91 % |
 | 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack und Scatter-Truhe | 1900× | 85 % |
+| 14 | **Königs-Poker** 🔒 Lv10 | Texas Hold'em gegen drei KI-Gegner, Blinds, Bluffs und Showdown | ganzer Pot | 8 % Rake |
+
+Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
+gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,
+wenn es überhaupt zum Flop kam. In 20.000 simulierten Händen kommt ein Spieler, der
+genauso spielt wie die Gegner, auf **91,6 %**; wer solide passt und erhöht, auf **94 %**;
+wer alles mitgeht, auf **81 %**. Gutes Spiel zahlt sich also wirklich aus.
 
 Die Quoten sind bewusst **knapper als im echten Casino** — es soll sich verdient anfühlen.
 Wer komplett pleite ist, bekommt **50 Mitleids-Chips** — aber nur **einmal pro Tag**.
@@ -140,12 +147,13 @@ du anderswo benutzt.
 ## ⭐ Level & XP
 
 XP gibt es fürs Spielen: **Einsatz/8** pro Runde (max. 60) plus Bonus-XP für Gewinne.
-Jedes Level bringt **100 × Level an Chips** — und drei Spiele schalten sich erst mit der
-Zeit frei (Level 2, 4 und 7).
+Jedes Level bringt **100 × Level an Chips** — und vier Spiele schalten sich erst mit der
+Zeit frei (Level 2, 4, 7 und 10).
 
-Die Kurve ist bewusst lang: Level 2 braucht 280 XP, Level 4 schon 1.200 und Level 7
-ganze 3.480. Bei einem Einsatz von 25 Chips sind das grob **40 / 170 / 500 Runden** —
-das Pferderennen ist schnell offen, der Tiefsee-Schatz ist ein Projekt für mehrere Abende.
+Die Kurve ist bewusst lang: Level 2 braucht 280 XP, Level 4 schon 1.200, Level 7 ganze
+3.480 und Level 10 satte 6.840. Bei einem Einsatz von 25 Chips sind das grob
+**40 / 170 / 500 / 1.000 Runden** — das Pferderennen ist schnell offen, der
+Tiefsee-Schatz ist ein Projekt für mehrere Abende und der Pokertisch das Fernziel.
 
 Titel steigen mit: Chip-Küken → Zocker → Hochroller → Casino-Hai → Legende → GambaKing.
 
@@ -232,7 +240,7 @@ Würfel auf den Server wandern.
 color, minLevel, rules, mount(root) })`. `mount` baut die Oberfläche und gibt optional
 eine Aufräumfunktion zurück.
 
-Getestet in Chromium, Desktop (1400 px) und Mobil (360/390 px): alle 13 Spiele,
+Getestet in Chromium, Desktop (1400 px) und Mobil (360/390 px): alle 14 Spiele,
 Level-Freischaltung, Admin-Flows, Server-Sync über zwei Geräte — ohne JS-Fehler.
 `prefers-reduced-motion` wird respektiert.
 

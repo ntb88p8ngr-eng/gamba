@@ -296,6 +296,19 @@
       '<rect x="24.5" y="37" width="15" height="7" rx="3.5" fill="url(#gkg-gold)" stroke="' + OUT + '" stroke-width="2.2"/>' +
       '<path d="M16.5 8 L16.5 22 M32 7 L32 22 M47.5 8 L47.5 22" fill="none" stroke="#fff6b0" stroke-width="2" opacity=".55" stroke-linecap="round"/>',
 
+    poker:
+      /* Zwei Karten im Fächer, davor ein Chip */
+      s('M16 14 h22 a5 5 0 0 1 5 5 v30 a5 5 0 0 1 -5 5 H16 a5 5 0 0 1 -5 -5 V19 a5 5 0 0 1 5 -5 Z',
+        'url(#gkg-steel)', ' transform="rotate(-20 27 34)"') +
+      s('M24 8 h22 a5 5 0 0 1 5 5 v34 a5 5 0 0 1 -5 5 H24 a5 5 0 0 1 -5 -5 V13 a5 5 0 0 1 5 -5 Z',
+        '#f6f9ff', ' transform="rotate(7 35 30)"') +
+      '<path d="M38 18 C32 24 28 27 28 32 C28 36 32 38 35 35 L33 42 H43 L41 35 C44 38 48 36 48 32 ' +
+        'C48 27 44 24 38 18 Z" fill="#20003f" transform="rotate(7 35 30)"/>' +
+      '<circle cx="20" cy="47" r="13" fill="url(#gkg-gold)" stroke="' + OUT + '" stroke-width="2.2"/>' +
+      '<circle cx="20" cy="47" r="6.5" fill="none" stroke="' + OUT + '" stroke-width="2" opacity=".55"/>' +
+      '<path d="M20 35 v4.5 M20 54.5 v4.5 M8 47 h4.5 M27.5 47 h4.5" stroke="' + OUT +
+        '" stroke-width="2.6" stroke-linecap="round"/>',
+
     chest:
       s('M6 30 C6 18 16 10 32 10 C48 10 58 18 58 30 Z', 'url(#gkg-wood)') +
       s('M6 30 h52 v22 a4 4 0 0 1 -4 4 H10 a4 4 0 0 1 -4 -4 Z', 'url(#gkg-wood)') +
