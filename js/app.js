@@ -392,12 +392,16 @@
 
     var trackRows = [];
     var list = el('div', { class: 'track-list' }, M.tracks.map(function (t, i) {
-      var row = el('button', { class: 'track-row' + (i === M.trackIdx && M.enabled ? ' playing' : '') }, [
+      var fast = t.bpm >= 125;
+      var row = el('button', {
+        class: 'track-row' + (i === M.trackIdx && M.enabled ? ' playing' : '') + (fast ? ' fast' : '')
+      }, [
         el('span', { class: 'tr-eq' }, [el('i'), el('i'), el('i')]),
         el('span', { class: 'tr-meta' }, [
           el('span', { class: 'tr-name', text: t.name }),
-          el('span', { class: 'tr-mood', text: t.mood + ' · ' + t.bpm + ' BPM' })
+          el('span', { class: 'tr-mood', text: t.mood })
         ]),
+        el('span', { class: 'tr-bpm', text: (fast ? '⚡ ' : '') + t.bpm }),
         el('span', { class: 'tr-play', text: i === M.trackIdx && M.enabled ? '⏸' : '▶' })
       ]);
       row.addEventListener('click', function () {
@@ -437,7 +441,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Vier minimalistische Loops, live im Browser erzeugt — keine Downloads. Jederzeit abschaltbar.',
+      text: 'Acht Loops, live im Browser erzeugt — vier ruhige und vier schnelle. Keine Downloads, jederzeit abschaltbar.',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),

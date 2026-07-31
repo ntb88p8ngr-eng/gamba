@@ -324,3 +324,10 @@
 .tr-name{font-weight:900;font-size:.92rem}
 .tr-mood{font-size:.72rem;color:var(--muted)}
 .tr-play{font-size:1.1rem;color:var(--gold)}
+
+/* bei vielen Tracks scrollt die Liste, damit die Regler erreichbar bleiben */
+.track-list{max-height:296px;overflow-y:auto;padding-right:4px}
+.tr-bpm{font-family:'Bungee',sans-serif;font-size:.62rem;color:var(--gold);
+  border:1.5px solid rgba(255,209,46,.45);border-radius:999px;padding:2px 7px;white-space:nowrap}
+.track-row.fast{border-color:rgba(255,59,107,.45)}
+.track-row.fast .tr-bpm{color:var(--red);border-color:rgba(255,59,107,.5)}

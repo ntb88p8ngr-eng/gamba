@@ -255,9 +255,13 @@
       '<path d="M14 44 q18 6 36 0" fill="none" stroke="' + OUT + '" stroke-width="2" opacity=".5"/>',
 
     trident:
-      s('M28 20 h8 v40 h-8 Z', 'url(#gkg-gold)') +
-      s('M8 6 v18 c0 8 6 12 12 12 h24 c6 0 12 -4 12 -12 V6 h-6 v16 c0 4 -2 6 -6 6 h-4 V6 h-6 v22 h-4 c-4 0 -6 -2 -6 -6 V6 Z', 'url(#gkg-gold)') +
-      '<rect x="24" y="34" width="16" height="6" rx="3" fill="url(#gkg-gold)" stroke="' + OUT + '" stroke-width="2"/>',
+      /* Schaft liegt hinten, darüber die Gabel als eine Silhouette */
+      s('M28.5 30 h7 v30 a3.5 3.5 0 0 1 -7 0 Z', 'url(#gkg-gold)') +
+      s('M32 2 L36.5 15 L36.5 26 L43 26 L43 14 L47.5 4 L52 14 L52 28 ' +
+        'Q52 36 44 36 L20 36 Q12 36 12 28 L12 14 L16.5 4 L21 14 L21 26 ' +
+        'L27.5 26 L27.5 15 Z', 'url(#gkg-gold)') +
+      '<rect x="24.5" y="37" width="15" height="7" rx="3.5" fill="url(#gkg-gold)" stroke="' + OUT + '" stroke-width="2.2"/>' +
+      '<path d="M16.5 8 L16.5 22 M32 7 L32 22 M47.5 8 L47.5 22" fill="none" stroke="#fff6b0" stroke-width="2" opacity=".55" stroke-linecap="round"/>',
 
     chest:
       s('M6 30 C6 18 16 10 32 10 C48 10 58 18 58 30 Z', 'url(#gkg-wood)') +
