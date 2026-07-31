@@ -229,12 +229,6 @@
           val, el('small', { text: sub })
         ])
       ]);
-      row.addEventListener('click', function () {
-        if (!me || me.id === p.id) return;
-        GK.switchPlayer(p.id);
-        GK.toast('Willkommen zurück, ' + p.name + '!', 'gold', p.avatar);
-        GK.sfx('coin');
-      });
       box.appendChild(row);
     });
   }
@@ -273,8 +267,37 @@
   }
 
   /* ─────────────── SPIELER ─────────────── */
-  function askName(first) {
-    var nameInput = el('input', { class: 'input', type: 'text', maxlength: '18', placeholder: 'z.B. DrachenDave' });
+  /* ─────────────── ANMELDUNG ─────────────── */
+
+  /** Login- und Registrierungsmaske. Ohne Server gibt es nur ein Profil. */
+  function authModal(opts) {
+    opts = opts || {};
+    var online = GK.net.online;
+    var mode = opts.mode || (online ? 'login' : 'register');
+
+    var err = el('p', { class: 'auth-err', style: 'display:none' });
+    function showErr(msg) {
+      err.textContent = msg;
+      err.style.display = '';
+      GK.sfx('error');
+      GK.shake($('#modal-root').querySelector('.modal'));
+    }
+    function clearErr() { err.style.display = 'none'; }
+
+    /* ── Anmelden ── */
+    var lName = el('input', { class: 'input', type: 'text', maxlength: '18', placeholder: 'Dein Spielername', autocomplete: 'username' });
+    var lPass = el('input', { class: 'input', type: 'password', placeholder: 'Dein Passwort', autocomplete: 'current-password' });
+    var lBtn = el('button', { class: 'btn btn-gold btn-full', text: '🔓 ANMELDEN' });
+    var loginForm = el('div', {}, [
+      el('div', { class: 'field' }, [el('label', { text: 'SPIELERNAME' }), lName]),
+      el('div', { class: 'field' }, [el('label', { text: 'PASSWORT' }), lPass]),
+      el('div', { class: 'modal-actions' }, [lBtn])
+    ]);
+
+    /* ── Neues Konto ── */
+    var rName = el('input', { class: 'input', type: 'text', maxlength: '18', placeholder: 'z.B. DrachenDave', autocomplete: 'username' });
+    var rPass = el('input', { class: 'input', type: 'password', placeholder: 'mindestens 4 Zeichen', autocomplete: 'new-password' });
+    var rPass2 = el('input', { class: 'input', type: 'password', placeholder: 'Passwort wiederholen', autocomplete: 'new-password' });
     var chosen = GK.pick(GK.AVATARS);
     var picker = el('div', { class: 'avatar-pick' }, GK.AVATARS.map(function (a) {
       var b = el('button', { class: 'avatar-opt' + (a === chosen ? ' sel' : ''), text: a, type: 'button' });
@@ -285,82 +308,165 @@
       });
       return b;
     }));
+    var rBtn = el('button', { class: 'btn btn-gold btn-full', text: '👑 KONTO ERSTELLEN' });
+    var regForm = el('div', {}, [
+      el('div', { class: 'field' }, [el('label', { text: 'SPIELERNAME' }), rName]),
+      online ? el('div', { class: 'field' }, [el('label', { text: 'PASSWORT' }), rPass]) : null,
+      online ? el('div', { class: 'field' }, [el('label', { text: 'PASSWORT WIEDERHOLEN' }), rPass2]) : null,
+      el('div', { class: 'field' }, [el('label', { text: 'WÄHL DEINEN AVATAR' }), picker]),
+      el('div', { class: 'modal-actions' }, [rBtn])
+    ]);
 
-    var err = el('p', { class: 'hint', style: 'color:var(--red);display:none', text: 'Bitte gib einen Namen ein!' });
-    var goBtn = el('button', { class: 'btn btn-gold btn-full', text: '👑 REIN INS CASINO' });
+    /* ── Umschalter ── */
+    var tabLogin = el('button', { class: 'board-tab', text: '🔓 Anmelden' });
+    var tabReg = el('button', { class: 'board-tab', text: '✨ Neues Konto' });
+    var tabs = el('div', { class: 'board-tabs' }, [tabLogin, tabReg]);
 
-    function submit() {
-      var name = nameInput.value.trim();
-      if (!name) {
-        err.style.display = '';
-        GK.sfx('error');
-        GK.shake($('#modal-root').querySelector('.modal'));
-        return;
-      }
-      var p = GK.newPlayer(name, chosen);
+    function setMode(m) {
+      mode = m;
+      clearErr();
+      tabLogin.classList.toggle('active', m === 'login');
+      tabReg.classList.toggle('active', m === 'register');
+      loginForm.style.display = m === 'login' ? '' : 'none';
+      regForm.style.display = m === 'register' ? '' : 'none';
+      setTimeout(function () { (m === 'login' ? lName : rName).focus(); }, 60);
+    }
+    tabLogin.addEventListener('click', function () { setMode('login'); GK.sfx('chip'); });
+    tabReg.addEventListener('click', function () { setMode('register'); GK.sfx('chip'); });
+
+    function welcome(p, fresh) {
       GK.closeModal();
       GK.updateHUD();
-      GK.logFeed(p.name + ' betritt das Casino mit ' + GK.fmt(GK.START_BALANCE) + ' Chips', 'admin');
       renderAll();
-      GK.toast('Willkommen, ' + p.name + '! ' + GK.fmt(GK.START_BALANCE) + ' Chips für dich 🎁', 'gold', p.avatar);
+      if (fresh) {
+        GK.logFeed(p.name + ' betritt das Casino mit ' + GK.fmt(GK.START_BALANCE) + ' Chips', 'admin');
+        GK.toast('Willkommen, ' + p.name + '! ' + GK.fmt(GK.START_BALANCE) + ' Chips für dich 🎁', 'gold', p.avatar);
+        GK.confetti(140);
+        GK.emojiRain(['🎉', '👑', '🪙', '🎰'], 22);
+      } else {
+        GK.toast('Willkommen zurück, ' + p.name + '! 👑', 'gold', p.avatar);
+      }
       GK.sfx('cash');
-      GK.confetti(140);
-      GK.emojiRain(['🎉', '👑', '🪙', '🎰'], 22);
     }
 
-    nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
-    goBtn.addEventListener('click', submit);
+    function doLogin() {
+      var name = lName.value.trim();
+      if (!name || !lPass.value) { showErr('Name und Passwort ausfüllen.'); return; }
+      lBtn.disabled = true;
+      GK.net.login(name, lPass.value).then(function (r) {
+        lBtn.disabled = false;
+        if (!r.ok) { showErr(r.error); lPass.value = ''; return; }
+        welcome(GK.player(), false);
+      });
+    }
+
+    function doRegister() {
+      var name = rName.value.trim();
+      if (name.length < 2) { showErr('Der Name braucht mindestens 2 Zeichen.'); return; }
+
+      if (!online) {                       // ohne Server: nur lokales Profil
+        var lp = GK.newPlayer(name, chosen);
+        welcome(lp, true);
+        return;
+      }
+      if (rPass.value.length < 4) { showErr('Das Passwort braucht mindestens 4 Zeichen.'); return; }
+      if (rPass.value !== rPass2.value) { showErr('Die beiden Passwörter sind nicht gleich.'); return; }
+
+      rBtn.disabled = true;
+      GK.net.register(name, rPass.value, chosen).then(function (r) {
+        rBtn.disabled = false;
+        if (!r.ok) { showErr(r.error); return; }
+        welcome(GK.player(), true);
+      });
+    }
+
+    lName.addEventListener('keydown', function (e) { if (e.key === 'Enter') lPass.focus(); });
+    lPass.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+    lBtn.addEventListener('click', doLogin);
+    rPass2.addEventListener('keydown', function (e) { if (e.key === 'Enter') doRegister(); });
+    rName.addEventListener('keydown', function (e) { if (e.key === 'Enter') (online ? rPass : rPass2).focus(); });
+    rBtn.addEventListener('click', doRegister);
 
     GK.modal({
       emoji: '👑',
-      title: first ? 'Willkommen im GambaKing!' : 'Neuer Spieler',
-      text: 'Wie heißt du am Tisch? Jeder startet mit <b>' + GK.fmt(GK.START_BALANCE) + ' Chips</b>. ' +
-            'Es geht um <b>kein echtes Geld</b> — nur um Ehre, Angeben und die Krone.',
-      locked: !!first,
-      nodes: [
-        el('div', { class: 'field' }, [el('label', { text: 'DEIN SPIELERNAME' }), nameInput]),
-        el('div', { class: 'field' }, [el('label', { text: 'WÄHL DEINEN AVATAR' }), picker]),
-        err,
-        el('div', { class: 'modal-actions' }, [goBtn])
-      ]
+      title: 'GambaKing',
+      text: online
+        ? 'Melde dich mit deinem Konto an. Jeder startet mit <b>' + GK.fmt(GK.START_BALANCE) + ' Chips</b> — ' +
+          'es geht um <b>kein echtes Geld</b>, nur um Ehre und die Krone.'
+        : 'Kein Server erreichbar — dein Spielstand bleibt nur in diesem Browser. ' +
+          'Konten mit Passwort gibt es erst, wenn <b>server.js</b> läuft.',
+      locked: !opts.closable,
+      nodes: online ? [tabs, err, loginForm, regForm] : [err, regForm]
     });
-    setTimeout(function () { nameInput.focus(); }, 200);
+    setMode(mode);
   }
 
-  function playerSwitcher() {
+  /** Kontomenü: Passwort ändern oder abmelden. */
+  function accountMenu() {
     GK.sfx('click');
-    var players = GK.playerList().sort(function (a, b) { return b.balance - a.balance; });
-    var me = GK.player();
-    var list = el('div', { class: 'admin-players' }, players.map(function (p) {
-      var row = el('div', { class: 'admin-row' + (me && me.id === p.id ? ' sel' : '') }, [
-        el('div', { class: 'who' }, [
-          el('span', { style: 'font-size:1.5rem', text: p.avatar }),
-          el('div', {}, [
-            el('div', { class: 'nm', text: p.name }),
-            el('div', { style: 'font-size:.7rem;color:var(--muted)', text: p.plays + ' Spiele · ' + GK.fmtSigned(GK.profitOf(p)) + ' Profit' })
-          ])
-        ]),
-        el('span', { class: 'bal', text: GK.fmt(p.balance) })
-      ]);
-      row.addEventListener('click', function () {
-        GK.switchPlayer(p.id);
-        GK.closeModal();
-        renderAll();
-        GK.toast('Jetzt am Zug: ' + p.name, 'gold', p.avatar);
-        GK.sfx('coin');
+    var p = GK.player();
+    if (!p) { authModal(); return; }
+    var info = GK.levelInfo();
+
+    var nodes = [
+      el('div', { class: 'acc-head' }, [
+        el('span', { class: 'acc-av', text: p.avatar }),
+        el('div', {}, [
+          el('div', { class: 'acc-name', text: p.name }),
+          el('div', { class: 'acc-sub', text: 'Level ' + info.level + ' · ' + info.title.title + ' · ' + GK.fmt(p.balance) + ' Chips' })
+        ])
+      ]),
+      el('div', { class: 'info-grid' }, [
+        el('div', { class: 'info-box' }, [el('b', { text: GK.fmt(p.plays) }), el('span', { text: 'Spiele' })]),
+        el('div', { class: 'info-box' }, [el('b', { text: GK.fmtSigned(GK.profitOf(p)) }), el('span', { text: 'Profit' })]),
+        el('div', { class: 'info-box' }, [el('b', { text: '+' + GK.fmt(p.biggestWin) }), el('span', { text: 'Bester Win' })])
+      ]),
+      el('div', { style: 'height:14px' })
+    ];
+
+    if (GK.net.online) {
+      var oldP = el('input', { class: 'input', type: 'password', placeholder: 'aktuelles Passwort' });
+      var newP = el('input', { class: 'input', type: 'password', placeholder: 'neues Passwort (min. 4)' });
+      var msg = el('p', { class: 'auth-err', style: 'display:none' });
+      var pwBtn = el('button', { class: 'btn btn-ghost btn-full', text: '🔑 PASSWORT ÄNDERN' });
+      pwBtn.addEventListener('click', function () {
+        if (newP.value.length < 4) {
+          msg.textContent = 'Das neue Passwort braucht mindestens 4 Zeichen.';
+          msg.style.display = ''; GK.sfx('error'); return;
+        }
+        pwBtn.disabled = true;
+        GK.net.changePassword(oldP.value, newP.value).then(function (r) {
+          pwBtn.disabled = false;
+          if (!r.ok) { msg.textContent = r.error; msg.style.display = ''; GK.sfx('error'); return; }
+          GK.closeModal();
+          GK.toast('Passwort geändert 🔑', 'gold', '🔑');
+          GK.sfx('cash');
+        });
       });
-      return row;
-    }));
+      nodes.push(
+        el('div', { class: 'bet-label', text: 'PASSWORT ÄNDERN' }),
+        el('div', { style: 'height:6px' }),
+        oldP, el('div', { style: 'height:8px' }), newP,
+        msg,
+        el('div', { style: 'height:10px' }),
+        pwBtn,
+        el('div', { style: 'height:14px' })
+      );
+    }
 
-    var addBtn = el('button', { class: 'btn btn-full', text: '➕ NEUEN SPIELER ANLEGEN' });
-    addBtn.addEventListener('click', function () { GK.closeModal(); setTimeout(function () { askName(false); }, 120); });
-
-    GK.modal({
-      emoji: '🎭',
-      title: 'Spieler wechseln',
-      text: 'Alle sitzen am selben Tisch (same device). Wähl aus, wer gerade zockt.',
-      nodes: [list, el('div', { class: 'modal-actions' }, [addBtn])]
+    var outBtn = el('button', { class: 'btn btn-danger btn-full', text: '🚪 ABMELDEN' });
+    outBtn.addEventListener('click', function () {
+      GK.sfx('click');
+      GK.net.logout().then(function () {
+        GK.closeModal();
+        GK.updateHUD();
+        renderAll();
+        setTimeout(function () { authModal(); }, 150);
+      });
     });
+    nodes.push(outBtn);
+
+    GK.modal({ emoji: p.avatar, title: 'Dein Konto', text: '', nodes: nodes });
   }
 
   function dailyBonus() {
@@ -527,6 +633,18 @@
             ])
           ]),
           el('span', { class: 'bal', text: GK.fmt(p.balance) }),
+          el('button', { class: 'mini-btn', text: '🔑', title: 'Passwort zurücksetzen', onClick: function (e) {
+            e.stopPropagation();
+            var np = window.prompt('Neues Passwort für "' + p.name + '" (min. 4 Zeichen):', '');
+            if (np === null) return;
+            np = String(np).trim();
+            if (np.length < 4) { GK.toast('Passwort braucht mindestens 4 Zeichen', 'bad', '⚠️'); return; }
+            GK.commit('resetPassword', { id: p.id, password: np }).then(function () {
+              GK.logFeed('👑 ADMIN: Passwort von ' + p.name + ' zurückgesetzt', 'admin');
+              GK.toast(p.name + ': neues Passwort gesetzt 🔑', 'gold', '🔑');
+              GK.sfx('cash');
+            });
+          } }),
           el('button', { class: 'mini-btn danger', text: '🗑', title: 'Spieler löschen', onClick: function (e) {
             e.stopPropagation();
             if (!window.confirm('Spieler "' + p.name + '" wirklich löschen?')) return;
@@ -785,7 +903,7 @@
     // Header
     $('#brand-btn').addEventListener('click', function () { GK.sfx('click'); closeGame(); showView('view-lobby'); });
     $('#btn-back').addEventListener('click', function () { GK.sfx('click'); closeGame(); showView('view-lobby'); renderAll(); });
-    $('#hud-player').addEventListener('click', playerSwitcher);
+    $('#hud-player').addEventListener('click', accountMenu);
     $('#hud-balance').addEventListener('click', function () {
       GK.sfx('coin');
       var p = GK.player();
@@ -826,7 +944,7 @@
       setTimeout(function () { $('#board-anchor').scrollIntoView({ behavior: 'smooth' }); }, 80);
     });
     $('#btn-daily').addEventListener('click', function () { GK.sfx('click'); dailyBonus(); });
-    $('#btn-new-player').addEventListener('click', function () { GK.sfx('click'); askName(false); });
+    $('#btn-new-player').addEventListener('click', function () { GK.sfx('click'); authModal({ mode: 'register', closable: true }); });
 
     $$('.board-tab').forEach(function (tab) {
       tab.addEventListener('click', function () {
@@ -862,9 +980,13 @@
     GK.on('player-changed', function () {
       renderAll();
       // Vom Admin auf einem anderen Gerät gelöscht? Dann neu anmelden.
-      if (!GK.player() && $('#modal-root').hidden) askName(true);
+      if (!GK.player() && $('#modal-root').hidden) authModal();
     });
     GK.on('feed', renderFeed);
+    GK.on('logged-out', function () {
+      renderAll();
+      if ($('#modal-root').hidden) authModal();
+    });
     GK.on('xp', renderLevel);
     GK.on('level-up', celebrateLevel);
 
@@ -879,11 +1001,24 @@
 
   /** läuft, sobald Server- oder Offline-Daten geladen sind */
   function afterLoad() {
-    if (!GK.player()) setTimeout(function () { askName(true); }, 450);
-    else {
+    // Gespeicherte Sitzung? Dann direkt weiterspielen.
+    GK.net.resume().then(function (r) {
+      if (r && r.ok && GK.player()) {
+        GK.updateHUD();
+        renderAll();
+        GK.toast('Willkommen zurück, ' + GK.player().name + '! 👑', 'gold', GK.player().avatar);
+        return;
+      }
+      if (!GK.net.online && GK.player()) {   // Offline-Profil auf diesem Gerät
+        GK.updateHUD();
+        renderAll();
+        GK.toast('Willkommen zurück, ' + GK.player().name + '! 👑', 'gold', GK.player().avatar);
+        return;
+      }
+      GK.state.currentId = null;
       GK.updateHUD();
-      GK.toast('Willkommen zurück, ' + GK.player().name + '! 👑', 'gold', GK.player().avatar);
-    }
+      setTimeout(function () { authModal(); }, 350);
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

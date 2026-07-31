@@ -9,7 +9,8 @@
   var GK = window.GK = {};
   var KEY = 'gambaking:v1';
   var START_BALANCE = 500;
-  var BAILOUT = 50; // Mitleids-Chips wenn komplett pleite
+  var BAILOUT = 50; // Mitleids-Chips wenn komplett pleite (einmal pro Tag)
+  var DAY = 24 * 3600 * 1000;
 
   GK.START_BALANCE = START_BALANCE;
 
@@ -179,9 +180,10 @@
       lastBonus: 0,
       created: Date.now()
     };
+    p.lastBailout = 0;
     state.players[p.id] = p;
     state.currentId = p.id;
-    GK.commit('create', { id: p.id, name: p.name, avatar: p.avatar });
+    GK.save();          // im Server-Modus legt /api/auth/register das Konto an
     return p;
   };
 
@@ -218,7 +220,7 @@
   GK.xpForLevel = function (level) {
     if (level <= 1) return 0;
     var n = level - 1;
-    return 100 * n + 25 * n * (n - 1);
+    return 280 * n + 60 * n * (n - 1);
   };
 
   GK.levelOf = function (xp) {
@@ -317,7 +319,7 @@
     GK.commit('wager', { id: p.id, amount: amount });
     // XP fürs Mitspielen — gedeckelt, damit ein einzelner Riesen-Einsatz
     // nicht sofort alles freischaltet (der Server deckelt identisch).
-    GK.addXP(Math.min(150, Math.max(2, Math.floor(amount / 4))));
+    GK.addXP(Math.min(60, Math.max(3, Math.floor(amount / 8))));
     GK.updateHUD(-amount);
     return true;
   };
@@ -334,7 +336,7 @@
       var net = amount - ((meta && meta.stake) || 0);
       if (net > p.biggestWin) p.biggestWin = net;
       p.wins++;
-      if (net > 0) GK.addXP(12 + Math.min(40, Math.floor(net / 25)));  // Bonus-XP für Gewinne
+      if (net > 0) GK.addXP(8 + Math.min(25, Math.floor(net / 50)));   // Bonus-XP für Gewinne
     } else {
       p.losses++;
     }
@@ -343,10 +345,27 @@
     GK.checkBroke();
   };
 
-  /** Wer wirklich alles verloren hat, bekommt Mitleids-Chips. */
+  /** Wer alles verloren hat, bekommt Mitleids-Chips — einmal pro Tag. */
+  GK.bailoutLeft = function (p) {
+    p = p || GK.player();
+    if (!p) return 0;
+    var left = (p.lastBailout || 0) + DAY - Date.now();
+    return left > 0 ? left : 0;
+  };
+
   GK.checkBroke = function () {
     var p = GK.player();
     if (!p || p.balance >= 1) return;
+
+    var wait = GK.bailoutLeft(p);
+    if (wait > 0) {
+      GK.toast('Blank! Mitleids-Chips gibt es in ' + Math.ceil(wait / 3600000) + ' Std. wieder 💀', 'bad', '💀');
+      GK.sfx('lose');
+      GK.emit('broke');
+      return;
+    }
+
+    p.lastBailout = Date.now();
     p.balance = BAILOUT;
     p.granted = (p.granted || 0) + BAILOUT;
     GK.commit('bailout', { id: p.id });
@@ -360,7 +379,6 @@
   GK.claimBonus = function () {
     var p = GK.player();
     if (!p) return Promise.resolve(false);
-    var DAY = 24 * 3600 * 1000;
     if (Date.now() - (p.lastBonus || 0) < DAY) return Promise.resolve(false);
     p.lastBonus = Date.now();
     p.balance += 250;

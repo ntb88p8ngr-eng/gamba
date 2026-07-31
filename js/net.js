@@ -7,13 +7,30 @@
 (function (GK) {
   'use strict';
 
+  var SKEY = 'gambaking:session';
+
   var Net = GK.net = {
     online: false,
     token: null,          // Admin-Token, nur im Speicher — Reload = ausgeloggt
+    session: null,        // Spieler-Sitzung, gilt bis der Tab geschlossen wird
     pending: 0,           // laufende Operationen
     chain: Promise.resolve(),
     lastError: 0
   };
+
+  /* Die Sitzung liegt im sessionStorage: Reload im selben Tab bleibt
+     angemeldet, ein neuer Besuch verlangt wieder Name und Passwort. */
+  function loadSession() {
+    try { Net.session = sessionStorage.getItem(SKEY) || null; } catch (e) { Net.session = null; }
+  }
+  function storeSession(t) {
+    Net.session = t || null;
+    try {
+      if (t) sessionStorage.setItem(SKEY, t);
+      else sessionStorage.removeItem(SKEY);
+    } catch (e) {}
+  }
+  loadSession();
 
   function api(path, options) {
     return fetch(path, Object.assign({
@@ -64,6 +81,7 @@
     if (!Net.online) return Promise.resolve(null);
     var body = Object.assign({ type: type }, payload || {});
     if (Net.token) body.token = Net.token;
+    if (Net.session) body.session = Net.session;
 
     Net.pending++;
     Net.chain = Net.chain.then(function () {
@@ -85,7 +103,12 @@
             GK.updateHUD();
             GK.emit('player-changed');
           }
-          if (err.status === 403) {
+          if (err.status === 401) {
+            storeSession(null);
+            GK.state.currentId = null;
+            GK.toast('Sitzung abgelaufen — bitte neu anmelden', 'bad', '🔒');
+            GK.emit('logged-out');
+          } else if (err.status === 403) {
             Net.token = null;
             GK.state.admin = false;
             GK.toast('Admin-Sitzung abgelaufen — bitte neu einloggen', 'bad', '🔒');
@@ -97,6 +120,64 @@
         });
     });
     return Net.chain;
+  };
+
+  /* ─────────────── Konto & Anmeldung ─────────────── */
+
+  function adopt(out) {
+    storeSession(out.session || Net.session);
+    if (out.state) GK.adoptState(out.state);
+    GK.state.currentId = out.playerId;
+    GK.save();
+    GK.updateHUD();
+    GK.emit('player-changed');
+    return { ok: true, playerId: out.playerId };
+  }
+  function fail(err) {
+    return { ok: false, error: err && err.message ? err.message : 'Server nicht erreichbar' };
+  }
+
+  /** Neues Konto anlegen. */
+  Net.register = function (name, password, avatar) {
+    return api('api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name: name, password: password, avatar: avatar })
+    }).then(adopt, fail);
+  };
+
+  /** Anmelden. */
+  Net.login = function (name, password) {
+    return api('api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ name: name, password: password })
+    }).then(adopt, fail);
+  };
+
+  /** Beim Start: gilt die gespeicherte Sitzung noch? */
+  Net.resume = function () {
+    if (!Net.online || !Net.session) return Promise.resolve({ ok: false });
+    return api('api/auth/me', { method: 'POST', body: JSON.stringify({ session: Net.session }) })
+      .then(adopt, function () { storeSession(null); return { ok: false }; });
+  };
+
+  Net.logout = function () {
+    var t = Net.session;
+    storeSession(null);
+    Net.token = null;
+    GK.state.admin = false;
+    GK.state.currentId = null;
+    GK.save();
+    if (!Net.online || !t) return Promise.resolve();
+    return api('api/auth/logout', { method: 'POST', body: JSON.stringify({ session: t }) })
+      .catch(function () {});
+  };
+
+  /** Eigenes Passwort ändern. */
+  Net.changePassword = function (oldPw, newPw) {
+    return api('api/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ session: Net.session, oldPassword: oldPw, newPassword: newPw })
+    }).then(function () { return { ok: true }; }, fail);
   };
 
   /** Admin-Login gegen den Server. Gibt true/false zurück. */

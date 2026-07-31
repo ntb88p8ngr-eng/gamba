@@ -18,14 +18,15 @@ node server.js          # → http://localhost:3000
 Mehr braucht es nicht: **keine Abhängigkeiten, kein Build, kein npm install.** Der Server
 liefert die Seite aus *und* hält die Spielstände.
 
-Beim ersten Besuch fragt ein Popup nach **Spielername + Avatar**. Jeder startet mit
-**500 Chips**.
+Beim ersten Besuch legst du ein **Konto mit Passwort** an, danach meldest du dich jedes
+Mal damit an. Jeder startet mit **500 Chips**.
 
 **Für die Runde mit Freunden:** Server auf einem Rechner starten, alle anderen öffnen
 dessen IP im Browser (`http://192.168.x.x:3000`) — alle sehen dasselbe Leaderboard, live.
 
 Ohne Server geht es auch: `index.html` direkt öffnen. Dann läuft alles im
-**Offline-Modus** und die Spielstände bleiben nur in diesem einen Browser.
+**Offline-Modus** — ohne Konten und Passwörter, der Spielstand bleibt nur in diesem
+einen Browser.
 
 ```bash
 PORT=8080 node server.js          # anderer Port
@@ -53,16 +54,41 @@ GAMBAKING_PIN=4711 node server.js # eigene Admin-PIN
 | 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack und Scatter-Truhe | 1900× | 85 % |
 
 Die Quoten sind bewusst **knapper als im echten Casino** — es soll sich verdient anfühlen.
-Wer komplett pleite ist, bekommt automatisch **50 Mitleids-Chips**, dazu gibt es alle
-24 Stunden **250 Chips Tagesbonus**.
+Wer komplett pleite ist, bekommt **50 Mitleids-Chips** — aber nur **einmal pro Tag**.
+Dazu gibt es alle 24 Stunden **250 Chips Tagesbonus**. Wer beides an einem Tag
+verbraucht und trotzdem alles verzockt, muss bis morgen warten oder den Admin fragen.
+
+---
+
+## 🔐 Konten & Anmeldung
+
+* **Registrieren:** Name, Passwort (min. 4 Zeichen) und Avatar. Namen sind eindeutig.
+* **Anmelden:** bei jedem Besuch. Die Sitzung liegt im `sessionStorage` — ein Reload im
+  selben Tab bleibt angemeldet, ein neuer Besuch verlangt wieder das Passwort.
+* **Passwort ändern:** im Kontomenü (Klick auf den eigenen Namen oben rechts).
+* **Passwort vergessen:** der Admin setzt es im Admin-Panel per 🔑 neu. Dabei fliegen
+  alle laufenden Sitzungen dieses Kontos raus.
+
+Passwörter werden mit **scrypt und eigenem Salt** gehasht; im Klartext wird nichts
+gespeichert und die Hashes verlassen den Server nie. Jede Spielaktion braucht eine
+gültige Sitzung — Anfragen auf ein fremdes Konto beantwortet der Server mit `403`,
+Anfragen ohne Sitzung mit `401`.
+
+**Wichtig:** Der Server spricht **HTTP, nicht HTTPS**. Im heimischen WLAN unter Freunden
+ist das in Ordnung, aber Passwörter gehen unverschlüsselt über die Leitung — nimm also
+kein Passwort, das du anderswo benutzt.
 
 ---
 
 ## ⭐ Level & XP
 
-XP gibt es fürs Spielen: **Einsatz/4** pro Runde (max. 150) plus Bonus-XP für Gewinne.
+XP gibt es fürs Spielen: **Einsatz/8** pro Runde (max. 60) plus Bonus-XP für Gewinne.
 Jedes Level bringt **100 × Level an Chips** — und drei Spiele schalten sich erst mit der
 Zeit frei (Level 2, 4 und 7).
+
+Die Kurve ist bewusst lang: Level 2 braucht 280 XP, Level 4 schon 1.200 und Level 7
+ganze 3.480. Bei einem Einsatz von 25 Chips sind das grob **40 / 170 / 500 Runden** —
+das Pferderennen ist schnell offen, der Tiefsee-Schatz ist ein Projekt für mehrere Abende.
 
 Titel steigen mit: Chip-Küken → Zocker → Hochroller → Casino-Hai → Legende → GambaKing.
 
@@ -78,6 +104,7 @@ Schild oben rechts → **PIN `1337`** (im Panel oder per `GAMBAKING_PIN` änderb
   `SETZEN AUF`.
 * **⭐ XP geben** — einzeln oder für alle; Level und Freischaltungen passen sich sofort an.
   XP abziehen kann ein Spiel auch wieder sperren.
+* **🔑 Passwort zurücksetzen** — pro Spieler, direkt in der Spielerliste.
 * **🎁 Allen geben** · **♻️ Alle auf 500** · **🗑 Alle Daten löschen**
 * **🍀 Glücks-Regler** — heimlicher Cheat pro Spieler (0 = verflucht, 100 = gesegnet).
 * **🔑 PIN ändern** und **Spieler löschen**.
@@ -90,7 +117,8 @@ Admin**, im Footer gibt es dafür keinen Knopf mehr.
 
 ## 🎵 Musik & Sound
 
-* **Vier minimalistische Loops** (Neon Lounge, Tiefsee, Retro Chips, Mitternacht),
+* **Acht Loops** — vier ruhige (Neon Lounge, Tiefsee, Retro Chips, Mitternacht) und
+  vier schnelle (Turbo-Rausch 140, Jackpot-Fieber 128, Adrenalin 152, All In 170 BPM),
   komplett per Web Audio erzeugt — keine Audio-Dateien, kein Nachladen.
 * **Lautstärkeregler** direkt neben dem Mute-Button in der Kopfzeile.
 * **🎵-Button** öffnet das Menü mit Track-Auswahl, getrennten Reglern für Musik und
@@ -102,8 +130,8 @@ Admin**, im Footer gibt es dafür keinen Knopf mehr.
 ## 🏆 Leaderboard
 
 Vier Wertungen: **Chips**, **Profit** (ohne geschenkte Chips), **bester Einzelgewinn**
-und **Anzahl Spiele** — plus Level und Titel pro Spieler. Klick auf eine Zeile wechselt
-zu diesem Spieler. Darunter läuft ein Live-Feed aller Gewinne, Pleiten und Admin-Aktionen.
+und **Anzahl Spiele** — plus Level und Titel pro Spieler. Darunter läuft ein Live-Feed
+aller Gewinne, Pleiten und Admin-Aktionen.
 In der Lobby aktualisiert sich alles alle 6 Sekunden vom Server.
 
 ---
@@ -118,7 +146,7 @@ index.html          Grundgerüst
 css/style.css       Layout, Neon-Look, Level-Leiste, Modals, Responsive
 css/games.css       Styles der einzelnen Spiele
 js/core.js          State, Sync, Audio-Engine, Effekte, XP/Level, Einsatz-Widget
-js/net.js           Server-Anbindung mit Offline-Fallback
+js/net.js           Server-Anbindung, Anmeldung und Sitzungen, Offline-Fallback
 js/icons.js         Eigenes SVG-Icon-Set (Drachen, Früchte, Meerestiere, …)
 js/music.js         Sequencer für die Hintergrund-Loops
 js/games/*.js       Ein Modul pro Spiel (registriert sich selbst)
@@ -132,9 +160,11 @@ den Server. Der Server rechnet sie selbst nach — er übernimmt keine Kontostä
 Client — und antwortet mit dem verbindlichen Stand. Fällt der Server aus, läuft alles
 lokal weiter.
 
-**Ehrlich gesagt:** Wer die Entwicklertools öffnet, kann sich Chips erschummeln. Für ein
+**Ehrlich gesagt:** Konten und Kontostände sind abgesichert — fremde Konten kann niemand
+anfassen. Aber die Spielausgänge werden weiterhin im Browser gewürfelt: wer die
+Entwicklertools öffnet, kann sich auf dem **eigenen** Konto Chips erschummeln. Für ein
 Fantasy-Casino unter Freunden ist das in Ordnung; für echten Wettbewerb müssten die
-Spielausgänge auf dem Server gewürfelt werden.
+Würfel auf den Server wandern.
 
 **Neues Spiel hinzufügen:** `GK.registerGame({ id, name, emoji, icon, blurb, badge,
 color, minLevel, rules, mount(root) })`. `mount` baut die Oberfläche und gibt optional

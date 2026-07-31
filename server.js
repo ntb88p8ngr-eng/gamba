@@ -64,6 +64,45 @@ function saveDB() {
   }, 120);
 }
 
+/* ─────────────── Passwoerter ─────────────── */
+
+/** scrypt mit zufaelligem Salt; im Klartext wird nie etwas gespeichert. */
+function hashPw(pw, salt) {
+  salt = salt || crypto.randomBytes(16).toString('hex');
+  return salt + ':' + crypto.scryptSync(String(pw), salt, 32).toString('hex');
+}
+function checkPw(pw, stored) {
+  try {
+    var parts = String(stored || '').split(':');
+    if (parts.length !== 2) return false;
+    var a = Buffer.from(crypto.scryptSync(String(pw), parts[0], 32).toString('hex'), 'hex');
+    var b = Buffer.from(parts[1], 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch (e) { return false; }
+}
+
+/* ─────────────── Sitzungen ─────────────── */
+
+var SESSION_TTL = 12 * 3600 * 1000;
+var sessions = new Map();   // Token -> { id, exp }
+
+function newSession(playerId) {
+  var t = crypto.randomBytes(24).toString('hex');
+  sessions.set(t, { id: playerId, exp: Date.now() + SESSION_TTL });
+  return t;
+}
+/** Gibt die Spieler-ID zurueck, oder null. */
+function sessionPlayer(t) {
+  if (!t) return null;
+  var s = sessions.get(t);
+  if (!s) return null;
+  if (s.exp < Date.now()) { sessions.delete(t); return null; }
+  return db.players[s.id] ? s.id : null;
+}
+function dropSessionsOf(playerId) {
+  sessions.forEach(function (v, k) { if (v.id === playerId) sessions.delete(k); });
+}
+
 /* ─────────────── Admin-Token ─────────────── */
 
 var tokens = new Map();
@@ -111,7 +150,9 @@ function newPlayer(name, avatar, id) {
     luck: 50,
     xp: 0,
     claimedLevel: 1,
+    pw: '',
     lastBonus: 0,
+    lastBailout: 0,
     created: Date.now()
   };
 }
@@ -121,7 +162,7 @@ var MAX_LEVEL = 30;
 function xpForLevel(level) {
   if (level <= 1) return 0;
   var n = level - 1;
-  return 100 * n + 25 * n * (n - 1);
+  return 280 * n + 60 * n * (n - 1);
 }
 function levelOf(xp) {
   var l = 1;
@@ -148,35 +189,60 @@ function pushFeed(text, type) {
   if (db.feed.length > FEED_MAX) db.feed.length = FEED_MAX;
 }
 
-/** Was der Client zu sehen bekommt — die PIN bleibt hier. */
+/** Was der Client zu sehen bekommt — PIN und Passwort-Hashes bleiben hier. */
 function publicState() {
-  return { players: db.players, feed: db.feed, startBalance: START_BALANCE };
+  var safe = {};
+  Object.keys(db.players).forEach(function (k) {
+    var p = db.players[k], c = {};
+    Object.keys(p).forEach(function (f) { if (f !== 'pw') c[f] = p[f]; });
+    safe[k] = c;
+  });
+  return { players: safe, feed: db.feed, startBalance: START_BALANCE };
+}
+
+function nameTaken(name) {
+  var n = String(name).trim().toLowerCase();
+  return Object.keys(db.players).some(function (k) {
+    return String(db.players[k].name).trim().toLowerCase() === n;
+  });
+}
+function findByName(name) {
+  var n = String(name).trim().toLowerCase();
+  var k = Object.keys(db.players).filter(function (id) {
+    return String(db.players[id].name).trim().toLowerCase() === n;
+  })[0];
+  return k ? db.players[k] : null;
 }
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetAll: 1, setPin: 1, luck: 1, wipe: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetAll: 1, setPin: 1, luck: 1, wipe: 1, resetPassword: 1 };
+/* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
+var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
 function applyOp(op) {
   var type = op && op.type;
   if (!type) return { error: 'Keine Operation angegeben' };
 
-  if (ADMIN_OPS[type] && !validToken(op.token)) {
+  var isAdmin = validToken(op.token);
+  var me = sessionPlayer(op.session);
+
+  if (ADMIN_OPS[type] && !isAdmin) {
     return { error: 'Nur der Admin darf das', code: 403 };
+  }
+  if (SELF_OPS[type]) {
+    if (!me) return { error: 'Nicht angemeldet', code: 401 };
+    if (op.id !== me) return { error: 'Fremdes Konto', code: 403 };
+  }
+  if (type === 'feed' && !me && !isAdmin) {
+    return { error: 'Nicht angemeldet', code: 401 };
   }
 
   var p = op.id ? db.players[op.id] : null;
-  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1 };
+  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1, resetPassword: 1 };
   if (needsPlayer[type] && !p) return { error: 'Spieler nicht gefunden', code: 404 };
 
   switch (type) {
-
-    case 'create': {
-      if (op.id && db.players[op.id]) break;          // schon angelegt
-      var np = newPlayer(op.name, op.avatar, op.id);
-      db.players[np.id] = np;
-      break;
-    }
 
     case 'wager': {
       var amount = clamp(int(op.amount), 1, 1e9);
@@ -204,6 +270,11 @@ function applyOp(op) {
 
     case 'bailout': {
       if (p.balance >= 1) break;              // nur wer wirklich blank ist
+      var DAY_B = 24 * 3600 * 1000;
+      if (Date.now() - (p.lastBailout || 0) < DAY_B) {
+        return { error: 'Mitleids-Chips heute schon abgeholt', code: 429 };
+      }
+      p.lastBailout = Date.now();
       p.balance = BAILOUT;
       p.granted += BAILOUT;
       break;
@@ -254,7 +325,16 @@ function applyOp(op) {
       break;
     }
 
+    case 'resetPassword': {
+      var np2 = String(op.password || '');
+      if (np2.length < 4) return { error: 'Passwort braucht mindestens 4 Zeichen', code: 400 };
+      p.pw = hashPw(np2);
+      dropSessionsOf(p.id);                   // laufende Sitzungen beenden
+      break;
+    }
+
     case 'deletePlayer': {
+      dropSessionsOf(op.id);
       delete db.players[op.id];
       break;
     }
@@ -267,6 +347,7 @@ function applyOp(op) {
         x.plays = 0; x.wins = 0; x.losses = 0;
         x.biggestWin = 0; x.peak = START_BALANCE;
         x.xp = 0; x.claimedLevel = 1;
+        x.lastBailout = 0;
       });
       break;
     }
@@ -282,6 +363,7 @@ function applyOp(op) {
       var keepPin = db.settings.adminPin;     // PIN überlebt das Löschen
       db = emptyDB();
       db.settings.adminPin = keepPin;
+      sessions.clear();
       break;
     }
 
@@ -357,6 +439,70 @@ var server = http.createServer(function (req, res) {
 
   if (url === '/api/state' && req.method === 'GET') {
     return sendJSON(res, 200, publicState());
+  }
+
+  /* ── Konto anlegen ── */
+  if (url === '/api/auth/register' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      var name = clean(body.name, 18).trim();
+      var pw = String(body.password || '');
+      if (name.length < 2) return sendJSON(res, 400, { error: 'Name braucht mindestens 2 Zeichen' });
+      if (pw.length < 4) return sendJSON(res, 400, { error: 'Passwort braucht mindestens 4 Zeichen' });
+      if (nameTaken(name)) return sendJSON(res, 409, { error: 'Diesen Namen gibt es schon — melde dich an' });
+
+      var np = newPlayer(name, body.avatar);
+      np.pw = hashPw(pw);
+      db.players[np.id] = np;
+      pushFeed(np.name + ' betritt das Casino mit ' + START_BALANCE + ' Chips', 'admin');
+      saveDB();
+      sendJSON(res, 200, { session: newSession(np.id), playerId: np.id, state: publicState() });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Anmelden ── */
+  if (url === '/api/auth/login' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      var p = findByName(clean(body.name, 18).trim());
+      // bewusst dieselbe Meldung fuer beide Faelle
+      if (!p || !checkPw(String(body.password || ''), p.pw)) {
+        return sendJSON(res, 401, { error: 'Name oder Passwort stimmt nicht' });
+      }
+      sendJSON(res, 200, { session: newSession(p.id), playerId: p.id, state: publicState() });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Laeuft die Sitzung noch? ── */
+  if (url === '/api/auth/me' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      var id = sessionPlayer(body.session);
+      if (!id) return sendJSON(res, 401, { error: 'Sitzung abgelaufen' });
+      sendJSON(res, 200, { playerId: id, state: publicState() });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Abmelden ── */
+  if (url === '/api/auth/logout' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      if (body.session) sessions.delete(body.session);
+      sendJSON(res, 200, { ok: true });
+    }, function () { sendJSON(res, 200, { ok: true }); });
+  }
+
+  /* ── Eigenes Passwort aendern ── */
+  if (url === '/api/auth/password' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      var id = sessionPlayer(body.session);
+      if (!id) return sendJSON(res, 401, { error: 'Nicht angemeldet' });
+      var p = db.players[id];
+      if (!checkPw(String(body.oldPassword || ''), p.pw)) {
+        return sendJSON(res, 401, { error: 'Altes Passwort stimmt nicht' });
+      }
+      var np = String(body.newPassword || '');
+      if (np.length < 4) return sendJSON(res, 400, { error: 'Passwort braucht mindestens 4 Zeichen' });
+      p.pw = hashPw(np);
+      saveDB();
+      sendJSON(res, 200, { ok: true });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 
   if (url === '/api/admin/login' && req.method === 'POST') {
