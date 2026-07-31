@@ -191,13 +191,8 @@
   GK.playerList = function () {
     return Object.keys(state.players).map(function (k) { return state.players[k]; });
   };
-  GK.switchPlayer = function (id) {
-    if (!state.players[id]) return;
-    state.currentId = id;
-    GK.save();
-    GK.updateHUD();
-    GK.emit('player-changed');
-  };
+  /* Ein freier Spielerwechsel gibt es nicht mehr — seit es Konten mit
+     Passwort gibt, laeuft das ueber Abmelden und neu Anmelden. */
   GK.deletePlayer = function (id) {
     delete state.players[id];
     if (state.currentId === id) {

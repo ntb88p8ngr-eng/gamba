@@ -218,18 +218,18 @@
   content:"";position:absolute;inset:0;pointer-events:none;
   background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 2px,transparent 2px 60px)
 }
-.lane{display:flex;align-items:center;gap:8px;margin-bottom:9px;position:relative}
+.lane{display:flex;align-items:center;gap:8px;margin-bottom:14px;position:relative}
 .lane:last-child{margin-bottom:0}
 .lane-tag{flex:0 0 118px;font-family:'Bungee',sans-serif;font-size:.66rem;text-shadow:0 2px 4px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden}
 @media(max-width:520px){.lane-tag{flex-basis:74px;font-size:.56rem}}
 .lane-strip{
-  flex:1;position:relative;height:40px;border-radius:10px;
+  flex:1;position:relative;height:52px;border-radius:10px;
   background:rgba(0,0,0,.28);border-bottom:2px dashed rgba(255,255,255,.18)
 }
-.runner{position:absolute;left:0;top:50%;translate:0 -50%;display:flex;align-items:center;gap:3px;will-change:transform;transition:transform .1s linear}
-.r-icon{font-size:1.7rem;display:inline-block;filter:drop-shadow(0 3px 5px rgba(0,0,0,.7))}
-.runner.galloping .r-icon{animation:gallop .28s steps(2) infinite}
-@keyframes gallop{0%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}100%{transform:translateY(0) rotate(-3deg)}}
+.runner{position:absolute;left:0;top:50%;translate:0 -50%;display:flex;align-items:center;gap:4px;will-change:transform;transition:transform .08s linear}
+.r-icon{font-size:2.6rem;display:inline-block;filter:drop-shadow(0 3px 5px rgba(0,0,0,.7))}
+.runner.galloping .r-icon{animation:gallop .22s steps(2) infinite}
+@keyframes gallop{0%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-7px) rotate(4deg)}100%{transform:translateY(0) rotate(-4deg)}}
 .r-nr{font-family:'Bungee',sans-serif;font-size:.6rem;color:#12002b;border-radius:6px;padding:1px 5px}
 .finish-line{
   position:absolute;right:14px;top:8px;bottom:8px;width:14px;border-radius:4px;
@@ -250,7 +250,7 @@
 }
 .hbet:hover{transform:translateX(4px);border-color:var(--hc)}
 .hbet.sel{border-color:var(--hc);background:color-mix(in srgb,var(--hc) 18%,transparent);box-shadow:0 0 20px var(--hc)}
-.hb-icon{font-size:1.6rem}
+.hb-icon{font-size:2rem}
 .hb-name{flex:1;font-weight:800;font-size:.9rem}
 .hb-odds{font-family:'Bungee',sans-serif;color:var(--gold);font-size:.9rem}
 

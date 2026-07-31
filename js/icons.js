@@ -171,13 +171,32 @@
       '<path d="M24 20 v24" stroke="' + OUT + '" stroke-width="2.4" stroke-dasharray="4 4"/>' +
       s('M40 24 L43 31 L50 32 L45 37 L46 44 L40 40 L34 44 L35 37 L30 32 L37 31 Z', '#fff6b0'),
 
+    /* Ganzes Pferd im Profil. Der Körper nimmt currentColor an,
+       damit jedes Pferd im Rennen seine eigene Farbe bekommt. */
     horse:
-      /* Pferdekopf mit Mähne — currentColor färbt die Mähne */
-      s('M20 60 L22 40 C16 38 12 32 14 24 C16 16 22 12 28 12 L30 6 L36 12 C46 14 52 22 52 32 C52 44 46 54 44 60 Z', 'url(#gkg-wood)') +
-      '<path d="M30 8 C36 12 42 18 46 26 C50 34 50 46 48 58" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>' +
-      '<circle cx="24" cy="26" r="3.2" fill="#20003f"/>' +
-      '<path d="M14 30 q-4 2 -5 6" fill="none" stroke="' + OUT + '" stroke-width="2.4" stroke-linecap="round"/>' +
-      '<path d="M28 12 L26 4 L33 9 Z" fill="url(#gkg-wood)" stroke="' + OUT + '" stroke-width="2"/>',
+      /* Schweif */
+      '<path d="M15 26 C6 23 3 34 8 44" fill="none" stroke="#2a170a" stroke-width="6" stroke-linecap="round"/>' +
+      /* hintere Beinpaare, etwas abgedunkelt */
+      '<g fill="currentColor" opacity=".55" stroke="#2a170a" stroke-width="2">' +
+        '<path d="M19 36 h7 v20 h-7 Z"/><path d="M37 36 h7 v20 h-7 Z"/></g>' +
+      /* Rumpf */
+      s('M14 27 C14 21 19 17 27 17 L38 17 C44 17 48 21 48 27 L48 36 C48 40 45 42 40 42 L21 42 C16 42 14 39 14 34 Z', 'currentColor') +
+      /* Hals */
+      s('M39 25 L45 8 L55 12 L50 30 Z', 'currentColor') +
+      /* Kopf mit Maul */
+      s('M45 8 C49 3 57 3 60 8 L63 15 C63 18 60 20 57 19 L49 16 Z', 'currentColor') +
+      /* Ohr */
+      s('M47 7 L46 1 L52 5 Z', 'currentColor') +
+      /* Mähne */
+      '<path d="M43 7 C47 12 49 20 49 29" fill="none" stroke="#2a170a" stroke-width="5" stroke-linecap="round"/>' +
+      '<circle cx="55" cy="11" r="2.1" fill="#2a170a"/>' +
+      /* vordere Beinpaare */
+      '<g fill="currentColor" stroke="#2a170a" stroke-width="2.2">' +
+        '<path d="M23 38 h7 v20 h-7 Z"/><path d="M41 38 h7 v20 h-7 Z"/></g>' +
+      /* Hufe */
+      '<g fill="#2a170a">' +
+        '<rect x="18" y="53" width="9" height="5" rx="2"/><rect x="36" y="53" width="9" height="5" rx="2"/>' +
+        '<rect x="22" y="55" width="9" height="5" rx="2"/><rect x="40" y="55" width="9" height="5" rx="2"/></g>',
 
     bear:
       /* Eisbär-Kopf */

@@ -563,7 +563,7 @@ input[type=range]{flex:1;accent-color:var(--pink)}
 .coin-face>svg{width:.72em;height:.72em;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))}
 .side-btn .e{font-size:2.6rem;line-height:0;display:flex;justify-content:center}
 .side-btn .e>svg{width:1em;height:1em}
-.r-icon{font-size:1.9rem;line-height:0}
+.r-icon{font-size:2.6rem;line-height:0}
 .r-icon>svg{width:1em;height:1em;filter:drop-shadow(0 3px 5px rgba(0,0,0,.7))}
 .hb-icon{font-size:1.7rem;line-height:0}
 .hb-icon>svg{width:1em;height:1em}

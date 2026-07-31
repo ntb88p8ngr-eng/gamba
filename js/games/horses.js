@@ -120,19 +120,21 @@
         GK.sfx('startbell');
 
         var winner = chooseWinner();
-        // Zielzeiten: Sieger zuerst, Rest gestaffelt dahinter
+        // Der Sieger ist nach gut 4 Sekunden im Ziel, die anderen deutlich
+        // spaeter — dadurch stehen sie beim Zieleinlauf klar auseinander.
         var times = HORSES.map(function (h) {
-          return h.nr === winner.nr ? GK.rnd(6200, 6800) : GK.rnd(7000, 9200);
+          return h.nr === winner.nr ? GK.rnd(4000, 4400) : GK.rnd(4900, 7400);
         });
 
         var runners = HORSES.map(function (h, i) {
-          return { h: h, t: times[i], phase: GK.rnd(0, 6.28), freq: GK.rnd(0.0012, 0.0022), amp: GK.rnd(0.05, 0.12), pos: 0 };
+          return { h: h, t: times[i], phase: GK.rnd(0, 6.28), freq: GK.rnd(0.0022, 0.0038), amp: GK.rnd(0.06, 0.14), pos: 0 };
         });
 
         // Laufweg in Pixeln: Bahnbreite minus Pferdebreite, damit die Nase
         // bei pos = 1 genau auf der Ziellinie steht (Prozente im transform
         // würden sich auf die Breite des Pferdes beziehen, nicht auf die Bahn)
         measureSpans();
+        lanes.forEach(function (l) { l.classList.add('galloping'); });
 
         var t0 = performance.now();
         var lastLeader = null, lastHoof = 0, hoofGap = 165;
@@ -140,33 +142,37 @@
         function frame(now) {
           if (stopped) return;
           var e = now - t0;
-          var allDone = true;
+          var over = false;
 
           runners.forEach(function (r, i) {
             var base = Math.min(1, e / r.t);
             // Wackeln für Führungswechsel, verschwindet zum Ziel hin
             var wob = Math.sin(r.phase + e * r.freq) * r.amp * (1 - base) * (1 - base);
             r.pos = GK.clamp(base + wob, 0, 1);
-            if (base < 1) allDone = false;
+            if (base >= 1) over = true;     // der erste im Ziel beendet das Rennen
             lanes[i].style.transform = 'translateX(' + (r.pos * spans[i]) + 'px)';
-            lanes[i].classList.toggle('galloping', base < 1);
           });
 
           // Hufgetrappel: leicht schwankender Abstand, damit es nach Feld
           // klingt und nicht nach Metronom
           if (e - lastHoof > hoofGap) {
             lastHoof = e;
-            hoofGap = 140 + Math.random() * 70;
+            hoofGap = 120 + Math.random() * 60;
             GK.sfx('hoof');
           }
 
           var leader = runners.slice().sort(function (a, b) { return b.pos - a.pos; })[0];
-          if (leader && leader.h.nr !== lastLeader && e < 5800) {
+          if (leader && leader.h.nr !== lastLeader && e < 3400) {
             lastLeader = leader.h.nr;
             commentary.textContent = '„' + leader.h.name + ' geht in Führung!"';
           }
 
-          if (allDone) { finish(winner, stake, runners); return; }
+          if (over) {
+            // Sobald einer die Linie berührt, bleiben alle sofort stehen
+            lanes.forEach(function (l) { l.classList.remove('galloping'); });
+            finish(winner, stake, runners);
+            return;
+          }
           raf = requestAnimationFrame(frame);
         }
         raf = requestAnimationFrame(frame);
@@ -174,7 +180,9 @@
 
       function finish(winner, stake, runners) {
         racing = false;
-        var order = runners.slice().sort(function (a, b) { return a.t - b.t; });
+        // Platzierung nach der tatsaechlichen Position beim Zieleinlauf,
+        // nicht nach der geplanten Zeit
+        var order = runners.slice().sort(function (a, b) { return b.pos - a.pos; });
         commentary.textContent = '🏁 „' + winner.name + ' gewinnt das Rennen!" — Platz 2: ' + order[1].h.name;
 
         bars.forEach(function (lane, i) {
