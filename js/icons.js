@@ -261,11 +261,25 @@
       '<ellipse cx="32" cy="9" rx="7" ry="4" fill="#ffd7f5" stroke="' + OUT + '" stroke-width="2"/>',
 
     kelp:
-      '<path d="M20 62 C14 48 20 38 16 26 C13 16 20 8 26 4" fill="none" stroke="#1f8f16" stroke-width="6" stroke-linecap="round"/>' +
-      '<path d="M42 62 C48 48 42 36 46 24 C49 14 43 10 38 6" fill="none" stroke="#2fbf20" stroke-width="6" stroke-linecap="round"/>' +
-      s('M18 24 C10 20 8 12 14 10 C19 9 21 16 18 24 Z', 'url(#gkg-green)') +
-      s('M45 30 C53 26 56 18 50 15 C45 13 42 21 45 30 Z', 'url(#gkg-green)') +
-      s('M20 44 C12 42 9 34 15 32 C20 31 23 37 20 44 Z', 'url(#gkg-green)'),
+      /* Tangbüschel: drei breite Wedel aus einem Wurzelballen. Gleich dicke
+         Striche sähen aus wie Schläuche — deshalb geschlossene Blattformen
+         mit gewellter Kante, Mittelrippe und Schwimmblasen. */
+      s('M28 60 q-4 -7 -6 -12 q-5 -6 -6 -12 q-5 -7 -4 -13 q0 -6 4 -9 ' +
+        'q6 8 6 17 q2 8 3 15 q2 7 3 14 Z', '#1f8f16') +
+      s('M36 60 q4 -7 6 -12 q5 -6 6 -12 q5 -7 4 -13 q0 -6 -4 -9 ' +
+        'q-6 8 -6 17 q-2 8 -3 15 q-2 7 -3 14 Z', '#2fbf20') +
+      s('M32 59 q-7 -5 -6 -10 q-3 -6 -1 -11 q-4 -5 -3 -11 q-2 -7 2 -12 q2 -6 7 -11 ' +
+        'q6 6 7 12 q4 6 2 12 q-1 6 -2 11 q0 6 -2 10 q1 5 -4 10 Z', 'url(#gkg-green)') +
+      s('M20 55 q12 -5 24 0 q3 7 -4 7 H24 q-7 0 -4 -7 Z', '#155c10') +
+      /* Mittelrippen bleiben innerhalb der Wedel — sonst schauen sie unten
+         als graue Stiele aus dem Blatt heraus. */
+      '<path d="M31 15 C30 27 33 40 32 51 M16 20 C17 27 19 34 22 42 M48 20 C47 27 45 34 42 42" ' +
+        'fill="none" stroke="#e6ffd0" stroke-width="2" opacity=".4" stroke-linecap="round"/>' +
+      /* Schwimmblasen: helle Beulen an der Blattkante, bewusst ohne dunkle
+         Kontur — mit Rand sehen sie aus wie Augen. */
+      '<ellipse cx="27" cy="25" rx="2.2" ry="2.9" fill="#e4ffc4" opacity=".8"/>' +
+      '<ellipse cx="29" cy="39" rx="1.9" ry="2.5" fill="#e4ffc4" opacity=".65"/>' +
+      '<ellipse cx="43" cy="31" rx="1.7" ry="2.3" fill="#e4ffc4" opacity=".6"/>',
 
     pearl:
       s('M6 44 C6 30 18 22 32 22 C46 22 58 30 58 44 C48 52 16 52 6 44 Z', '#f0d5ff') +
