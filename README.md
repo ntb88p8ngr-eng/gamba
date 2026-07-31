@@ -33,6 +33,37 @@ PORT=8080 node server.js          # anderer Port
 GAMBAKING_PIN=4711 node server.js # eigene Admin-PIN
 ```
 
+### Mit HTTPS (Let's Encrypt)
+
+Wenn ein Zertifikat da ist, spricht der Server direkt TLS — kein Reverse-Proxy nötig:
+
+```bash
+# kurz über die Domain
+SSL_DOMAIN=casino.deine-domain.de PORT=443 HTTP_REDIRECT_PORT=80 node server.js
+
+# oder die Pfade einzeln
+SSL_CERT=/etc/letsencrypt/live/deine.domain/fullchain.pem \
+SSL_KEY=/etc/letsencrypt/live/deine.domain/privkey.pem \
+PORT=443 node server.js
+```
+
+* `SSL_DOMAIN` ist die Kurzform für die beiden Standardpfade unter
+  `/etc/letsencrypt/live/<domain>/`.
+* `HTTP_REDIRECT_PORT=80` schickt alles von `http://` per `301` auf `https://`.
+* **Erneuerung ohne Neustart:** der Server überwacht die Zertifikatsdateien und lädt sie
+  nach dem `certbot renew` automatisch nach (`setSecureContext`). Im Log steht dann
+  *„Zertifikat neu geladen"*.
+* Fehlt oder klemmt das Zertifikat, sagt der Server das beim Start und läuft über HTTP
+  weiter, statt abzustürzen.
+
+Zwei Stolpersteine: Die Dateien unter `/etc/letsencrypt` gehören root — der Server muss
+sie lesen dürfen. Und die Ports 80/443 brauchen unter Linux ebenfalls Rechte; entweder
+als root starten, `setcap` verwenden, oder einen hohen Port nehmen und einen
+Reverse-Proxy davorsetzen.
+
+Sobald der Server öffentlich steht, greift außerdem eine **Brute-Force-Bremse**: nach
+8 Fehlversuchen ist die Kombination aus IP und Spielername 15 Minuten gesperrt.
+
 ---
 
 ## Die 13 Spiele
@@ -74,9 +105,10 @@ gespeichert und die Hashes verlassen den Server nie. Jede Spielaktion braucht ei
 gültige Sitzung — Anfragen auf ein fremdes Konto beantwortet der Server mit `403`,
 Anfragen ohne Sitzung mit `401`.
 
-**Wichtig:** Der Server spricht **HTTP, nicht HTTPS**. Im heimischen WLAN unter Freunden
-ist das in Ordnung, aber Passwörter gehen unverschlüsselt über die Leitung — nimm also
-kein Passwort, das du anderswo benutzt.
+**Zur Übertragung:** Mit `SSL_DOMAIN`/`SSL_CERT` läuft alles über HTTPS, dann sind auch
+die Passwörter unterwegs verschlüsselt (siehe oben). Ohne Zertifikat spricht der Server
+reines HTTP — im heimischen WLAN in Ordnung, aber dann bitte kein Passwort nehmen, das
+du anderswo benutzt.
 
 ---
 
@@ -139,7 +171,8 @@ In der Lobby aktualisiert sich alles alle 6 Sekunden vom Server.
 ## Technik
 
 ```
-server.js           Node-Server ohne Abhängigkeiten: liefert die Seite + hält die Daten
+server.js           Node-Server ohne Abhängigkeiten: liefert die Seite, hält die Daten,
+                    optional mit TLS und automatischem Zertifikats-Nachladen
 data/               wird beim ersten Start angelegt (gambaking.json)
 
 index.html          Grundgerüst

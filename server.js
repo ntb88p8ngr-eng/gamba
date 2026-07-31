@@ -8,12 +8,40 @@
 'use strict';
 
 var http = require('http');
+var https = require('https');
 var fs = require('fs');
 var path = require('path');
 var crypto = require('crypto');
 
 var PORT = Number(process.env.PORT) || 3000;
 var HOST = process.env.HOST || '0.0.0.0';
+
+/* ─────────────── TLS (Let's Encrypt) ───────────────
+   Entweder die beiden Pfade direkt setzen:
+     SSL_CERT=/etc/letsencrypt/live/deine.domain/fullchain.pem
+     SSL_KEY=/etc/letsencrypt/live/deine.domain/privkey.pem
+   oder kurz ueber die Domain:
+     SSL_DOMAIN=deine.domain
+   Ohne diese Angaben laeuft alles wie bisher ueber HTTP. */
+var SSL_DOMAIN = process.env.SSL_DOMAIN || '';
+var SSL_CERT = process.env.SSL_CERT ||
+  (SSL_DOMAIN ? '/etc/letsencrypt/live/' + SSL_DOMAIN + '/fullchain.pem' : '');
+var SSL_KEY = process.env.SSL_KEY ||
+  (SSL_DOMAIN ? '/etc/letsencrypt/live/' + SSL_DOMAIN + '/privkey.pem' : '');
+/* Port fuer die Weiterleitung von http auf https, z.B. HTTP_REDIRECT_PORT=80 */
+var REDIRECT_PORT = Number(process.env.HTTP_REDIRECT_PORT) || 0;
+
+function readTLS() {
+  if (!SSL_CERT || !SSL_KEY) return null;
+  try {
+    return { cert: fs.readFileSync(SSL_CERT), key: fs.readFileSync(SSL_KEY) };
+  } catch (e) {
+    console.error('[gambaking] Zertifikat nicht lesbar (' + e.code + '): ' + e.path);
+    console.error('            Laeuft der Server als der richtige Benutzer? ' +
+                  'Die Dateien unter /etc/letsencrypt gehoeren normalerweise root.');
+    return null;
+  }
+}
 var ROOT = __dirname;
 var DATA_DIR = path.join(ROOT, 'data');
 var DATA_FILE = path.join(DATA_DIR, 'gambaking.json');
@@ -80,6 +108,34 @@ function checkPw(pw, stored) {
     return a.length === b.length && crypto.timingSafeEqual(a, b);
   } catch (e) { return false; }
 }
+
+/* ─────────────── Brute-Force-Bremse ───────────────
+   Sobald der Server oeffentlich erreichbar ist, darf niemand Passwoerter
+   durchprobieren: nach 8 Fehlversuchen ist die Kombination aus IP und Name
+   fuer 15 Minuten gesperrt. Ein erfolgreicher Login loescht den Zaehler. */
+
+var LOGIN_MAX = 8;
+var LOGIN_WINDOW = 15 * 60 * 1000;
+var loginTries = new Map();
+
+function loginKey(req, name) {
+  var ip = (req.socket && req.socket.remoteAddress) || '?';
+  return ip + '|' + String(name || '').toLowerCase();
+}
+function loginBlocked(key) {
+  var e = loginTries.get(key);
+  if (!e) return 0;
+  if (Date.now() - e.first > LOGIN_WINDOW) { loginTries.delete(key); return 0; }
+  if (e.n < LOGIN_MAX) return 0;
+  return Math.ceil((e.first + LOGIN_WINDOW - Date.now()) / 60000);
+}
+function loginFailed(key) {
+  var e = loginTries.get(key);
+  if (!e || Date.now() - e.first > LOGIN_WINDOW) e = { n: 0, first: Date.now() };
+  e.n++;
+  loginTries.set(key, e);
+}
+function loginOk(key) { loginTries.delete(key); }
 
 /* ─────────────── Sitzungen ─────────────── */
 
@@ -434,7 +490,7 @@ function serveStatic(req, res, urlPath) {
   });
 }
 
-var server = http.createServer(function (req, res) {
+function handleRequest(req, res) {
   var url = req.url || '/';
 
   if (url === '/api/state' && req.method === 'GET') {
@@ -462,11 +518,19 @@ var server = http.createServer(function (req, res) {
   /* ── Anmelden ── */
   if (url === '/api/auth/login' && req.method === 'POST') {
     return readBody(req).then(function (body) {
-      var p = findByName(clean(body.name, 18).trim());
+      var name = clean(body.name, 18).trim();
+      var key = loginKey(req, name);
+      var wait = loginBlocked(key);
+      if (wait) {
+        return sendJSON(res, 429, { error: 'Zu viele Fehlversuche — in ' + wait + ' Min. nochmal probieren' });
+      }
+      var p = findByName(name);
       // bewusst dieselbe Meldung fuer beide Faelle
       if (!p || !checkPw(String(body.password || ''), p.pw)) {
+        loginFailed(key);
         return sendJSON(res, 401, { error: 'Name oder Passwort stimmt nicht' });
       }
+      loginOk(key);
       sendJSON(res, 200, { session: newSession(p.id), playerId: p.id, state: publicState() });
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
@@ -527,10 +591,79 @@ var server = http.createServer(function (req, res) {
 
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
   serveStatic(req, res, url);
-});
+}
+
+/* ─────────────── Serverstart ─────────────── */
+
+var tls = readTLS();
+var server;
+
+if (tls) {
+  server = https.createServer(tls, handleRequest);
+
+  /* Let's Encrypt erneuert alle 60 Tage. Ohne Nachladen wuerde der Server
+     mit dem alten Zertifikat weiterlaufen, bis jemand neu startet. */
+  var reloadTimer = null;
+  function scheduleReload() {
+    clearTimeout(reloadTimer);          // certbot schreibt beide Dateien kurz nacheinander
+    reloadTimer = setTimeout(function () {
+      var fresh = readTLS();
+      if (!fresh) return;
+      try {
+        server.setSecureContext(fresh);
+        console.log('[gambaking] Zertifikat neu geladen (' + new Date().toLocaleString('de-DE') + ')');
+      } catch (e) {
+        console.error('[gambaking] Zertifikat konnte nicht uebernommen werden:', e.message);
+      }
+    }, 2000);
+  }
+  [SSL_CERT, SSL_KEY].forEach(function (file) {
+    try {
+      fs.watch(file, scheduleReload);
+    } catch (e) {
+      console.warn('[gambaking] ' + file + ' wird nicht ueberwacht (' + e.code + ') — ' +
+                   'nach der Erneuerung den Server neu starten.');
+    }
+  });
+
+  /* Optional: Port 80 leitet auf https um */
+  if (REDIRECT_PORT) {
+    http.createServer(function (req, res) {
+      var host = String(req.headers.host || '').replace(/:\d+$/, '');
+      var suffix = (PORT === 443 ? '' : ':' + PORT);
+      res.writeHead(301, { Location: 'https://' + host + suffix + (req.url || '/') });
+      res.end();
+    }).listen(REDIRECT_PORT, HOST, function () {
+      console.log('   Weiterleitung: http://…:' + REDIRECT_PORT + ' → https');
+    }).on('error', function (e) {
+      console.error('[gambaking] Weiterleitung auf Port ' + REDIRECT_PORT +
+                    ' nicht moeglich (' + e.code + ').');
+    });
+  }
+} else {
+  server = http.createServer(handleRequest);
+}
 
 server.listen(PORT, HOST, function () {
-  console.log('👑 GambaKing läuft auf http://localhost:' + PORT);
+  var scheme = tls ? 'https' : 'http';
+  console.log('👑 GambaKing läuft auf ' + scheme + '://localhost:' + PORT);
+  if (tls) {
+    console.log('   TLS aktiv: ' + SSL_CERT);
+  } else {
+    console.log('   Ohne TLS — für HTTPS: SSL_DOMAIN=deine.domain node server.js');
+  }
   console.log('   Daten: ' + DATA_FILE);
   console.log('   Admin-PIN: ' + db.settings.adminPin + '  (überschreibbar mit GAMBAKING_PIN=…)');
+});
+
+server.on('error', function (e) {
+  if (e.code === 'EACCES') {
+    console.error('[gambaking] Port ' + PORT + ' braucht Rechte. Entweder als root starten, ' +
+                  'oder besser: einen hohen Port nehmen und davor einen Reverse-Proxy setzen.');
+  } else if (e.code === 'EADDRINUSE') {
+    console.error('[gambaking] Port ' + PORT + ' ist schon belegt.');
+  } else {
+    console.error('[gambaking] Server-Fehler:', e.message);
+  }
+  process.exit(1);
 });
