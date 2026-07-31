@@ -121,8 +121,11 @@
 .die.rolling{animation:diroll .5s ease-in-out infinite}
 @keyframes diroll{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(-22deg) scale(1.1)}75%{transform:rotate(22deg) scale(.94)}}
 .pip{border-radius:50%;background:#12002b;box-shadow:inset 0 -2px 3px rgba(255,255,255,.35)}
-.pip.off{background:transparent;box-shadow:none}
 .die.gold .pip{background:#6b3b00}
+/* muss nach .die.gold .pip stehen und mindestens so spezifisch sein,
+   sonst leuchten beim goldenen Würfel alle neun Punkte */
+.pip.off,
+.die.gold .pip.off{background:transparent;box-shadow:none}
 .vs-badge{font-family:'Bungee',sans-serif;font-size:1.5rem;color:var(--pink);text-shadow:var(--glow-pink)}
 .total-badge{font-family:'Bungee',sans-serif;font-size:1.6rem;background:rgba(0,0,0,.42);border:3px solid var(--gold);border-radius:16px;padding:8px 18px;color:var(--gold);min-width:80px;text-align:center}
 .mode-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px}
