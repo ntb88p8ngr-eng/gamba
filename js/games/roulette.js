@@ -194,18 +194,15 @@
         rot = base + 360 * 6 + (360 - center);
         wheel.style.transform = 'rotate(' + rot + 'deg)';
 
-        var ticks = 0;
-        var tickTimer = setInterval(function () {
-          ticks++;
-          GK.sfx('tick');
-          if (ticks > 26) clearInterval(tickTimer);
-        }, 190);
+        // Klicken folgt der Raddrehung: dicht am Anfang, ausklingend zum Schluss
+        // (Dauer wie die CSS-Transition von .roul-wheel)
+        var stopTicks = GK.tickRun(40, 5400);
 
         setTimeout(function () {
-          clearInterval(tickTimer);
+          stopTicks();
           if (stopped) return;
           finish(num, stake);
-        }, 5500);
+        }, 5560);
       }
 
       function finish(num, stake) {

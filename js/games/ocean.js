@@ -54,8 +54,12 @@
       'Der Einsatz verteilt sich gleichmäßig auf die 5 Linien.'
     ],
     mount: function (root) {
-      var stopped = false, spinning = false, autoLeft = 0;
-      var bet = GK.betPanel({ start: 25, min: 5 });
+      var stopped = false, spinning = false, autoLeft = 0, endless = false;
+      /* Der gewünschte Einsatz wird getrennt gemerkt: bet.value() kappt auf das
+         Guthaben, sonst würde der Automat im Endlos-Modus einfach mit immer
+         kleineren Beträgen weitertauchen statt zu stoppen. */
+      var wantStake = 25;
+      var bet = GK.betPanel({ start: 25, min: 5, onChange: function (v) { wantStake = v; } });
 
       var reels = [], strips = [];
       for (var i = 0; i < REELS; i++) {
@@ -98,7 +102,9 @@
 
       var resultBox = GK.resultBox();
       var spinBtn = el('button', { class: 'btn btn-gold btn-full', text: '🌊 ABTAUCHEN' });
-      var autoBtn = el('button', { class: 'btn btn-ghost btn-full', text: '🔁 AUTO 10' });
+      var autoBtn = el('button', { class: 'btn btn-ghost', text: '🔁 AUTO 10' });
+      var loopBtn = el('button', { class: 'btn btn-ghost', text: '♾️ ENDLOS' });
+      var autoRow = el('div', { class: 'auto-row' }, [autoBtn, loopBtn]);
 
       var stage = el('div', { class: 'stage split' }, [
         el('div', {}, [machine, el('div', { style: 'height:10px' }), lineLegend, el('div', { style: 'height:10px' }), payTable]),
@@ -109,9 +115,9 @@
           el('div', { style: 'height:12px' }),
           spinBtn,
           el('div', { style: 'height:8px' }),
-          autoBtn,
+          autoRow,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 Der <b>Dreizack</b> ersetzt alles außer der Truhe. Fünf Dreizacke auf einer Linie zahlen <b>1900×</b> den Linieneinsatz.' })
+          el('p', { class: 'hint', html: '💡 Der <b>Dreizack</b> ersetzt alles außer der Truhe. Fünf Dreizacke auf einer Linie zahlen <b>1900×</b> den Linieneinsatz. <b>Endlos</b> taucht weiter, bis du stoppst oder die Chips alle sind.' })
         ])
       ]);
       root.appendChild(stage);
@@ -177,7 +183,7 @@
         if (spinning || stopped) return;
         var stake = bet.value();
         if (stake < 5) { GK.toast('Mindestens 5 Chips (5 Linien)', 'bad', '🎰'); return; }
-        if (!GK.wager(stake, 'Tiefsee-Schatz')) { autoLeft = 0; syncAuto(); return; }
+        if (!GK.wager(stake, 'Tiefsee-Schatz')) { stopAuto(); return; }
 
         spinning = true;
         spinBtn.disabled = true;
@@ -251,28 +257,55 @@
         spinBtn.disabled = false;
         bet.disable(false);
 
-        if (autoLeft > 0) {
+        if (endless) {
+          // taucht weiter, bis gestoppt wird oder die Chips nicht mehr reichen
+          if (canAfford()) setTimeout(spin, 800);
+          else {
+            stopAuto();
+            GK.toast('Endlos-Modus gestoppt — Chips reichen nicht mehr', 'bad', '🪙');
+          }
+        } else if (autoLeft > 0) {
           autoLeft--;
           syncAuto();
-          var p = GK.player();
-          if (autoLeft > 0 && p && p.balance >= 5) setTimeout(spin, 800);
+          if (autoLeft > 0 && canAfford()) setTimeout(spin, 800);
         }
+      }
+
+      function canAfford() {
+        var p = GK.player();
+        return !!p && p.balance >= wantStake;
+      }
+
+      function stopAuto() {
+        autoLeft = 0;
+        endless = false;
+        syncAuto();
       }
 
       function syncAuto() {
         autoBtn.textContent = autoLeft > 0 ? '⏹ STOP (' + autoLeft + ')' : '🔁 AUTO 10';
         autoBtn.classList.toggle('btn-danger', autoLeft > 0);
+        loopBtn.textContent = endless ? '⏹ STOP (∞)' : '♾️ ENDLOS';
+        loopBtn.classList.toggle('btn-danger', endless);
       }
 
       spinBtn.addEventListener('click', function () { GK.sfx('click'); spin(); });
       autoBtn.addEventListener('click', function () {
         GK.sfx('click');
-        if (autoLeft > 0) { autoLeft = 0; syncAuto(); return; }
+        if (autoLeft > 0 || endless) { stopAuto(); return; }
+        wantStake = bet.value();
         autoLeft = 10; syncAuto();
         if (!spinning) spin();
       });
+      loopBtn.addEventListener('click', function () {
+        GK.sfx('click');
+        if (endless || autoLeft > 0) { stopAuto(); return; }
+        wantStake = bet.value();
+        endless = true; syncAuto();
+        if (!spinning) spin();
+      });
 
-      return function () { stopped = true; autoLeft = 0; };
+      return function () { stopped = true; autoLeft = 0; endless = false; };
     }
   });
 })(window.GK);

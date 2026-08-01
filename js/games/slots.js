@@ -37,7 +37,11 @@
     ],
     mount: function (root) {
       var stopped = false;
-      var bet = GK.betPanel({ start: 20 });
+      /* Der gewünschte Einsatz wird getrennt gemerkt: bet.value() kappt auf das
+         Guthaben, sonst würde der Automat im Endlos-Modus einfach mit immer
+         kleineren Beträgen weiterdrehen statt zu stoppen. */
+      var wantStake = 20;
+      var bet = GK.betPanel({ start: 20, onChange: function (v) { wantStake = v; } });
 
       var reels = [], strips = [];
       for (var i = 0; i < 3; i++) {
@@ -75,8 +79,10 @@
 
       var resultBox = GK.resultBox();
       var spinBtn = el('button', { class: 'btn btn-gold btn-full', text: '🎰 SPIN' });
-      var autoBtn = el('button', { class: 'btn btn-ghost btn-full', text: '🔁 AUTO 10' });
-      var autoLeft = 0;
+      var autoBtn = el('button', { class: 'btn btn-ghost', text: '🔁 AUTO 10' });
+      var loopBtn = el('button', { class: 'btn btn-ghost', text: '♾️ ENDLOS' });
+      var autoRow = el('div', { class: 'auto-row' }, [autoBtn, loopBtn]);
+      var autoLeft = 0, endless = false;
 
       var stage = el('div', { class: 'stage split' }, [
         el('div', {}, [machine, paytable]),
@@ -87,9 +93,9 @@
           el('div', { style: 'height:12px' }),
           spinBtn,
           el('div', { style: 'height:8px' }),
-          autoBtn,
+          autoRow,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 Tipp: Die Krone zahlt <b>50×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz.' })
+          el('p', { class: 'hint', html: '💡 Tipp: Die Krone zahlt <b>50×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz. <b>Endlos</b> dreht weiter, bis du stoppst oder die Chips alle sind.' })
         ])
       ]);
       root.appendChild(stage);
@@ -99,7 +105,7 @@
       function spin() {
         if (spinning || stopped) return;
         var stake = bet.value();
-        if (!GK.wager(stake, 'Slots')) { autoLeft = 0; updateAuto(); return; }
+        if (!GK.wager(stake, 'Slots')) { stopAuto(); return; }
 
         spinning = true;
         spinBtn.disabled = true;
@@ -177,28 +183,55 @@
         spinBtn.disabled = false;
         bet.disable(false);
 
-        if (autoLeft > 0) {
+        if (endless) {
+          // läuft weiter, bis gestoppt wird oder die Chips nicht mehr reichen
+          if (canAfford()) setTimeout(spin, 700);
+          else {
+            stopAuto();
+            GK.toast('Endlos-Modus gestoppt — Chips reichen nicht mehr', 'bad', '🪙');
+          }
+        } else if (autoLeft > 0) {
           autoLeft--;
           updateAuto();
-          var p = GK.player();
-          if (autoLeft > 0 && p && p.balance >= 1) setTimeout(spin, 700);
+          if (autoLeft > 0 && canAfford()) setTimeout(spin, 700);
         }
+      }
+
+      function canAfford() {
+        var p = GK.player();
+        return !!p && p.balance >= wantStake;
+      }
+
+      function stopAuto() {
+        autoLeft = 0;
+        endless = false;
+        updateAuto();
       }
 
       function updateAuto() {
         autoBtn.textContent = autoLeft > 0 ? '⏹ STOP (' + autoLeft + ')' : '🔁 AUTO 10';
         autoBtn.classList.toggle('btn-danger', autoLeft > 0);
+        loopBtn.textContent = endless ? '⏹ STOP (∞)' : '♾️ ENDLOS';
+        loopBtn.classList.toggle('btn-danger', endless);
       }
 
       spinBtn.addEventListener('click', function () { GK.sfx('click'); spin(); });
       autoBtn.addEventListener('click', function () {
         GK.sfx('click');
-        if (autoLeft > 0) { autoLeft = 0; updateAuto(); return; }
+        if (autoLeft > 0 || endless) { stopAuto(); return; }
+        wantStake = bet.value();
         autoLeft = 10; updateAuto();
         if (!spinning) spin();
       });
+      loopBtn.addEventListener('click', function () {
+        GK.sfx('click');
+        if (endless || autoLeft > 0) { stopAuto(); return; }
+        wantStake = bet.value();
+        endless = true; updateAuto();
+        if (!spinning) spin();
+      });
 
-      return function () { stopped = true; autoLeft = 0; };
+      return function () { stopped = true; autoLeft = 0; endless = false; };
     }
   });
 })(window.GK);

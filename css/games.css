@@ -308,6 +308,10 @@
 .ll-item{font-family:'Bungee',sans-serif;font-size:.62rem;padding:4px 10px;border-radius:999px;border:2px solid;background:rgba(0,0,0,.35)}
 .oc-paytable{grid-template-columns:repeat(auto-fit,minmax(72px,1fr))}
 
+/* Auto- und Endlos-Knopf der beiden Slots nebeneinander */
+.auto-row{display:flex;gap:9px}
+.auto-row .btn{flex:1;min-width:0}
+
 /* ─────────── 14. KÖNIGS-POKER ─────────── */
 .poker-table{
   background:radial-gradient(circle at 50% 38%,#0f7a44,#04351d 72%);

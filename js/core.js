@@ -539,6 +539,34 @@
     if (SFX[name]) { try { SFX[name](); } catch (e) {} }
   };
 
+  /**
+   * Klickfolge einer ausrollenden Scheibe: am Anfang schnell, zum Schluss
+   * immer träger — so wie sich das Rad auch dreht.
+   *
+   * Die Animationen laufen mit einer ease-out-Kurve, die Scheibe legt also
+   * gleiche Winkel in immer längeren Abständen zurück. Ein Klick pro Segment
+   * heißt: gleichmäßig über den Weg verteilt, nicht über die Zeit. Umgekehrt
+   * zu p(x) = 1-(1-x)³ liegt der k-te Klick also bei 1-(1-k/n)^⅓.
+   * Klicks, die dichter als minGap zusammenfallen, fallen weg — sonst wird
+   * aus dem Anfang ein Surren.
+   *
+   * Gibt eine Funktion zum Abbrechen zurück.
+   */
+  GK.tickRun = function (count, duration, opts) {
+    opts = opts || {};
+    var sound = opts.sound || 'tick';
+    var minGap = opts.minGap === undefined ? 95 : opts.minGap;
+    var timers = [];
+    var last = -Infinity;
+    for (var i = 1; i <= count; i++) {
+      var t = duration * (1 - Math.pow(1 - i / count, 1 / 3));
+      if (t - last < minGap) continue;
+      last = t;
+      timers.push(setTimeout(function () { GK.sfx(sound); }, t));
+    }
+    return function () { timers.forEach(clearTimeout); };
+  };
+
   GK.toggleSound = function () {
     state.settings.sound = !state.settings.sound;
     GK.save();

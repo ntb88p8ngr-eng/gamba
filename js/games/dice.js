@@ -106,20 +106,26 @@
       root.appendChild(stage);
       syncMode();
 
+      /* Die Würfel rollen aus: die Abstände zwischen den Wechseln werden zum
+         Schluss immer länger, statt bis zuletzt gleich schnell zu flackern. */
       function animate(dice, finals, done) {
         dice.forEach(function (d) { d.classList.add('rolling'); });
-        var n = 0;
-        var iv = setInterval(function () {
+        var STEPS = 12, n = 0;
+
+        function step() {
+          if (stopped) return;
           n++;
           dice.forEach(function (d) { setDie(d, GK.rndInt(1, 6)); });
           if (n % 2 === 0) GK.sfx('tick');
-          if (n >= 12) {
-            clearInterval(iv);
+          if (n >= STEPS) {
             dice.forEach(function (d, i) { d.classList.remove('rolling'); setDie(d, finals[i]); });
             GK.sfx('reel');
             done();
+            return;
           }
-        }, 85);
+          setTimeout(step, 55 + 240 * Math.pow(n / STEPS, 3));
+        }
+        setTimeout(step, 55);
       }
 
       function roll() {

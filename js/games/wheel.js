@@ -129,17 +129,15 @@
         rot = base + 360 * 7 + (360 - center);
         wheel.style.transform = 'rotate(' + rot + 'deg)';
 
-        var ticks = 0;
-        var iv = setInterval(function () {
-          ticks++; GK.sfx('tick');
-          if (ticks > 28) clearInterval(iv);
-        }, 180);
+        // Klicken wird zum Ende hin träger, passend zur ease-out-Drehung
+        // (Dauer wie die CSS-Transition von .wheel)
+        var stopTicks = GK.tickRun(38, 5600);
 
         setTimeout(function () {
-          clearInterval(iv);
+          stopTicks();
           if (stopped) return;
           finish(SEGS[idx], stake);
-        }, 5700);
+        }, 5760);
       }
 
       function finish(mult, stake) {
