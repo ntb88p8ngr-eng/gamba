@@ -3,14 +3,16 @@
   'use strict';
   var el = GK.el;
 
+  /* m3 = drei Gleiche, m2 = zwei Gleiche. Die Paare zahlen bewusst weniger
+     als den Einsatz zurück — sie sind Trostpflaster, kein Gewinn. */
   var SYMS = [
-    { id: 'cherry', name: 'Kirsche', w: 26, m3: 4,  m2: 1.1 },
-    { id: 'clover', name: 'Klee',    w: 22, m3: 6,  m2: 1.3 },
-    { id: 'bell',   name: 'Glocke',  w: 18, m3: 9,  m2: 1.5 },
-    { id: 'star',   name: 'Stern',   w: 14, m3: 13, m2: 1.7 },
-    { id: 'dragon', name: 'Drache',  w: 10, m3: 18, m2: 2.1 },
-    { id: 'gem',    name: 'Juwel',   w: 7,  m3: 26, m2: 2.6 },
-    { id: 'crown',  name: 'Krone',   w: 3,  m3: 50, m2: 3.5 }
+    { id: 'cherry', name: 'Kirsche', w: 26, m3: 8,   m2: 0.5 },
+    { id: 'clover', name: 'Klee',    w: 22, m3: 11,  m2: 0.7 },
+    { id: 'bell',   name: 'Glocke',  w: 18, m3: 16,  m2: 0.8 },
+    { id: 'star',   name: 'Stern',   w: 14, m3: 24,  m2: 1.0 },
+    { id: 'dragon', name: 'Drache',  w: 10, m3: 35,  m2: 1.3 },
+    { id: 'gem',    name: 'Juwel',   w: 7,  m3: 50,  m2: 1.8 },
+    { id: 'crown',  name: 'Krone',   w: 3,  m3: 100, m2: 3.0 }
   ];
   var TOTAL_W = SYMS.reduce(function (s, x) { return s + x.w; }, 0);
   var ROW = 120;
@@ -21,18 +23,45 @@
     return SYMS[0];
   }
 
+  /* Geschenkte Treffer — im Normalfall 0. Frühere Werte von 6 % bzw. 10 %
+     haben die Auszahlungsquote auf über 160 % gehoben, der Automat hat also
+     draufgezahlt. GK.luckRoll(0) ist bei neutralem Luck immer falsch, steigt
+     aber mit dem Admin-Regler an: der Cheat bleibt, das Geschenk ist weg. */
+  var FORCE_THREE = 0;
+  var FORCE_PAIR = 0;
+
+  /** Zieht das Walzenbild. */
+  function drawOutcome() {
+    var out = [randSym(), randSym(), randSym()];
+    if (GK.luckRoll(FORCE_THREE)) { var s = randSym(); return [s, s, s]; }
+    if (GK.luckRoll(FORCE_PAIR)) out[1] = out[0];
+    return out;
+  }
+
+  /** Was ein Walzenbild zahlt: {mult, sym, three} — mult 0 heißt daneben. */
+  function outcomeMult(out) {
+    if (out[0].id === out[1].id && out[1].id === out[2].id) {
+      return { mult: out[0].m3, sym: out[0], three: true };
+    }
+    var pair = null;
+    if (out[0].id === out[1].id) pair = out[0];
+    else if (out[1].id === out[2].id) pair = out[1];
+    else if (out[0].id === out[2].id) pair = out[0];
+    return pair ? { mult: pair.m2, sym: pair, three: false } : { mult: 0, sym: null, three: false };
+  }
+
   GK.registerGame({
     id: 'slots',
     name: 'Fantasy Reels',
     emoji: '🎰',
     icon: 'slotmachine',
     blurb: 'Drei Walzen voller Drachen, Kronen und Kirschen. Drei Gleiche = Regen aus Chips.',
-    badge: 'BIS 50×',
+    badge: 'BIS 100×',
     color: '#ff2fd0',
     rules: [
       '<b>3 gleiche Symbole</b> auf der Linie zahlen den großen Multiplikator.',
-      '<b>2 gleiche Symbole</b> geben einen kleinen Trostgewinn (1,1× bis 3,5×) — meist weniger als der Einsatz.',
-      'Die <b>Krone</b> ist der Jackpot: 50× deinen Einsatz.',
+      '<b>2 gleiche Symbole</b> geben nur einen Teil zurück (0,5× bis 3×) — meist weniger als der Einsatz.',
+      'Die <b>Krone</b> ist der Jackpot: 100× deinen Einsatz.',
       'Auszahlung = Einsatz × Multiplikator.'
     ],
     mount: function (root) {
@@ -95,7 +124,7 @@
           el('div', { style: 'height:8px' }),
           autoRow,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 Tipp: Die Krone zahlt <b>50×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz. <b>Endlos</b> dreht weiter, bis du stoppst oder die Chips alle sind.' })
+          el('p', { class: 'hint', html: '💡 Tipp: Die Krone zahlt <b>100×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz. <b>Endlos</b> dreht weiter, bis du stoppst oder die Chips alle sind.' })
         ])
       ]);
       root.appendChild(stage);
@@ -114,9 +143,7 @@
         GK.sfx('spin');
 
         // Ergebnis vorab würfeln (mit Luck-Bonus vom Admin)
-        var out = [randSym(), randSym(), randSym()];
-        if (GK.luckRoll(0.06)) { var s = randSym(); out = [s, s, s]; }
-        else if (GK.luckRoll(0.10)) { out[1] = out[0]; }
+        var out = drawOutcome();
 
         reels.forEach(function (r) { r.classList.remove('hit'); });
 
@@ -149,17 +176,13 @@
       }
 
       function finish(out, stake) {
-        var mult = 0, label = '';
-        if (out[0].id === out[1].id && out[1].id === out[2].id) {
-          mult = out[0].m3;
-          label = '3× ' + out[0].name + '  —  ' + mult + '×!';
+        var res = outcomeMult(out);
+        var mult = res.mult, label = '';
+        if (res.three) {
+          label = '3× ' + res.sym.name + '  —  ' + mult + '×!';
           reels.forEach(function (r) { r.classList.add('hit'); });
-        } else {
-          var pairSym = null;
-          if (out[0].id === out[1].id) pairSym = out[0];
-          else if (out[1].id === out[2].id) pairSym = out[1];
-          else if (out[0].id === out[2].id) pairSym = out[0];
-          if (pairSym) { mult = pairSym.m2; label = 'Zwei ' + pairSym.name + ' — ' + mult + '×'; }
+        } else if (res.sym) {
+          label = 'Zwei ' + res.sym.name + ' — ' + mult + '×';
         }
 
         var win = Math.floor(stake * mult);
@@ -169,7 +192,7 @@
         if (win > stake) {
           GK.setResult(resultBox, label + '  →  +' + GK.fmt(win - stake), 'win');
           GK.celebrate(win - stake, mult);
-          if (mult >= 50) GK.emojiRain(['👑', '💎', '🤑'], 40);
+          if (mult >= 100) GK.emojiRain(['👑', '💎', '🤑'], 40);
         } else if (win > 0) {
           GK.setResult(resultBox, label + '  →  ' + GK.fmt(win) + ' zurück', 'push');
           GK.sfx('coin');

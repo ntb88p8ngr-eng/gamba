@@ -209,13 +209,26 @@
      bringt Chips und schaltet irgendwann neue Spiele frei. Die Formel steht
      identisch in server.js, damit beide Seiten dasselbe rechnen.
   */
-  GK.MAX_LEVEL = 30;
+  /* Nach oben offen — die 999 ist nur eine Notbremse, damit kein Zähler
+     endlos läuft, wenn jemand absurd viel XP geschenkt bekommt. */
+  GK.MAX_LEVEL = 999;
+
+  /* Bis Level 30 wird jede Stufe teurer als die vorige. Danach bliebe es
+     quadratisch und höhere Level wären praktisch unerreichbar — deshalb
+     kostet ab dort jede weitere Stufe so viel wie der Sprung auf 30. Bei
+     Level 30 gehen beide Formeln nahtlos ineinander über. */
+  var FLAT_FROM = 30;
+  var FLAT_BASE = 280 * (FLAT_FROM - 1) + 60 * (FLAT_FROM - 1) * (FLAT_FROM - 2);
+  var FLAT_STEP = 280 + 120 * (FLAT_FROM - 1);
 
   /** Gesamt-XP, die man braucht, um dieses Level zu erreichen. */
   GK.xpForLevel = function (level) {
     if (level <= 1) return 0;
-    var n = level - 1;
-    return 280 * n + 60 * n * (n - 1);
+    if (level <= FLAT_FROM) {
+      var n = level - 1;
+      return 280 * n + 60 * n * (n - 1);
+    }
+    return FLAT_BASE + (level - FLAT_FROM) * FLAT_STEP;
   };
 
   GK.levelOf = function (xp) {
@@ -225,6 +238,12 @@
   };
 
   GK.TITLES = [
+    { min: 150, title: 'Mythos', icon: '☄️' },
+    { min: 100, title: 'Unsterblicher', icon: '💫' },
+    { min: 75, title: 'Glücksgott', icon: '🔱' },
+    { min: 50, title: 'Neon-Fürst', icon: '🌆' },
+    { min: 35, title: 'Chip-Baron', icon: '🏰' },
+    { min: 25, title: 'Großmeister', icon: '⚜️' },
     { min: 20, title: 'GambaKing', icon: '👑' },
     { min: 15, title: 'Legende', icon: '🌟' },
     { min: 10, title: 'Casino-Hai', icon: '🦈' },
@@ -257,8 +276,9 @@
     };
   };
 
-  /** Belohnung fürs Aufsteigen. */
-  GK.levelReward = function (level) { return 100 * level; };
+  /** Belohnung fürs Aufsteigen — ab Level 30 gedeckelt, sonst wäre der
+      nach oben offene Fortschritt eine Chip-Quelle ohne Ende. */
+  GK.levelReward = function (level) { return 100 * Math.min(level, FLAT_FROM); };
 
   /** XP gutschreiben; steigt der Spieler auf, gibt es Chips und Konfetti. */
   GK.addXP = function (amount) {

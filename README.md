@@ -95,7 +95,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
-| 1 | **Fantasy Reels** | 3 Walzen, gestaffelter Stopp, Auto-Spin und Endlos-Modus | 50× | 87 % |
+| 1 | **Fantasy Reels** | 3 Walzen, gestaffelter Stopp, Auto-Spin und Endlos-Modus | 100× | 81 % |
 | 2 | **Neon Roulette** | Europäisches Rad (0–36), Farben, Dutzende, Einzelzahlen | 32× | 87–92 % |
 | 3 | **Royal Blackjack** | 6 Decks, Hit/Stand/Doppeln, Dealer zieht bis 17, BJ zahlt 6:5 | 6:5 | ~97 % |
 | 4 | **Drachenmünze** | Krone oder Drache, 3D-Flip, feste Bonus-Chips für Siegesserien | 1,9× + Bonus | 95 % |
@@ -107,7 +107,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 10 | **Runen-Rubbellos** | Echtes Freirubbeln mit Maus/Finger, 3 Gleiche gewinnen | 20× | 85 % |
 | 11 | **Königliches Pferderennen** 🔒 Lv2 | 5 Pferde mit eigenen Quoten, Live-Rennen mit Führungswechseln | 11× | 88 % |
 | 12 | **Eisbär auf dem Eis** 🔒 Lv4 | Scholle für Scholle nach oben, 3 Schwierigkeiten, jederzeit aussteigen | 233× | 91 % |
-| 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack, Scatter-Truhe, Endlos-Modus | 1900× | 85 % |
+| 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack, Scatter-Truhe, Endlos-Modus | 1900× | 78 % |
 | 14 | **Königs-Poker** 🔒 Lv10 | Texas Hold'em gegen drei KI-Gegner, Blinds, Bluffs und Showdown | ganzer Pot | 8 % Rake |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
@@ -147,15 +147,21 @@ du anderswo benutzt.
 ## ⭐ Level & XP
 
 XP gibt es fürs Spielen: **Einsatz/8** pro Runde (max. 60) plus Bonus-XP für Gewinne.
-Jedes Level bringt **100 × Level an Chips** — und vier Spiele schalten sich erst mit der
-Zeit frei (Level 2, 4, 7 und 10).
+Vier Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7 und 10).
 
-Die Kurve ist bewusst lang: Level 2 braucht 280 XP, Level 4 schon 1.200, Level 7 ganze
-3.480 und Level 10 satte 6.840. Bei einem Einsatz von 25 Chips sind das grob
-**40 / 170 / 500 / 1.000 Runden** — das Pferderennen ist schnell offen, der
-Tiefsee-Schatz ist ein Projekt für mehrere Abende und der Pokertisch das Fernziel.
+**Nach oben ist offen** — es gibt kein Maximallevel mehr. Bis Level 30 wird jede Stufe
+teurer als die vorige (Level 2 braucht 280 XP, Level 10 schon 6.840, Level 30 ganze
+56.840). Danach bliebe die Kurve quadratisch und höhere Level wären rechnerisch
+unerreichbar, deshalb kostet ab dort **jede weitere Stufe gleich viel: 3.760 XP** —
+bei 25 Chips Einsatz rund 540 Runden pro Level. Der Übergang ist nahtlos, die Stufen
+laufen 3.520 → 3.640 → 3.760 → 3.760 … weiter.
 
-Titel steigen mit: Chip-Küken → Zocker → Hochroller → Casino-Hai → Legende → GambaKing.
+Aufsteigen bringt **100 × Level an Chips**, ab Level 30 gedeckelt auf 3.000 — sonst wäre
+der offene Fortschritt eine Chip-Quelle ohne Ende.
+
+Titel steigen mit: Chip-Küken → Zocker → Hochroller → Casino-Hai → Legende → GambaKing
+→ Großmeister (25) → Chip-Baron (35) → Neon-Fürst (50) → Glücksgott (75) →
+Unsterblicher (100) → Mythos (150).
 
 Level-Chips zählen wie Admin-Geschenke **nicht** als Profit im Leaderboard.
 

@@ -7,21 +7,25 @@
 
   /* pay: [3 Gleiche, 4 Gleiche, 5 Gleiche] — bezogen auf den Linieneinsatz */
   var SYMS = [
-    { id: 'alge',    ic: 'kelp',     name: 'Alge',        w: 30, pay: [10, 26, 52] },
-    { id: 'muschel', ic: 'shell',    name: 'Muschel',     w: 26, pay: [12, 32, 78] },
-    { id: 'fisch',   ic: 'fish',     name: 'Fisch',       w: 22, pay: [15, 45, 115] },
-    { id: 'bunt',    ic: 'reeffish', name: 'Riff-Fisch',  w: 17, pay: [20, 58, 168] },
-    { id: 'krabbe',  ic: 'crab',     name: 'Krabbe',      w: 13, pay: [25, 78, 260] },
-    { id: 'krake',   ic: 'octopus',  name: 'Krake',       w: 9,  pay: [38, 115, 385] },
-    { id: 'hai',     ic: 'shark',    name: 'Hai',         w: 6,  pay: [58, 180, 645] },
-    { id: 'perle',   ic: 'pearl',    name: 'Perle',       w: 4,  pay: [90, 285, 1030] },
-    { id: 'wild',    ic: 'trident',  name: 'Dreizack',    w: 3,  pay: [130, 450, 1900], wild: true },
+    { id: 'alge',    ic: 'kelp',     name: 'Alge',        w: 30, pay: [9, 23, 52] },
+    { id: 'muschel', ic: 'shell',    name: 'Muschel',     w: 26, pay: [11, 29, 78] },
+    { id: 'fisch',   ic: 'fish',     name: 'Fisch',       w: 22, pay: [14, 40, 115] },
+    { id: 'bunt',    ic: 'reeffish', name: 'Riff-Fisch',  w: 17, pay: [18, 52, 168] },
+    { id: 'krabbe',  ic: 'crab',     name: 'Krabbe',      w: 13, pay: [22, 70, 260] },
+    { id: 'krake',   ic: 'octopus',  name: 'Krake',       w: 9,  pay: [34, 104, 385] },
+    { id: 'hai',     ic: 'shark',    name: 'Hai',         w: 6,  pay: [52, 162, 645] },
+    { id: 'perle',   ic: 'pearl',    name: 'Perle',       w: 4,  pay: [80, 255, 1030] },
+    { id: 'wild',    ic: 'trident',  name: 'Dreizack',    w: 3,  pay: [115, 405, 1900], wild: true },
     { id: 'schatz',  ic: 'chest',    name: 'Schatztruhe', w: 4,  pay: [0, 0, 0], scatter: true }
   ];
   var TOTAL_W = SYMS.reduce(function (s, x) { return s + x.w; }, 0);
 
+  /* Zusätzliche Wild/Truhe — normal 0, steigt nur über den Admin-Luck-Regler
+     (GK.luckRoll(0) ist bei neutralem Luck immer falsch). */
+  var LUCKY_CELL = 0;
+
   /* Scatter zahlt auf den Gesamteinsatz, egal wo die Truhen liegen */
-  var SCATTER_PAY = { 3: 5, 4: 19, 5: 100 };
+  var SCATTER_PAY = { 3: 4, 4: 17, 5: 100 };
 
   var LINES = [
     { name: 'Mitte',   rows: [1, 1, 1, 1, 1], color: '#00e5ff' },
@@ -37,6 +41,63 @@
     return SYMS[0];
   }
 
+  /* ── Auswertung: reine Rechnung, deshalb außerhalb von mount ── */
+  function evaluate(grid, lineBet, totalBet) {
+    var wins = [], total = 0;
+
+    LINES.forEach(function (line, li) {
+      var syms = line.rows.map(function (row, reel) { return grid[reel][row]; });
+      // erstes nicht-wildes Symbol bestimmt die Linie
+      var base = null;
+      for (var i = 0; i < syms.length; i++) {
+        if (syms[i].scatter) break;
+        if (!syms[i].wild) { base = syms[i]; break; }
+      }
+      if (!base) base = syms[0].wild ? SYMS.filter(function (s) { return s.wild; })[0] : null;
+      if (!base || base.scatter) return;
+
+      var count = 0;
+      for (var j = 0; j < syms.length; j++) {
+        if (syms[j].id === base.id || (syms[j].wild && !base.scatter)) count++;
+        else break;
+      }
+      if (count >= 3) {
+        var mult = base.pay[count - 3];
+        var amount = Math.floor(lineBet * mult);
+        if (amount > 0) {
+          total += amount;
+          wins.push({ line: li, count: count, sym: base, amount: amount });
+        }
+      }
+    });
+
+    // Scatter zählt überall auf dem Feld
+    var scatters = [];
+    for (var r = 0; r < REELS; r++) for (var c = 0; c < ROWS; c++) {
+      if (grid[r][c].scatter) scatters.push([r, c]);
+    }
+    if (SCATTER_PAY[scatters.length]) {
+      var sAmount = Math.floor(totalBet * SCATTER_PAY[scatters.length]);
+      total += sAmount;
+      wins.push({ scatter: true, count: scatters.length, cells: scatters, amount: sAmount });
+    }
+    return { total: total, wins: wins };
+  }
+
+  /** Zufälliges Walzenbild. Der Admin-Luck streut zusätzliche Wilds/Truhen ein. */
+  function drawGrid() {
+    var g = [];
+    for (var r = 0; r < REELS; r++) {
+      g[r] = [];
+      for (var c = 0; c < ROWS; c++) g[r][c] = randSym();
+    }
+    if (GK.luckRoll(LUCKY_CELL)) {
+      var lucky = GK.pick(SYMS.filter(function (s) { return s.wild || s.scatter; }));
+      g[GK.rndInt(0, REELS - 1)][GK.rndInt(0, ROWS - 1)] = lucky;
+    }
+    return g;
+  }
+
   GK.registerGame({
     id: 'ocean',
     name: 'Tiefsee-Schatz',
@@ -50,7 +111,7 @@
       '<b>5 Walzen mit je 3 Symbolen</b> und <b>5 Gewinnlinien</b> (Mitte, Oben, Unten, V und Λ).',
       'Gewinne zählen <b>von links</b>: ab 3 gleichen Symbolen auf einer Linie.',
       'Der <b>Dreizack</b> ist Wild und ersetzt jedes Symbol außer der Truhe.',
-      'Die <b>Schatztruhe</b> ist Scatter: 3 Stück irgendwo zahlen 5×, 4 zahlen 19×, 5 zahlen 100× — auf den Gesamteinsatz.',
+      'Die <b>Schatztruhe</b> ist Scatter: 3 Stück irgendwo zahlen 4×, 4 zahlen 17×, 5 zahlen 100× — auf den Gesamteinsatz.',
       'Der Einsatz verteilt sich gleichmäßig auf die 5 Linien.'
     ],
     mount: function (root) {
@@ -122,49 +183,6 @@
       ]);
       root.appendChild(stage);
 
-      /* ── Auswertung ── */
-      function evaluate(grid, lineBet, totalBet) {
-        var wins = [], total = 0;
-
-        LINES.forEach(function (line, li) {
-          var syms = line.rows.map(function (row, reel) { return grid[reel][row]; });
-          // erstes nicht-wildes Symbol bestimmt die Linie
-          var base = null;
-          for (var i = 0; i < syms.length; i++) {
-            if (syms[i].scatter) break;
-            if (!syms[i].wild) { base = syms[i]; break; }
-          }
-          if (!base) base = syms[0].wild ? SYMS.filter(function (s) { return s.wild; })[0] : null;
-          if (!base || base.scatter) return;
-
-          var count = 0;
-          for (var j = 0; j < syms.length; j++) {
-            if (syms[j].id === base.id || (syms[j].wild && !base.scatter)) count++;
-            else break;
-          }
-          if (count >= 3) {
-            var mult = base.pay[count - 3];
-            var amount = Math.floor(lineBet * mult);
-            if (amount > 0) {
-              total += amount;
-              wins.push({ line: li, count: count, sym: base, amount: amount });
-            }
-          }
-        });
-
-        // Scatter zählt überall auf dem Feld
-        var scatters = [];
-        for (var r = 0; r < REELS; r++) for (var c = 0; c < ROWS; c++) {
-          if (grid[r][c].scatter) scatters.push([r, c]);
-        }
-        if (SCATTER_PAY[scatters.length]) {
-          var sAmount = Math.floor(totalBet * SCATTER_PAY[scatters.length]);
-          total += sAmount;
-          wins.push({ scatter: true, count: scatters.length, cells: scatters, amount: sAmount });
-        }
-        return { total: total, wins: wins };
-      }
-
       function highlight(wins) {
         lineOverlay.innerHTML = '';
         wins.forEach(function (w, i) {
@@ -193,16 +211,7 @@
         GK.sfx('spin');
 
         var lineBet = Math.floor(stake / LINES.length);
-        var newGrid = [];
-        for (var r = 0; r < REELS; r++) {
-          newGrid[r] = [];
-          for (var c = 0; c < ROWS; c++) newGrid[r][c] = randSym();
-        }
-        // Admin-Luck streut zusätzliche Wilds/Truhen ein
-        if (GK.luckRoll(0.05)) {
-          var lucky = GK.pick(SYMS.filter(function (s) { return s.wild || s.scatter; }));
-          newGrid[GK.rndInt(0, REELS - 1)][GK.rndInt(0, ROWS - 1)] = lucky;
-        }
+        var newGrid = drawGrid();
 
         var lens = [16, 20, 24, 28, 32];
         strips.forEach(function (strip, i) {

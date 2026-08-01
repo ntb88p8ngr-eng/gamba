@@ -250,24 +250,34 @@ function newPlayer(name, avatar, id) {
   };
 }
 
-var MAX_LEVEL = 30;
+/* Muss Zeichen fuer Zeichen zu js/core.js passen, sonst rechnen Client und
+   Server unterschiedliche Level. Nach oben offen; die 999 ist nur eine
+   Notbremse gegen endlose Schleifen bei absurden XP-Geschenken. */
+var MAX_LEVEL = 999;
+var FLAT_FROM = 30;
+var FLAT_BASE = 280 * (FLAT_FROM - 1) + 60 * (FLAT_FROM - 1) * (FLAT_FROM - 2);
+var FLAT_STEP = 280 + 120 * (FLAT_FROM - 1);
 
 function xpForLevel(level) {
   if (level <= 1) return 0;
-  var n = level - 1;
-  return 280 * n + 60 * n * (n - 1);
+  if (level <= FLAT_FROM) {
+    var n = level - 1;
+    return 280 * n + 60 * n * (n - 1);
+  }
+  // ab hier kostet jede Stufe gleich viel, sonst waeren hohe Level unerreichbar
+  return FLAT_BASE + (level - FLAT_FROM) * FLAT_STEP;
 }
 function levelOf(xp) {
   var l = 1;
   while (l < MAX_LEVEL && (xp || 0) >= xpForLevel(l + 1)) l++;
   return l;
 }
-/** Aufstiege abrechnen: pro Level 100 x Level an Chips. */
+/** Aufstiege abrechnen: pro Level 100 x Level, ab Level 30 gedeckelt. */
 function settleLevels(p) {
   var lvl = levelOf(p.xp || 0);
   var claimed = p.claimedLevel || 1;
   var reward = 0;
-  while (claimed < lvl) { claimed++; reward += 100 * claimed; }
+  while (claimed < lvl) { claimed++; reward += 100 * Math.min(claimed, FLAT_FROM); }
   if (reward > 0) {
     p.balance += reward;
     p.granted += reward;
