@@ -295,7 +295,7 @@
 .ice-row.current .floe:hover:not(:disabled){transform:translateY(-4px) scale(1.05);box-shadow:0 0 20px var(--cyan);border-color:#fff}
 .floe:disabled{cursor:default}
 .floe.stepped{background:linear-gradient(160deg,#7cff3b,#2f9e12);border-color:var(--lime);box-shadow:0 0 20px rgba(124,255,59,.6)}
-.floe.broken{background:linear-gradient(160deg,#1c4a7a,#06182e);border-color:var(--red);animation:shakey .45s}
+.peng-floe.broken{background:linear-gradient(160deg,#1c4a7a,#06182e);border-color:var(--red);animation:shakey .45s}
 .floe.safe-dim,.floe.revealed-dim{opacity:.4}
 .ice-water{
   margin-top:10px;height:52px;border-radius:12px;position:relative;overflow:hidden;
@@ -447,28 +447,36 @@
   position:absolute;left:26px;right:0;bottom:14px;height:150px;
   display:flex;align-items:flex-end;gap:26px;transition:transform .45s ease-out
 }
-.floe{
-  position:relative;flex:0 0 76px;height:26px;border-radius:0 0 10px 10px;
+.peng-floe{
+  position:relative;flex:0 0 76px;height:26px;border-radius:0 0 10px 10px;padding:0;cursor:default;
   background:linear-gradient(180deg,#8fd0f5,#3f7fb8);
   border:2px solid #dff1ff;border-top:none;
   animation:bob 3.2s ease-in-out infinite;animation-delay:var(--d);
   transition:opacity .3s,transform .3s
 }
-.floe .fl-top{
+.peng-floe .fl-top{
   position:absolute;left:-4px;right:-4px;top:-9px;height:11px;border-radius:8px 8px 3px 3px;
   background:linear-gradient(180deg,#ffffff,#cfeaff);box-shadow:0 2px 0 rgba(0,0,0,.18)
 }
-.floe .fl-mult{
+.peng-floe .fl-mult{
   position:absolute;left:0;right:0;top:-34px;text-align:center;
   font-family:'Bungee',sans-serif;font-size:.62rem;color:#dff1ff;text-shadow:0 2px 6px rgba(0,0,0,.8)
 }
-.floe.start{flex-basis:92px;background:linear-gradient(180deg,#bfe6ff,#6aa8d8)}
-.floe.done{opacity:.5}
+.peng-floe.start{flex-basis:92px;background:linear-gradient(180deg,#bfe6ff,#6aa8d8)}
+.peng-floe.done{opacity:.5}
 /* hoeher setzen, sonst steht der Pinguin auf seiner eigenen Zahl */
-.floe.here .fl-mult{color:var(--gold);font-size:.74rem;top:-62px}
-.floe.next{box-shadow:0 0 20px rgba(255,209,46,.75)}
-.floe.next .fl-mult{color:var(--gold)}
-.floe.broken{animation:floeBreak .5s forwards}
+.peng-floe.here .fl-mult{color:var(--gold);font-size:.74rem;top:-62px}
+/* Die nächste Scholle ist das Klickziel: sie hört auf zu wippen und pulsiert
+   stattdessen — ein wackelndes Ziel trifft sich schlecht, besonders am Handy. */
+.peng-floe.next{cursor:pointer;animation:nextGlow 1.3s ease-in-out infinite}
+@keyframes nextGlow{
+  0%,100%{box-shadow:0 0 16px rgba(255,209,46,.6)}
+  50%{box-shadow:0 0 30px rgba(255,209,46,.95)}
+}
+.peng-floe.next:hover{transform:translateY(-6px);box-shadow:0 0 30px var(--gold)}
+.peng-floe.next:active{transform:translateY(-2px)}
+.peng-floe.next .fl-mult{color:var(--gold)}
+.peng-floe.broken{animation:floeBreak .5s forwards}
 @keyframes floeBreak{
   0%{transform:none;opacity:1}
   100%{transform:translateY(46px) rotate(16deg);opacity:0}
@@ -494,7 +502,7 @@
 .peng-info{font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--cyan);text-align:center;min-height:18px}
 @media(max-width:620px){
   .peng-scene{height:290px}
-  .floe{flex:0 0 62px}
+  .peng-floe{flex:0 0 62px}
   .peng-track{gap:20px;left:16px}
 }
 

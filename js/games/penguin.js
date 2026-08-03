@@ -31,11 +31,13 @@
     blurb: 'Von Scholle zu Scholle Richtung Horizont. Jeder Sprung zahlt mehr — und jeder kann der letzte sein.',
     badge: 'BIS 27,5×',
     color: '#00e5ff',
+    minLevel: 15,
     rules: [
       'Der Pinguin springt von links nach rechts über <b>12 Schollen</b>.',
       'Jeder Sprung gelingt mit <b>75 %</b> — je weiter rechts, desto höher der Multiplikator.',
       'Nach jedem gelungenen Sprung kannst du <b>aussteigen</b> und den aktuellen Multiplikator kassieren.',
       'Bricht die Scholle, ist der Einsatz weg. Die letzte Scholle zahlt <b>27,5×</b> und wird automatisch ausgezahlt.',
+      'Springen geht per Knopf <b>oder mit einem Tipp auf die nächste Scholle</b>.',
       'Kein Sprung ist sicher — auch der erste nicht.'
     ],
     mount: function (root) {
@@ -56,10 +58,21 @@
       // Startscholle plus zwölf Zielschollen
       for (var i = 0; i <= MULTS.length; i++) {
         (function (i) {
-          var f = el('div', { class: 'floe' + (i === 0 ? ' start' : ''), style: '--d:' + (i % 5) * 0.4 + 's' }, [
+          // eigene Klasse: .floe gehört bereits dem Eisbär-Spiel
+          var f = el('button', {
+            class: 'peng-floe' + (i === 0 ? ' start' : ''),
+            style: '--d:' + (i % 5) * 0.4 + 's',
+            title: i === 0 ? 'Startscholle' : 'Auf die Scholle tippen zum Springen'
+          }, [
             el('span', { class: 'fl-top' }),
             el('span', { class: 'fl-mult', text: i === 0 ? 'START' : MULTS[i - 1] + '×' })
           ]);
+          // direkt auf die nächste Scholle tippen springt ebenfalls
+          f.addEventListener('click', function () {
+            if (!running || busy || stopped) return;
+            if (i !== pos + 1) return;
+            hop();
+          });
           floes.push(f);
           track.appendChild(f);
         })(i);
@@ -97,7 +110,7 @@
           el('div', { style: 'height:8px' }),
           actions,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 Jeder Sprung gelingt mit <b>75 %</b>. Nach zwölf Schollen ist das Festland erreicht — <b>27,5×</b>.' })
+          el('p', { class: 'hint', html: '💡 Du kannst auch <b>direkt auf die nächste Scholle tippen</b>. Jeder Sprung gelingt mit <b>75 %</b>; nach zwölf Schollen ist das Festland erreicht — <b>27,5×</b>.' })
         ])
       ]);
       root.appendChild(stage);
@@ -159,7 +172,7 @@
         if (!running || busy || stopped) return;
         busy = true;
         sync();
-        GK.sfx('whoosh');
+        GK.sfx('waddle');
 
         var ok = GK.luckRoll(HOP_OK);
         var from = pos;
@@ -181,7 +194,7 @@
             wait(420, function () { lose(); });
             return;
           }
-          GK.sfx('coin');
+          GK.sfx('plop');
           if (pos >= MULTS.length) { cashOut(true); return; }
           busy = false;
           stepInfo.textContent = 'Scholle ' + pos + ' von ' + MULTS.length + ' — ' + MULTS[pos - 1] + '×';

@@ -53,9 +53,16 @@
   }
 
   /* ─────────────── LOBBY ─────────────── */
+  /* Level, mit dem die Kacheln zuletzt gezeichnet wurden — damit die Schlösser
+     auch dann verschwinden, wenn die XP vom Server kommen (Admin-Geschenk auf
+     einem anderen Gerät) und nicht aus dem eigenen Spiel. */
+  var drawnLevel = null;
+
   function renderGames() {
     var grid = $('#game-grid');
     grid.innerHTML = '';
+    var me = GK.player();
+    drawnLevel = me ? GK.levelOf(me.xp) : null;
     GK.games.forEach(function (g, i) {
       var open = GK.isUnlocked(g);
       var kids = [
@@ -259,6 +266,8 @@
   }
 
   function renderAll() {
+    var me = GK.player();
+    if ((me ? GK.levelOf(me.xp) : null) !== drawnLevel) renderGames();
     renderBoard();
     renderFeed();
     renderMarquee();

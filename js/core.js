@@ -550,7 +550,20 @@
         Sound.tone({ freq: f, dur: 0.28, type: 'triangle', vol: 0.16, delay: i * 0.09 });
       });
     },
-    whoosh:  function () { Sound.noise({ dur: 0.3, freq: 1500, filter: 'bandpass', vol: 0.16 }); }
+    whoosh:  function () { Sound.noise({ dur: 0.3, freq: 1500, filter: 'bandpass', vol: 0.16 }); },
+    /* Pinguin-Watscheln: zwei tiefe, gedämpfte Schritte auf dem Eis. Bewusst
+       ohne Höhen — ein Zischen bei jedem Sprung nervt schnell. */
+    waddle:  function () {
+      [0, 0.1].forEach(function (d, i) {
+        Sound.tone({ freq: 128 - i * 18, to: 62 - i * 8, dur: 0.13, type: 'sine', vol: 0.24, delay: d });
+        Sound.noise({ dur: 0.05, freq: 420, filter: 'lowpass', vol: 0.08, delay: d });
+      });
+    },
+    /* Landung auf der Scholle: kurzer Bass-Plumps plus Eisknirschen */
+    plop:    function () {
+      Sound.tone({ freq: 190, to: 78, dur: 0.16, type: 'sine', vol: 0.26 });
+      Sound.noise({ dur: 0.07, freq: 900, filter: 'lowpass', vol: 0.1 });
+    }
   };
 
   GK.sfx = function (name) {
