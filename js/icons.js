@@ -296,6 +296,19 @@
       '<rect x="24.5" y="37" width="15" height="7" rx="3.5" fill="url(#gkg-gold)" stroke="' + OUT + '" stroke-width="2.2"/>' +
       '<path d="M16.5 8 L16.5 22 M32 7 L32 22 M47.5 8 L47.5 22" fill="none" stroke="#fff6b0" stroke-width="2" opacity=".55" stroke-linecap="round"/>',
 
+    penguin:
+      /* Frontal, Flossen seitlich, Füße unten */
+      s('M13 30 C7 36 7 47 12 52 L18 40 Z', '#243055') +
+      s('M51 30 C57 36 57 47 52 52 L46 40 Z', '#243055') +
+      '<ellipse cx="24" cy="57" rx="7" ry="4" fill="url(#gkg-orange)" stroke="' + OUT + '" stroke-width="2"/>' +
+      '<ellipse cx="40" cy="57" rx="7" ry="4" fill="url(#gkg-orange)" stroke="' + OUT + '" stroke-width="2"/>' +
+      s('M32 6 C20 6 14 17 14 30 C14 46 21 57 32 57 C43 57 50 46 50 30 C50 17 44 6 32 6 Z', '#2b3a66') +
+      s('M32 20 C25 20 21 28 21 38 C21 49 26 55 32 55 C38 55 43 49 43 38 C43 28 39 20 32 20 Z', '#f4f8ff') +
+      '<circle cx="25" cy="24" r="4.6" fill="#fff" stroke="' + OUT + '" stroke-width="1.8"/>' +
+      '<circle cx="39" cy="24" r="4.6" fill="#fff" stroke="' + OUT + '" stroke-width="1.8"/>' +
+      '<circle cx="26" cy="25" r="2.1" fill="#20003f"/><circle cx="40" cy="25" r="2.1" fill="#20003f"/>' +
+      s('M26 31 H38 L32 39 Z', 'url(#gkg-orange)'),
+
     poker:
       /* Zwei Karten im Fächer, davor ein Chip */
       s('M16 14 h22 a5 5 0 0 1 5 5 v30 a5 5 0 0 1 -5 5 H16 a5 5 0 0 1 -5 -5 V19 a5 5 0 0 1 5 -5 Z',

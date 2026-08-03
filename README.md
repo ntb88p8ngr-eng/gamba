@@ -4,7 +4,7 @@ Ein knallbuntes Fantasy-Casino für Challenges unter Freunden. **Kein Echtgeld, 
 Einzahlung, keine Auszahlung** — alle Chips sind wertlose Spielwährung. Es geht nur um
 Angeben, Ehre und die Krone im Leaderboard.
 
-14 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon-Set, prozedural
+15 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon-Set, prozedural
 erzeugte Hintergrundmusik und ein gemeinsames Leaderboard über einen kleinen Server.
 
 ---
@@ -91,7 +91,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 ---
 
-## Die 14 Spiele
+## Die 15 Spiele
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
@@ -109,6 +109,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 12 | **Eisbär auf dem Eis** 🔒 Lv4 | Scholle für Scholle nach oben, 3 Schwierigkeiten, jederzeit aussteigen | 233× | 91 % |
 | 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack, Scatter-Truhe, Endlos-Modus | 1900× | 78 % |
 | 14 | **Königs-Poker** 🔒 Lv10 | Texas Hold'em gegen drei KI-Gegner, Blinds, Bluffs und Showdown | ganzer Pot | 8 % Rake |
+| 15 | **Pinguin-Sprung** | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
 gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,
@@ -246,7 +247,7 @@ Würfel auf den Server wandern.
 color, minLevel, rules, mount(root) })`. `mount` baut die Oberfläche und gibt optional
 eine Aufräumfunktion zurück.
 
-Getestet in Chromium, Desktop (1400 px) und Mobil (360/390 px): alle 14 Spiele,
+Getestet in Chromium, Desktop (1400 px) und Mobil (360/390 px): alle 15 Spiele,
 Level-Freischaltung, Admin-Flows, Server-Sync über zwei Geräte — ohne JS-Fehler.
 `prefers-reduced-motion` wird respektiert.
 
