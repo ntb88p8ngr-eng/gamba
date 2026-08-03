@@ -60,40 +60,106 @@
       '<b>Rot / Schwarz / Gerade / Ungerade / 1-18 / 19-36</b> zahlen 1,9× — knapp unter dem doppelten Einsatz.',
       '<b>Dutzend</b> (1-12, 13-24, 25-36) zahlt 2,8×.',
       '<b>Einzelne Zahl</b> zahlt 32×.',
+      'Du kannst <b>mehrere Felder gleichzeitig</b> belegen — jeder Klick legt einen weiteren Chip drauf, Rechtsklick räumt das Feld ab.',
+      'Abgerechnet wird jedes Feld einzeln: der Einsatz ist die <b>Summe aller Chips</b>.',
       'Die <b>grüne 0</b> schlägt alle einfachen Chancen — außer du hast sie direkt gesetzt.'
     ],
     mount: function (root) {
       var stopped = false, spinning = false, rot = 0;
-      var selected = { type: 'red', value: null, label: 'Rot', mult: 1.9 };
 
-      var bet = GK.betPanel({ start: 25 });
+      /* Alle Einsätze, die gerade auf dem Tisch liegen.
+         Ein Klick legt einen Chip auf ein Feld, weitere Klicks stapeln. */
+      var chips = [];        // [{ key, type, value, label, mult, amount }]
+      var history = [];      // Reihenfolge der Chips, für „letzten zurück"
+
+      var bet = GK.betPanel({ start: 25, label: 'CHIP-WERT PRO FELD' });
       var wheel = el('div', { class: 'roul-wheel' }, [buildWheel(), el('div', { class: 'roul-hub', text: '👑' })]);
       var out = el('div', { class: 'roul-out', text: '?' });
       var resultBox = GK.resultBox();
 
       var typeDefs = [
-        { type: 'red', label: 'Rot', sub: '1.9×', cls: 'red' },
-        { type: 'black', label: 'Schwarz', sub: '1.9×', cls: 'black' },
-        { type: 'even', label: 'Gerade', sub: '1.9×' },
-        { type: 'odd', label: 'Ungerade', sub: '1.9×' },
-        { type: 'low', label: '1–18', sub: '1.9×' },
-        { type: 'high', label: '19–36', sub: '1.9×' },
-        { type: 'd1', label: '1–12', sub: '2.8×' },
-        { type: 'd2', label: '13–24', sub: '2.8×' },
-        { type: 'd3', label: '25–36', sub: '2.8×' }
+        { type: 'red', label: 'Rot', sub: '1.9×', mult: 1.9, cls: 'red' },
+        { type: 'black', label: 'Schwarz', sub: '1.9×', mult: 1.9, cls: 'black' },
+        { type: 'even', label: 'Gerade', sub: '1.9×', mult: 1.9 },
+        { type: 'odd', label: 'Ungerade', sub: '1.9×', mult: 1.9 },
+        { type: 'low', label: '1–18', sub: '1.9×', mult: 1.9 },
+        { type: 'high', label: '19–36', sub: '1.9×', mult: 1.9 },
+        { type: 'd1', label: '1–12', sub: '2.8×', mult: 2.8 },
+        { type: 'd2', label: '13–24', sub: '2.8×', mult: 2.8 },
+        { type: 'd3', label: '25–36', sub: '2.8×', mult: 2.8 }
       ];
+
+      /* ── Einsätze verwalten ── */
+
+      function keyOf(type, value) { return type + (value === null || value === undefined ? '' : ':' + value); }
+      function findChip(key) {
+        for (var i = 0; i < chips.length; i++) if (chips[i].key === key) return chips[i];
+        return null;
+      }
+      function totalBet() {
+        return chips.reduce(function (s, c) { return s + c.amount; }, 0);
+      }
+
+      function place(type, value, label, mult) {
+        if (spinning) return;
+        var amount = bet.value();
+        if (amount < 1) return;
+        if (!GK.canBet(totalBet() + amount)) {
+          GK.toast('Dafür reichen deine Chips nicht', 'bad', '🪙');
+          GK.sfx('error');
+          return;
+        }
+        var key = keyOf(type, value);
+        var c = findChip(key);
+        if (c) c.amount += amount;
+        else chips.push({ key: key, type: type, value: value, label: label, mult: mult, amount: amount });
+        history.push({ key: key, amount: amount });
+        GK.sfx('chip');
+        syncBets();
+      }
+
+      /** Nimmt den zuletzt gelegten Chip wieder herunter. */
+      function undo() {
+        if (spinning || !history.length) return;
+        var last = history.pop();
+        var c = findChip(last.key);
+        if (c) {
+          c.amount -= last.amount;
+          if (c.amount <= 0) chips = chips.filter(function (x) { return x !== c; });
+        }
+        GK.sfx('click');
+        syncBets();
+      }
+
+      /** Rechtsklick räumt ein einzelnes Feld komplett ab. */
+      function clearField(key) {
+        if (spinning) return;
+        if (!findChip(key)) return;
+        chips = chips.filter(function (c) { return c.key !== key; });
+        history = history.filter(function (h) { return h.key !== key; });
+        GK.sfx('click');
+        syncBets();
+      }
+
+      function clearAll() {
+        if (spinning) return;
+        chips = [];
+        history = [];
+        GK.sfx('click');
+        syncBets();
+      }
+
+      /* ── Tisch ── */
 
       var typeBtns = [];
       var betTypes = el('div', { class: 'bet-types' }, typeDefs.map(function (d) {
+        var badge = el('span', { class: 'chip-stack' });
         var b = el('button', { class: 'rbet ' + (d.cls || '') }, [
-          d.label, el('small', { text: d.sub })
+          d.label, el('small', { text: d.sub }), badge
         ]);
-        b.addEventListener('click', function () {
-          selected = { type: d.type, value: null, label: d.label, mult: d.sub === '2.8×' ? 2.8 : 1.9 };
-          syncSel();
-          GK.sfx('chip');
-        });
-        typeBtns.push({ def: d, btn: b });
+        b.addEventListener('click', function () { place(d.type, null, d.label, d.mult); });
+        b.addEventListener('contextmenu', function (e) { e.preventDefault(); clearField(keyOf(d.type, null)); });
+        typeBtns.push({ def: d, btn: b, badge: badge });
         return b;
       }));
 
@@ -101,25 +167,51 @@
       var numGrid = el('div', { class: 'num-grid' });
       for (var n = 0; n <= 36; n++) {
         (function (n) {
-          var b = el('button', { class: 'num-cell ' + colorOf(n), text: String(n) });
-          b.addEventListener('click', function () {
-            selected = { type: 'num', value: n, label: 'Zahl ' + n, mult: 32 };
-            syncSel();
-            GK.sfx('chip');
-          });
-          numBtns.push({ n: n, btn: b });
+          var badge = el('span', { class: 'chip-stack' });
+          var b = el('button', { class: 'num-cell ' + colorOf(n) }, [String(n), badge]);
+          b.addEventListener('click', function () { place('num', n, 'Zahl ' + n, 32); });
+          b.addEventListener('contextmenu', function (e) { e.preventDefault(); clearField(keyOf('num', n)); });
+          numBtns.push({ n: n, btn: b, badge: badge });
           numGrid.appendChild(b);
         })(n);
       }
 
-      function syncSel() {
-        typeBtns.forEach(function (o) { o.btn.classList.toggle('sel', selected.type === o.def.type); });
-        numBtns.forEach(function (o) { o.btn.classList.toggle('sel', selected.type === 'num' && selected.value === o.n); });
-        selLabel.textContent = selected.label + '  ·  ' + selected.mult + '×';
-      }
-
-      var selLabel = el('div', { class: 'mult-badge center', text: '' });
+      var betList = el('div', { class: 'bet-list' });
+      var undoBtn = el('button', { class: 'btn btn-ghost btn-small', text: '↩ LETZTEN ZURÜCK' });
+      var clearBtn = el('button', { class: 'btn btn-ghost btn-small', text: '🗑 TISCH RÄUMEN' });
+      var tableRow = el('div', { class: 'auto-row' }, [undoBtn, clearBtn]);
       var spinBtn = el('button', { class: 'btn btn-gold btn-full', text: '🎡 DREH DAS RAD' });
+
+      function syncBets() {
+        var total = totalBet();
+        typeBtns.forEach(function (o) {
+          var c = findChip(keyOf(o.def.type, null));
+          o.badge.textContent = c ? GK.fmt(c.amount) : '';
+          o.btn.classList.toggle('has-bet', !!c);
+        });
+        numBtns.forEach(function (o) {
+          var c = findChip(keyOf('num', o.n));
+          o.badge.textContent = c ? GK.fmt(c.amount) : '';
+          o.btn.classList.toggle('has-bet', !!c);
+        });
+
+        betList.innerHTML = '';
+        if (!chips.length) {
+          betList.appendChild(el('span', { class: 'bl-empty', text: 'Noch nichts gesetzt — tipp auf die Felder' }));
+        } else {
+          chips.forEach(function (c) {
+            betList.appendChild(el('span', { class: 'bl-item' }, [
+              el('b', { text: c.label }),
+              el('span', { text: ' ' + GK.fmt(c.amount) + ' · ' + c.mult + '×' })
+            ]));
+          });
+        }
+
+        spinBtn.textContent = total > 0 ? '🎡 DREH DAS RAD (' + GK.fmt(total) + ')' : '🎡 DREH DAS RAD';
+        spinBtn.disabled = spinning || total < 1;
+        undoBtn.disabled = spinning || !history.length;
+        clearBtn.disabled = spinning || !chips.length;
+      }
 
       var stage = el('div', { class: 'stage split' }, [
         GK.panel([
@@ -132,29 +224,35 @@
         GK.panel([
           bet.el,
           el('div', { style: 'height:14px' }),
-          el('div', { class: 'bet-label', text: 'WORAUF SETZT DU?' }),
+          el('div', { class: 'bet-label', text: 'EINFACHE CHANCEN & DUTZENDE' }),
           el('div', { style: 'height:8px' }),
           betTypes,
           el('div', { style: 'height:10px' }),
-          el('div', { class: 'bet-label', text: 'ODER EINE EINZELNE ZAHL (32×)' }),
+          el('div', { class: 'bet-label', text: 'EINZELNE ZAHLEN (32×)' }),
           el('div', { style: 'height:8px' }),
           numGrid,
           el('div', { style: 'height:12px' }),
-          selLabel,
-          el('div', { style: 'height:8px' }),
+          betList,
+          el('div', { style: 'height:10px' }),
+          tableRow,
+          el('div', { style: 'height:10px' }),
           resultBox,
           el('div', { style: 'height:12px' }),
-          spinBtn
+          spinBtn,
+          el('div', { style: 'height:10px' }),
+          el('p', { class: 'hint', html: '💡 Du kannst <b>beliebig viele Felder gleichzeitig</b> belegen — jeder Klick legt einen weiteren Chip drauf. Rechtsklick räumt ein Feld wieder ab.' })
         ])
       ]);
       root.appendChild(stage);
-      syncSel();
+      syncBets();
 
-      function wins(n) {
-        var c = colorOf(n);
-        switch (selected.type) {
-          case 'red': return c === 'red';
-          case 'black': return c === 'black';
+      /* ── Auswertung ── */
+
+      function chipWins(c, n) {
+        var col = colorOf(n);
+        switch (c.type) {
+          case 'red': return col === 'red';
+          case 'black': return col === 'black';
           case 'even': return n !== 0 && n % 2 === 0;
           case 'odd': return n % 2 === 1;
           case 'low': return n >= 1 && n <= 18;
@@ -162,29 +260,39 @@
           case 'd1': return n >= 1 && n <= 12;
           case 'd2': return n >= 13 && n <= 24;
           case 'd3': return n >= 25 && n <= 36;
-          case 'num': return n === selected.value;
+          case 'num': return n === c.value;
         }
         return false;
+      }
+      function anyWins(n) {
+        return chips.some(function (c) { return chipWins(c, n); });
       }
 
       function spin() {
         if (spinning || stopped) return;
-        var stake = bet.value();
+        var stake = totalBet();
+        if (stake < 1) {
+          GK.toast('Erst Chips auf den Tisch legen', 'bad', '🪙');
+          GK.sfx('error');
+          return;
+        }
         if (!GK.wager(stake, 'Roulette')) return;
 
         spinning = true;
-        spinBtn.disabled = true;
         bet.disable(true);
+        syncBets();
         out.className = 'roul-out';
         out.textContent = '…';
         GK.setResult(resultBox, 'Das Rad dreht sich…', '');
         GK.sfx('spin');
 
-        // Ziel bestimmen (Admin-Luck darf nachhelfen)
+        /* Ziel bestimmen. Der Grundwert ist 0 — ohne Admin-Luck wird also
+           nichts geschenkt. Früher lagen hier 2 bis 5 %, was die Quote einer
+           Einzelzahl auf ueber 140 % gehoben hat. */
         var idx = GK.rndInt(0, WHEEL.length - 1);
-        if (GK.luckRoll(selected.type === 'num' ? 0.02 : 0.05)) {
+        if (GK.luckRoll(0)) {
           var candidates = [];
-          for (var i = 0; i < WHEEL.length; i++) if (wins(WHEEL[i])) candidates.push(i);
+          for (var i = 0; i < WHEEL.length; i++) if (anyWins(WHEEL[i])) candidates.push(i);
           if (candidates.length) idx = GK.pick(candidates);
         }
         var num = WHEEL[idx];
@@ -209,25 +317,54 @@
         out.className = 'roul-out ' + colorOf(num);
         out.textContent = num;
 
-        var won = wins(num);
-        var win = won ? Math.floor(stake * selected.mult) : 0;
+        var win = 0, hits = [];
+        chips.forEach(function (c) {
+          if (chipWins(c, num)) {
+            win += Math.floor(c.amount * c.mult);
+            hits.push(c.label);
+          }
+        });
+
         GK.payout(win, { stake: stake });
         GK.logPlay('Neon Roulette', stake, win);
 
-        if (won) {
-          GK.setResult(resultBox, num + ' — ' + selected.label + ' trifft! +' + GK.fmt(win - stake), 'win');
-          GK.celebrate(win - stake, selected.mult);
+        // getroffene Felder kurz aufleuchten lassen
+        typeBtns.forEach(function (o) {
+          var c = findChip(keyOf(o.def.type, null));
+          o.btn.classList.toggle('hit', !!c && chipWins(c, num));
+        });
+        numBtns.forEach(function (o) {
+          var c = findChip(keyOf('num', o.n));
+          o.btn.classList.toggle('hit', !!c && chipWins(c, num));
+        });
+
+        var net = win - stake;
+        if (win > 0) {
+          var txt = num + ' — ' + hits.slice(0, 3).join(', ') +
+                    (hits.length > 3 ? ' +' + (hits.length - 3) + ' weitere' : '') +
+                    ' trifft! ' + GK.fmtSigned(net);
+          GK.setResult(resultBox, txt, net > 0 ? 'win' : 'push');
+          if (net > 0) GK.celebrate(net, win / stake);
+          else GK.sfx('coin');
         } else {
           GK.setResult(resultBox, num + ' (' + colorOf(num) + ') — kein Treffer', 'lose');
           GK.sfx('lose');
           GK.shake(out.parentElement);
         }
+
         spinning = false;
-        spinBtn.disabled = false;
         bet.disable(false);
+        syncBets();
+
+        setTimeout(function () {
+          if (stopped) return;
+          typeBtns.concat(numBtns).forEach(function (o) { o.btn.classList.remove('hit'); });
+        }, 2200);
       }
 
       spinBtn.addEventListener('click', function () { GK.sfx('click'); spin(); });
+      undoBtn.addEventListener('click', undo);
+      clearBtn.addEventListener('click', clearAll);
       return function () { stopped = true; };
     }
   });
