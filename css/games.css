@@ -532,3 +532,121 @@
   border:1.5px solid rgba(255,209,46,.45);border-radius:999px;padding:2px 7px;white-space:nowrap}
 .track-row.fast{border-color:rgba(255,59,107,.45)}
 .track-row.fast .tr-bpm{color:var(--red);border-color:rgba(255,59,107,.5)}
+
+/* ═══════════════════════════════════════════════════════════
+   HANDY: die einzelnen Spielflächen
+   Auf schmalen Bildschirmen schrumpfen Räder, Walzen, Karten und Tische,
+   damit Einsatzfeld und Hauptknopf ohne Scrollen erreichbar bleiben.
+   ═══════════════════════════════════════════════════════════ */
+@media(max-width:620px){
+  /* 1. Slots */
+  .slot-machine{padding:10px;border-radius:18px;border-width:3px}
+  .slot-lights{margin-bottom:7px}
+  .slot-lights i{width:8px;height:8px}
+  .reels{gap:6px;padding:6px;border-radius:12px}
+  .reel{height:92px}
+  .sym{height:92px;flex:0 0 92px}
+  .paytable{gap:5px;margin-top:8px;grid-template-columns:repeat(auto-fit,minmax(56px,1fr))}
+  .pay-item{padding:5px;font-size:.66rem}
+  .pay-item .s{font-size:1.05rem}
+  .pay-item .m{font-size:.7rem}
+
+  /* 2. Roulette */
+  .roul-wrap{gap:8px}
+  .roul-wheel{width:min(216px,58vw);border-width:6px}
+  .roul-hub{font-size:1.2rem;border-width:3px}
+  .roul-ptr{font-size:1.5rem;margin-bottom:-10px}
+  .roul-out{width:64px;height:64px;font-size:1.6rem;border-width:3px}
+  .bet-types{grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:5px}
+  .rbet{padding:8px 4px;font-size:.7rem;border-radius:10px}
+  .rbet small{font-size:.56rem}
+  .num-grid{max-height:132px;gap:3px;grid-template-columns:repeat(auto-fit,minmax(30px,1fr))}
+  .num-cell{padding:5px 1px;font-size:.68rem}
+  .bet-list{padding:5px 7px;min-height:20px}
+  .bl-item{font-size:.62rem;padding:1px 7px}
+
+  /* 3. Blackjack */
+  .bj-felt{padding:10px;border-radius:18px;border-width:3px}
+  .bj-side{margin-bottom:10px}
+  .bj-side h4{font-size:.72rem;margin-bottom:5px}
+  .hand{min-height:88px;gap:6px}
+  .card{width:58px;height:84px;padding:5px 6px;font-size:.78rem;border-radius:9px}
+  .card .mid{font-size:1.4rem}
+  .bj-actions{gap:6px}
+  .bj-actions .btn{min-width:88px}
+
+  /* 4. Drachenmünze */
+  .coin-stage{padding:14px 0}
+  .coin{width:min(140px,42vw)}
+  .side-btn{padding:9px}
+  .side-btn .e{font-size:1.9rem}
+
+  /* 5. Würfelduell */
+  .dice-table{padding:12px}
+  .die{width:58px;height:58px}
+
+  /* 6. Crash — min-height und aspect-ratio haben sich gestritten und die
+     Fläche breiter als den Bildschirm gemacht */
+  .crash-screen{min-height:0;aspect-ratio:5/3;max-width:100%}
+  .crash-mult{font-size:clamp(1.6rem,9vw,2.6rem)}
+
+  /* 7. Drachenhöhle */
+  .mine-grid{gap:5px}
+  .mine-cell{border-radius:10px}
+  .mine-cell svg{width:60%;height:60%}
+
+  /* 8. Rad des Schicksals */
+  .wheel{width:min(228px,62vw);border-width:7px}
+  .wheel-lbl{font-size:.58rem}
+
+  /* 9. Plinko */
+  .plinko-board{min-height:0}
+
+  /* 10. Rubbellos */
+  .scratch-card{max-width:100%}
+
+  /* 11. Pferderennen */
+  .race-track{padding:10px}
+  .lane{height:38px}
+  .horse-pick{gap:5px}
+  .hbet{padding:7px 4px}
+  .hb-name{font-size:.62rem}
+
+  /* 12. Eisbär */
+  .ice-row{gap:6px}
+  .ice-row .floe{padding:8px}
+
+  /* 13. Tiefsee */
+  .oc-reel{height:210px!important}
+  .oc-sym{height:70px!important;flex:0 0 70px!important}
+  .oc-paytable{grid-template-columns:repeat(auto-fit,minmax(52px,1fr))}
+
+  /* 14. Poker */
+  .poker-table{padding:10px;border-width:3px}
+  .pk-middle{padding:8px 0 2px;gap:6px}
+  .pk-seat{padding:6px 7px}
+  .pk-cards{min-height:66px}
+  .pk-mine .pk-cards{min-height:88px}
+  .pk-pot{padding:3px 12px}
+  .pk-pot-val{font-size:.9rem}
+
+  /* 15. Pinguin */
+  .peng-scene{height:230px;border-width:3px}
+  .peng-track{height:118px;bottom:10px}
+  .peng{width:38px;height:38px;bottom:28px;margin-left:-19px}
+  .peng-berge{height:64px}
+}
+
+/* Sehr schmale Geräte (iPhone SE und Co.) */
+@media(max-width:400px){
+  .reel,.sym{height:78px}
+  .sym{flex:0 0 78px}
+  .roul-wheel{width:min(190px,56vw)}
+  .card{width:50px;height:72px;font-size:.7rem}
+  .card .mid{font-size:1.2rem}
+  .peng-scene{height:200px}
+  .oc-reel{height:186px!important}
+  .oc-sym{height:62px!important;flex:0 0 62px!important}
+  /* Der Tipp steht auch in den Regeln — auf winzigen Schirmen kostet er nur Platz */
+  #game-stage .hint{display:none}
+}

@@ -134,6 +134,64 @@ img{max-width:100%}
   .brand-text{display:none}
   .hud-player .hud-value{display:none}
 }
+
+/* ═══════════ HANDY: SPIELANSICHT ═══════════
+   Auf einem iPhone bleiben unter der Safari-Leiste rund 700 px übrig. Ohne
+   diese Verdichtung landen Einsatzfeld und Hauptknopf darunter und man muss
+   erst scrollen, um überhaupt setzen zu können. */
+@media(max-width:620px){
+  main{padding:10px 10px 26px}
+  .game-header{margin-bottom:10px;gap:8px}
+  .stage{gap:10px}
+  .panel{padding:12px;border-radius:18px}
+  .btn{padding:12px 18px;font-size:.84rem;border-radius:14px;box-shadow:0 5px 0 rgba(0,0,0,.42)}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.42)}
+  .btn-small{padding:7px 12px;font-size:.7rem}
+  .btn-gold{box-shadow:0 5px 0 #7a3b00}
+  .bet-label{font-size:.68rem;letter-spacing:.06em}
+  .bet-panel{gap:8px}
+  .bet-input{font-size:1.1rem;padding:9px 12px;border-radius:12px}
+  .bet-quick{gap:5px}
+  .chip-btn{padding:6px 11px;font-size:.72rem}
+  .result{min-height:42px;padding:9px;font-size:clamp(.88rem,3.6vw,1.1rem);border-radius:13px}
+  .hint{font-size:.7rem;line-height:1.35}
+  .info-box{padding:7px}
+  .info-box b{font-size:.92rem}
+  /* Die Spielmodule setzen feste Abstandshalter — auf dem Handy halbieren */
+  #game-stage .panel>div[style*="height"]{height:6px!important}
+  /* ── Feste Bedienleiste am unteren Rand ──
+     Das Spielfeld ist auf einem Handy hoch genug, dass der Hauptknopf sonst
+     unter dem Bildrand liegt. Er wird deshalb festgepinnt, darüber bei Bedarf
+     die Zwischenaktion (Auszahlen, Hit/Stand, Weiter). Der Inhalt bekommt
+     unten Platz, damit nichts dauerhaft verdeckt bleibt. */
+  #view-game{padding-bottom:122px}
+  /* Drei Dinge würden die feste Leiste sonst am Bildschirmrand vorbeischieben:
+     die Einblend-Animation hinterlässt auf .view eine Transform-Matrix, und
+     backdrop-filter bzw. overflow:hidden am Panel machen es zum Bezugsrahmen
+     für position:fixed. Alle drei sind auf dem Handy entbehrlich. */
+  main .view{animation:none}
+  #view-game .panel{backdrop-filter:none;-webkit-backdrop-filter:none;overflow:visible}
+  #view-game .btn-gold.btn-full{
+    position:fixed;left:10px;right:10px;width:auto;z-index:45;
+    bottom:max(10px,env(safe-area-inset-bottom))
+  }
+  #view-game .btn-lime.btn-full,
+  #view-game .bj-actions{
+    position:fixed;left:10px;right:10px;z-index:45;
+    bottom:calc(max(10px,env(safe-area-inset-bottom)) + 54px)
+  }
+  /* drei Knöpfe müssen nebeneinander in die Leiste passen */
+  #view-game .bj-actions .btn{flex:1;min-width:0;font-size:.72rem;padding:11px 6px}
+  /* Untergrund, damit der Inhalt nicht durch die Leiste scheint */
+  #view-game::after{
+    content:"";position:fixed;left:0;right:0;bottom:0;height:132px;z-index:44;pointer-events:none;
+    background:linear-gradient(180deg,rgba(18,0,43,0),rgba(18,0,43,.88) 30%,#12002b 62%)
+  }
+  /* durchscheinende Knöpfe brauchen in der Leiste eine eigene Fläche */
+  #view-game .bj-actions .btn-ghost{background:rgba(46,10,92,.97)}
+  /* Am Seitenende liegt sonst die Fußzeile unter der Leiste */
+  main:has(#view-game.active)+.footer{padding-bottom:130px}
+}
 .balance-pop{animation:balpop .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes balpop{0%{transform:scale(1)}40%{transform:scale(1.28) rotate(-3deg)}100%{transform:scale(1)}}
 .icon-btn{

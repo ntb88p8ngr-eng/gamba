@@ -248,9 +248,14 @@ Würfel auf den Server wandern.
 color, minLevel, rules, mount(root) })`. `mount` baut die Oberfläche und gibt optional
 eine Aufräumfunktion zurück.
 
-Getestet in Chromium, Desktop (1400 px) und Mobil (360/390 px): alle 15 Spiele,
+Getestet in Chromium, Desktop (1400 px) und Mobil (375/390 px): alle 15 Spiele,
 Level-Freischaltung, Admin-Flows, Server-Sync über zwei Geräte — ohne JS-Fehler.
 `prefers-reduced-motion` wird respektiert.
+
+**Auf dem Handy** liegt der Hauptknopf in einer festen Leiste am unteren Rand, darüber
+bei Bedarf die Zwischenaktion (Auszahlen, Hit/Stand, Weiter). Dadurch ist in allen
+15 Spielen sofort spielbar, ohne vorher zu scrollen — geprüft auf iPhone-14- und
+iPhone-SE-Maßen (390×700 und 375×560 sichtbare Fläche).
 
 ---
 
