@@ -4,8 +4,11 @@
   var el = GK.el;
   var SVGNS = 'http://www.w3.org/2000/svg';
 
-  // 20 Segmente, gemischt angeordnet
-  var SEGS = [0, 1, 0, 2, 0, 0.5, 1.5, 0, 5, 0, 0, 0, 2, 0.5, 2, 0, 1, 1.5, 0, 0.5];
+  /* 24 Segmente, gemischt angeordnet. Vorher war fast die Hälfte des Rades
+     Totenkopf — jetzt landet man in vier von fünf Drehungen auf etwas.
+     Verteilung: 5× ☠, 9× 0,5, 4× 1, 3× 1,5, 2× 2, 1× 5 → Quote 91,7 %. */
+  var SEGS = [0.5, 1, 0, 0.5, 1.5, 0.5, 2, 0.5, 0, 1, 0.5, 5,
+              0.5, 0, 1.5, 0.5, 1, 0, 0.5, 2, 0.5, 1.5, 0, 1];
   var STEP = 360 / SEGS.length;
 
   function colorFor(m) {
@@ -43,7 +46,7 @@
       var ty = cy + tr * Math.sin(mid * Math.PI / 180);
       var t = svgEl('text', {
         x: tx.toFixed(2), y: ty.toFixed(2), fill: m === 0 ? '#8b7bb8' : '#fff',
-        'font-size': m >= 5 ? '7' : '5.4', 'font-family': 'Bungee, sans-serif',
+        'font-size': m >= 5 ? '6.4' : '4.7', 'font-family': 'Bungee, sans-serif',
         'text-anchor': 'middle', 'dominant-baseline': 'central',
         transform: 'rotate(' + (mid + 90).toFixed(2) + ',' + tx.toFixed(2) + ',' + ty.toFixed(2) + ')'
       });
@@ -63,8 +66,8 @@
     color: '#7cff3b',
     rules: [
       'Ein Klick, ein Dreh — das Rad landet auf einem <b>Multiplikator</b>.',
-      '<b>☠ Totenkopf</b> bedeutet: Einsatz weg. Davon gibt es die meisten Felder.',
-      '<b>1×</b> gibt genau deinen Einsatz zurück, alles darüber ist Profit.',
+      '<b>☠ Totenkopf</b> bedeutet: Einsatz weg — aber nur <b>5 von 24</b> Feldern sind Totenköpfe.',
+      '<b>0,5×</b> holt die Hälfte zurück, <b>1×</b> genau den Einsatz — alles darüber ist Profit.',
       'Das goldene <b>5×</b>-Feld gibt es nur ein einziges Mal auf dem Rad.'
     ],
     mount: function (root) {
@@ -76,7 +79,7 @@
       var spinBtn = el('button', { class: 'btn btn-gold btn-full', text: '🎡 SCHICKSAL DREHEN' });
 
       var tiers = [
-        { m: 0, t: '☠ Nichts' }, { m: 0.5, t: '0,5× Trost' }, { m: 1, t: '1× zurück' },
+        { m: 0, t: '☠ Nichts' }, { m: 0.5, t: '0,5× halb zurück' }, { m: 1, t: '1× zurück' },
         { m: 1.5, t: '1,5×' }, { m: 2, t: '2×' }, { m: 5, t: '5× Jackpot' }
       ];
       var legend = el('div', { class: 'wheel-legend' }, tiers.map(function (x) {
@@ -118,7 +121,9 @@
         GK.sfx('spin');
 
         var idx = GK.rndInt(0, SEGS.length - 1);
-        if (GK.luckRoll(0.08)) {
+        /* Grundwert 0: ohne Admin-Luck wird nichts geschenkt. Frühere 8 % haben
+           das Rad auf über 100 % Auszahlungsquote gehoben. */
+        if (GK.luckRoll(0)) {
           var good = [];
           SEGS.forEach(function (m, i) { if (m >= 1.5) good.push(i); });
           if (good.length) idx = GK.pick(good);

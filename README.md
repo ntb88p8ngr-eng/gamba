@@ -96,15 +96,15 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
 | 1 | **Fantasy Reels** | 3 Walzen, gestaffelter Stopp, Auto-Spin und Endlos-Modus | 100× | 81 % |
-| 2 | **Neon Roulette** | Europäisches Rad (0–36), Farben, Dutzende, Einzelzahlen | 32× | 87–92 % |
+| 2 | **Neon Roulette** | Europäisches Rad (0–36), mehrere Felder gleichzeitig belegbar | 32× | 86,5–97,3 % |
 | 3 | **Royal Blackjack** | 6 Decks, Hit/Stand/Doppeln, Dealer zieht bis 17, BJ zahlt 6:5 | 6:5 | ~97 % |
 | 4 | **Drachenmünze** | Krone oder Drache, 3D-Flip, feste Bonus-Chips für Siegesserien | 1,9× + Bonus | 95 % |
 | 5 | **Würfelduell** | Duell gegen den Dealer, Über/Unter 7, Exakt 7 | 5,1× | 85–92 % |
 | 6 | **Raketen-Crash** | Multiplikator steigt live, Cash-out vor dem Crash, Auto-Cashout | ∞ | 92 % |
 | 7 | **Drachenhöhle** | 5×5 Minenfeld, 1–24 Drachen, jederzeit auszahlen | ~200× | 92 % |
-| 8 | **Rad des Schicksals** | 20 Segmente zwischen Totenkopf und Jackpot | 5× | 87 % |
+| 8 | **Rad des Schicksals** | 24 Segmente, nur 5 Totenköpfe — 79 % aller Drehungen zahlen | 5× | 92 % |
 | 9 | **Plinko Palast** | 12 Reihen Pins, 3 Risikostufen, mehrere Kugeln gleichzeitig | 40× | 90 % |
-| 10 | **Runen-Rubbellos** | Echtes Freirubbeln mit Maus/Finger, 3 Gleiche gewinnen | 20× | 85 % |
+| 10 | **Runen-Rubbellos** | Echtes Freirubbeln mit Maus/Finger, 35 % der Lose treffen | 20× | 88,5 % |
 | 11 | **Königliches Pferderennen** 🔒 Lv2 | 5 Pferde mit eigenen Quoten, Live-Rennen mit Führungswechseln | 11× | 88 % |
 | 12 | **Eisbär auf dem Eis** 🔒 Lv4 | Scholle für Scholle nach oben, 3 Schwierigkeiten, jederzeit aussteigen | 233× | 91 % |
 | 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack, Scatter-Truhe, Endlos-Modus | 1900× | 78 % |
@@ -117,7 +117,12 @@ wenn es überhaupt zum Flop kam. In 20.000 simulierten Händen kommt ein Spieler
 genauso spielt wie die Gegner, auf **91,6 %**; wer solide passt und erhöht, auf **94 %**;
 wer alles mitgeht, auf **81 %**. Gutes Spiel zahlt sich also wirklich aus.
 
-Die Quoten sind bewusst **knapper als im echten Casino** — es soll sich verdient anfühlen.
+Beim Roulette zahlen die **einfachen Chancen 2,0×** — die Quote hängt dort also nur noch
+an der grünen Null, wie an einem echten Tisch (97,3 %). Dutzende zahlen 2,8× (90,8 %),
+eine Einzelzahl 32× (86,5 %).
+
+Die übrigen Quoten sind bewusst **knapper als im echten Casino** — es soll sich verdient
+anfühlen.
 Wer komplett pleite ist, bekommt **50 Mitleids-Chips** — aber nur **einmal pro Tag**.
 Dazu gibt es alle 24 Stunden **250 Chips Tagesbonus**. Wer beides an einem Tag
 verbraucht und trotzdem alles verzockt, muss bis morgen warten oder den Admin fragen.

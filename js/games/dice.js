@@ -142,8 +142,10 @@
         var mine = [GK.rndInt(1, 6), GK.rndInt(1, 6)];
         var theirs = [GK.rndInt(1, 6), GK.rndInt(1, 6)];
 
-        // Admin-Luck: ein Nachwurf zugunsten des Spielers
-        if (GK.luckRoll(0.08)) {
+        /* Nachwurf zugunsten des Spielers — Grundwert 0, greift also nur über
+           den Admin-Luck-Regler. Mit den früheren 8 % lag „Exakt 7" bei über
+           120 % Auszahlungsquote. */
+        if (GK.luckRoll(0)) {
           if (mode.id === 'seven') { mine = [GK.rndInt(1, 6), 0]; mine[1] = 7 - mine[0]; }
           else if (mode.id === 'over') mine = [GK.rndInt(4, 6), GK.rndInt(4, 6)];
           else if (mode.id === 'under') mine = [GK.rndInt(1, 3), GK.rndInt(1, 3)];

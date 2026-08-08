@@ -57,7 +57,7 @@
     badge: 'BIS 32×',
     color: '#00e5ff',
     rules: [
-      '<b>Rot / Schwarz / Gerade / Ungerade / 1-18 / 19-36</b> zahlen 1,9× — knapp unter dem doppelten Einsatz.',
+      '<b>Rot / Schwarz / Gerade / Ungerade / 1-18 / 19-36</b> zahlen <b>2,0×</b> — den doppelten Einsatz.',
       '<b>Dutzend</b> (1-12, 13-24, 25-36) zahlt 2,8×.',
       '<b>Einzelne Zahl</b> zahlt 32×.',
       'Du kannst <b>mehrere Felder gleichzeitig</b> belegen — jeder Klick legt einen weiteren Chip drauf, Rechtsklick räumt das Feld ab.',
@@ -77,13 +77,15 @@
       var out = el('div', { class: 'roul-out', text: '?' });
       var resultBox = GK.resultBox();
 
+      /* Einfache Chancen zahlen 2,0× — die Quote hängt damit nur noch an der
+         grünen Null (18 von 37 Feldern × 2,0 = 97,3 %). */
       var typeDefs = [
-        { type: 'red', label: 'Rot', sub: '1.9×', mult: 1.9, cls: 'red' },
-        { type: 'black', label: 'Schwarz', sub: '1.9×', mult: 1.9, cls: 'black' },
-        { type: 'even', label: 'Gerade', sub: '1.9×', mult: 1.9 },
-        { type: 'odd', label: 'Ungerade', sub: '1.9×', mult: 1.9 },
-        { type: 'low', label: '1–18', sub: '1.9×', mult: 1.9 },
-        { type: 'high', label: '19–36', sub: '1.9×', mult: 1.9 },
+        { type: 'red', label: 'Rot', sub: '2.0×', mult: 2, cls: 'red' },
+        { type: 'black', label: 'Schwarz', sub: '2.0×', mult: 2, cls: 'black' },
+        { type: 'even', label: 'Gerade', sub: '2.0×', mult: 2 },
+        { type: 'odd', label: 'Ungerade', sub: '2.0×', mult: 2 },
+        { type: 'low', label: '1–18', sub: '2.0×', mult: 2 },
+        { type: 'high', label: '19–36', sub: '2.0×', mult: 2 },
         { type: 'd1', label: '1–12', sub: '2.8×', mult: 2.8 },
         { type: 'd2', label: '13–24', sub: '2.8×', mult: 2.8 },
         { type: 'd3', label: '25–36', sub: '2.8×', mult: 2.8 }
