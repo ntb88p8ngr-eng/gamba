@@ -28,7 +28,7 @@
 /* ─────────── 2. ROULETTE ─────────── */
 .roul-wrap{display:grid;place-items:center;gap:14px}
 .roul-wheel{
-  position:relative;width:min(300px,78vw);aspect-ratio:1;border-radius:50%;
+  position:relative;width:min(300px,78vw);height:min(300px,78vw);aspect-ratio:1;border-radius:50%;
   border:9px solid var(--gold);box-shadow:0 0 44px rgba(255,209,46,.55),inset 0 0 40px rgba(0,0,0,.85);
   transition:transform 5.4s cubic-bezier(.15,.72,.16,1);will-change:transform
 }
@@ -189,7 +189,7 @@
 /* ─────────── 8. WHEEL OF FATE ─────────── */
 .wheel-wrap{display:grid;place-items:center;gap:10px;position:relative}
 .wheel{
-  position:relative;width:min(320px,80vw);aspect-ratio:1;border-radius:50%;
+  position:relative;width:min(320px,80vw);height:min(320px,80vw);aspect-ratio:1;border-radius:50%;
   border:10px solid var(--gold);box-shadow:0 0 50px rgba(255,209,46,.55),inset 0 0 44px rgba(0,0,0,.6);
   transition:transform 5.6s cubic-bezier(.12,.75,.14,1);will-change:transform;overflow:hidden
 }
@@ -553,7 +553,7 @@
 
   /* 2. Roulette */
   .roul-wrap{gap:8px}
-  .roul-wheel{width:min(216px,58vw);border-width:6px}
+  .roul-wheel{width:min(216px,58vw);height:min(216px,58vw);border-width:6px}
   .roul-hub{font-size:1.2rem;border-width:3px}
   .roul-ptr{font-size:1.5rem;margin-bottom:-10px}
   .roul-out{width:64px;height:64px;font-size:1.6rem;border-width:3px}
@@ -596,7 +596,7 @@
   .mine-cell svg{width:60%;height:60%}
 
   /* 8. Rad des Schicksals */
-  .wheel{width:min(228px,62vw);border-width:7px}
+  .wheel{width:min(228px,62vw);height:min(228px,62vw);border-width:7px}
   .wheel-lbl{font-size:.58rem}
 
   /* 9. Plinko */
@@ -641,7 +641,7 @@
 @media(max-width:400px){
   .reel,.sym{height:78px}
   .sym{flex:0 0 78px}
-  .roul-wheel{width:min(190px,56vw)}
+  .roul-wheel{width:min(190px,56vw);height:min(190px,56vw)}
   .card{width:50px;height:72px;font-size:.7rem}
   .card .mid{font-size:1.2rem}
   .peng-scene{height:200px}
