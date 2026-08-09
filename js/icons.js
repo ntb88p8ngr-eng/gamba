@@ -406,16 +406,15 @@
      gezeichnete SVG weiter unten — so wandern die Artworks in einem Rutsch in
      alle Spiele, Kacheln und Gewinntabellen. Namen ohne Bild (Truhe, Schädel,
      Fragezeichen, Rad …) bleiben Vektor. */
-  var SYMBOLS = ('bar bear bear2 bear3 bell cards cherry chip clover club coins crab crown ' +
+  var SYMBOLS = ('bar bear bear2 bell cards cherry chip clover club coins crab crown ' +
     'diamondsuit dragon fish flame gem gift heart horse1 horse2 horse3 horse4 horse5 ' +
     'horsehead horseshoe iceberg kelp melon moneybag octopus pearl penguin penguin2 ' +
-    'penguin3 plum reeffish rocket seven shark shell shield spade star trident trophy').split(' ');
+    'plum reeffish rocket seven shark shell shield spade star trident trophy ' +
+    'floe').split(' ');
 
   var SYMBOL_IMGS = {};
   SYMBOLS.forEach(function (n) { SYMBOL_IMGS[n] = 'assets/symbols/' + n + '.webp'; });
-  /* Die Eisscholle des Eisbär-Spiels und die Münze bekommen die passenden
-     Artworks unter ihrem bisherigen Namen. */
-  SYMBOL_IMGS.floe = 'assets/symbols/iceberg.webp';
+  /* Die Münze bekommt den Münzstapel unter ihrem bisherigen Namen. */
   SYMBOL_IMGS.coin = 'assets/symbols/coins.webp';
 
   /* Verläufe einmal ins Dokument hängen */

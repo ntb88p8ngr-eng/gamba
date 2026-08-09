@@ -64,7 +64,7 @@
             style: '--d:' + (i % 5) * 0.4 + 's',
             title: i === 0 ? 'Startscholle' : 'Auf die Scholle tippen zum Springen'
           }, [
-            el('span', { class: 'fl-top' }),
+            el('span', { class: 'fl-img', html: GK.iconHTML('floe') }),
             el('span', { class: 'fl-mult', text: i === 0 ? 'START' : MULTS[i - 1] + '×' })
           ]);
           // direkt auf die nächste Scholle tippen springt ebenfalls

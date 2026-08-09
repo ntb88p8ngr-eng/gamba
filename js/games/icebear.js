@@ -181,7 +181,7 @@
         }
 
         r.tiles[t].classList.add('stepped');
-        r.tiles[t].innerHTML = GK.iconHTML('bear');
+        r.tiles[t].innerHTML = GK.iconHTML('bear2');
         r.tiles.forEach(function (x, i) { if (i !== t) x.classList.add('safe-dim'); });
         step++;
         GK.sfx('gem');

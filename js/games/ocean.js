@@ -135,10 +135,15 @@
         el('div', { class: 'reels oc-reels' }, reels.concat([lineOverlay]))
       ]);
 
+      /* Felder bleiben stehen, nur ihr Inhalt wechselt — siehe die ausführliche
+         Begründung in slots.js: kompletter innerHTML-Neubau bei jedem Dreh
+         lässt den Compositor auf iOS Safari nach ein paar Spins aussteigen. */
       function fillStrip(strip, finals, len) {
-        strip.innerHTML = '';
-        for (var i = 0; i < len - ROWS; i++) strip.appendChild(el('div', { class: 'sym oc-sym', html: GK.iconHTML(randSym().ic) }));
-        finals.forEach(function (s) { strip.appendChild(el('div', { class: 'sym oc-sym', html: GK.iconHTML(s.ic) })); });
+        var cells = strip.children;
+        while (cells.length < len) strip.appendChild(el('div', { class: 'sym oc-sym' }));
+        while (cells.length > len) strip.removeChild(strip.lastChild);
+        for (var i = 0; i < len - ROWS; i++) cells[i].innerHTML = GK.iconHTML(randSym().ic);
+        finals.forEach(function (s, j) { cells[len - ROWS + j].innerHTML = GK.iconHTML(s.ic); });
       }
 
       // Startbild

@@ -15,7 +15,10 @@
 @keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.28;transform:scale(.8)}}
 .reels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#0a0018;border-radius:18px;padding:10px;border:3px solid rgba(255,255,255,.15)}
 .reel{height:120px;overflow:hidden;border-radius:14px;background:linear-gradient(180deg,#1c0138,#2e0a5c);position:relative;box-shadow:inset 0 12px 22px rgba(0,0,0,.85),inset 0 -12px 22px rgba(0,0,0,.85)}
-.strip{display:flex;flex-direction:column;will-change:transform}
+/* Eigene, feste Compositor-Ebene für die drehende Walze — ohne das lässt iOS
+   Safari die Ebene nach ein paar Spins fallen und der Inhalt bleibt unsichtbar,
+   obwohl er im DOM steht (siehe fillStrip in slots.js/ocean.js). */
+.strip{display:flex;flex-direction:column;will-change:transform;transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .sym{height:120px;display:grid;place-items:center;flex:0 0 120px}
 .reel.hit{animation:reelhit .55s;box-shadow:inset 0 0 30px rgba(124,255,59,.85),0 0 24px var(--lime)}
 @keyframes reelhit{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
@@ -294,7 +297,11 @@
 .ice-row.current .floe:hover:not(:disabled){transform:translateY(-4px) scale(1.05);box-shadow:0 0 20px var(--cyan);border-color:#fff}
 .floe:disabled{cursor:default}
 .floe.stepped{background:linear-gradient(160deg,#7cff3b,#2f9e12);border-color:var(--lime);box-shadow:0 0 20px rgba(124,255,59,.6)}
-.peng-floe.broken{background:linear-gradient(160deg,#1c4a7a,#06182e);border-color:var(--red);animation:shakey .45s}
+/* Zielte vorher faelschlich auf .peng-floe.broken (Copy-Paste-Fehler) — dadurch
+   bekam die gebrochene Eisscholle beim Eisbaeren nie ihre Rissfarbe, und beim
+   Pinguin kollidierten zwei Animationen (shakey vs. floeBreak) auf derselben
+   Klasse. */
+.floe.broken{background:linear-gradient(160deg,#1c4a7a,#06182e);border-color:var(--red);animation:shakey .45s}
 .floe.safe-dim,.floe.revealed-dim{opacity:.4}
 .ice-water{
   margin-top:10px;height:52px;border-radius:12px;position:relative;overflow:hidden;
@@ -446,21 +453,19 @@
   display:flex;align-items:flex-end;gap:26px;transition:transform .45s ease-out
 }
 .peng-floe{
-  position:relative;flex:0 0 76px;height:26px;border-radius:0 0 10px 10px;padding:0;cursor:default;
-  background:linear-gradient(180deg,#8fd0f5,#3f7fb8);
-  border:2px solid #dff1ff;border-top:none;
+  position:relative;flex:0 0 76px;height:40px;padding:0;cursor:default;background:none;border:none;
   animation:bob 3.2s ease-in-out infinite;animation-delay:var(--d);
   transition:opacity .3s,transform .3s
 }
-.peng-floe .fl-top{
-  position:absolute;left:-4px;right:-4px;top:-9px;height:11px;border-radius:8px 8px 3px 3px;
-  background:linear-gradient(180deg,#ffffff,#cfeaff);box-shadow:0 2px 0 rgba(0,0,0,.18)
-}
+/* Das Artwork ist ein unregelmäßiger Eisbrocken, kein Rechteck — es darf
+   über die schmale Flex-Box hinausragen, sonst wirkt es gestaucht. */
+.peng-floe .fl-img{position:absolute;inset:-14px -14px -4px -14px;display:block;pointer-events:none}
+.peng-floe .fl-img img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}
 .peng-floe .fl-mult{
-  position:absolute;left:0;right:0;top:-34px;text-align:center;
+  position:absolute;left:0;right:0;top:-30px;text-align:center;z-index:1;
   font-family:'Bungee',sans-serif;font-size:.62rem;color:#dff1ff;text-shadow:0 2px 6px rgba(0,0,0,.8)
 }
-.peng-floe.start{flex-basis:92px;background:linear-gradient(180deg,#bfe6ff,#6aa8d8)}
+.peng-floe.start{flex-basis:92px}
 .peng-floe.done{opacity:.5}
 /* hoeher setzen, sonst steht der Pinguin auf seiner eigenen Zahl */
 .peng-floe.here .fl-mult{color:var(--gold);font-size:.74rem;top:-62px}

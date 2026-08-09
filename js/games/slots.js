@@ -81,12 +81,19 @@
 
       function symIcon(s) { return GK.iconHTML(s.icon || s.id); }
 
+      /* Die Walzensymbole sind jetzt Bilder statt Inline-SVG. Auf iOS Safari
+         verliert der Compositor nach ein paar Spins das Bild komplett, wenn
+         man bei jedem Dreh alle ~30 <div>+<img> wegwirft und neu baut, während
+         gleichzeitig eine CSS-Transition auf demselben Element läuft — ein
+         bekannter WebKit-Bug bei starkem DOM-Durchsatz auf transformierten
+         Ebenen. Die Felder bleiben deshalb liegen; nur ihr Inhalt wird
+         ausgetauscht (siehe auch .reel/.strip in games.css). */
       function fillStrip(strip, finalSym, len) {
-        strip.innerHTML = '';
-        for (var i = 0; i < len - 1; i++) {
-          strip.appendChild(el('div', { class: 'sym', html: symIcon(randSym()) }));
-        }
-        strip.appendChild(el('div', { class: 'sym', html: symIcon(finalSym) }));
+        var cells = strip.children;
+        while (cells.length < len) strip.appendChild(el('div', { class: 'sym' }));
+        while (cells.length > len) strip.removeChild(strip.lastChild);
+        for (var i = 0; i < len - 1; i++) cells[i].innerHTML = symIcon(randSym());
+        cells[len - 1].innerHTML = symIcon(finalSym);
       }
 
       // Startbild
