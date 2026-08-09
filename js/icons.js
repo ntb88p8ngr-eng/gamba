@@ -402,6 +402,22 @@
     dragonpurple: 'assets/dragons/purple.webp'
   };
 
+  /* Das gemalte Symbolset. Wo ein Name hier steht, gewinnt das Bild gegen das
+     gezeichnete SVG weiter unten — so wandern die Artworks in einem Rutsch in
+     alle Spiele, Kacheln und Gewinntabellen. Namen ohne Bild (Truhe, Schädel,
+     Fragezeichen, Rad …) bleiben Vektor. */
+  var SYMBOLS = ('bar bear bear2 bear3 bell cards cherry chip clover club coins crab crown ' +
+    'diamondsuit dragon fish flame gem gift heart horse1 horse2 horse3 horse4 horse5 ' +
+    'horsehead horseshoe iceberg kelp melon moneybag octopus pearl penguin penguin2 ' +
+    'penguin3 plum reeffish rocket seven shark shell shield spade star trident trophy').split(' ');
+
+  var SYMBOL_IMGS = {};
+  SYMBOLS.forEach(function (n) { SYMBOL_IMGS[n] = 'assets/symbols/' + n + '.webp'; });
+  /* Die Eisscholle des Eisbär-Spiels und die Münze bekommen die passenden
+     Artworks unter ihrem bisherigen Namen. */
+  SYMBOL_IMGS.floe = 'assets/symbols/iceberg.webp';
+  SYMBOL_IMGS.coin = 'assets/symbols/coins.webp';
+
   /* Verläufe einmal ins Dokument hängen */
   var injected = false;
   function injectDefs() {
@@ -418,8 +434,9 @@
 
   /** Icon als String — praktisch für innerHTML. */
   GK.iconHTML = function (name, cls) {
-    if (DRAGON_IMGS[name]) {
-      return '<img class="gk-ic ' + (cls || '') + '" src="' + DRAGON_IMGS[name] + '" alt="" draggable="false">';
+    var img = DRAGON_IMGS[name] || SYMBOL_IMGS[name];
+    if (img) {
+      return '<img class="gk-ic ' + (cls || '') + '" src="' + img + '" alt="" draggable="false">';
     }
     var body = I[name];
     if (!body) return '';
@@ -435,7 +452,7 @@
     return wrap;
   };
 
-  GK.hasIcon = function (name) { return !!I[name] || !!DRAGON_IMGS[name]; };
+  GK.hasIcon = function (name) { return !!I[name] || !!DRAGON_IMGS[name] || !!SYMBOL_IMGS[name]; };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectDefs);
   else injectDefs();

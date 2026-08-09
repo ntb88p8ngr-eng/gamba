@@ -16,7 +16,7 @@
     id: 'horses',
     name: 'Königliches Pferderennen',
     emoji: '🏇',
-    icon: 'horse',
+    icon: 'horse1',
     blurb: 'Fünf Pferde, eine Bahn, null Vernunft. Setz auf deinen Favoriten und brüll ihn ins Ziel.',
     badge: 'BIS 11×',
     color: '#ff8a00',
@@ -46,7 +46,7 @@
       var track = el('div', { class: 'race-track' });
       HORSES.forEach(function (h) {
         var runner = el('div', { class: 'runner', style: 'color:' + h.color }, [
-          el('span', { class: 'r-icon', html: GK.iconHTML('horse') }),
+          el('span', { class: 'r-icon', html: GK.iconHTML('horse' + h.nr) }),
           el('span', { class: 'r-nr', style: 'background:' + h.color, text: h.nr })
         ]);
         var lane = el('div', { class: 'lane' }, [
@@ -64,7 +64,7 @@
       var pickBtns = [];
       var picker = el('div', { class: 'horse-pick' }, HORSES.map(function (h) {
         var b = el('button', { class: 'hbet' + (h.nr === 1 ? ' sel' : ''), style: '--hc:' + h.color + ';color:' + h.color }, [
-          el('span', { class: 'hb-icon', html: GK.iconHTML('horse') }),
+          el('span', { class: 'hb-icon', html: GK.iconHTML('horse' + h.nr) }),
           el('span', { class: 'hb-name', text: h.name }),
           el('span', { class: 'hb-odds', text: h.odds + '×' })
         ]);
