@@ -648,6 +648,9 @@ input[type=range]{flex:1;accent-color:var(--pink)}
 /* ═══════════ EIGENE ICONS ═══════════ */
 .gk-icon{display:inline-flex;align-items:center;justify-content:center;line-height:0}
 .gk-icon>svg,svg.gk-ic{width:1em;height:1em;display:block;overflow:visible}
+/* Rasterbilder (die Drachenköpfe) statt Vektor: gleiche 1em-Box, aber
+   contain statt der vom SVG-viewBox miterledigten Skalierung */
+.gk-icon>img,img.gk-ic{width:1em;height:1em;display:block;object-fit:contain;border-radius:50%}
 [data-icon]{display:inline-flex;align-items:center;justify-content:center;line-height:0}
 [data-icon]>svg{width:1em;height:1em;display:block}
 

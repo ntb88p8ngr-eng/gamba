@@ -10,7 +10,7 @@
     { id: 'clover', name: 'Klee',    w: 22, m3: 11,  m2: 0.7 },
     { id: 'bell',   name: 'Glocke',  w: 18, m3: 16,  m2: 0.8 },
     { id: 'star',   name: 'Stern',   w: 14, m3: 24,  m2: 1.0 },
-    { id: 'dragon', name: 'Drache',  w: 10, m3: 35,  m2: 1.3 },
+    { id: 'dragon', icon: 'dragonpurple', name: 'Drache', w: 10, m3: 35, m2: 1.3 },
     { id: 'gem',    name: 'Juwel',   w: 7,  m3: 50,  m2: 1.8 },
     { id: 'crown',  name: 'Krone',   w: 3,  m3: 100, m2: 3.0 }
   ];
@@ -79,12 +79,14 @@
         reels.push(reel); strips.push(strip);
       }
 
+      function symIcon(s) { return GK.iconHTML(s.icon || s.id); }
+
       function fillStrip(strip, finalSym, len) {
         strip.innerHTML = '';
         for (var i = 0; i < len - 1; i++) {
-          strip.appendChild(el('div', { class: 'sym', html: GK.iconHTML(randSym().id) }));
+          strip.appendChild(el('div', { class: 'sym', html: symIcon(randSym()) }));
         }
-        strip.appendChild(el('div', { class: 'sym', html: GK.iconHTML(finalSym.id) }));
+        strip.appendChild(el('div', { class: 'sym', html: symIcon(finalSym) }));
       }
 
       // Startbild
@@ -101,7 +103,7 @@
       var paytable = el('div', { class: 'paytable' },
         SYMS.slice().reverse().map(function (s) {
           return el('div', { class: 'pay-item' }, [
-            el('span', { class: 's', html: GK.iconHTML(s.id) }),
+            el('span', { class: 's', html: symIcon(s) }),
             el('span', { class: 'm', text: s.m3 + '×' })
           ]);
         }));

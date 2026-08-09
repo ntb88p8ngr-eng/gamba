@@ -25,14 +25,14 @@
 
       var coin = el('div', { class: 'coin' }, [
         el('div', { class: 'coin-face coin-front', html: GK.iconHTML('crown') }),
-        el('div', { class: 'coin-face coin-back', html: GK.iconHTML('dragon') })
+        el('div', { class: 'coin-face coin-back', html: GK.iconHTML('dragongreen') })
       ]);
 
       var crownBtn = el('button', { class: 'side-btn sel' }, [
         el('span', { class: 'e', html: GK.iconHTML('crown') }), el('span', { class: 't', text: 'KRONE' })
       ]);
       var dragonBtn = el('button', { class: 'side-btn' }, [
-        el('span', { class: 'e', html: GK.iconHTML('dragon') }), el('span', { class: 't', text: 'DRACHE' })
+        el('span', { class: 'e', html: GK.iconHTML('dragongreen') }), el('span', { class: 't', text: 'DRACHE' })
       ]);
 
       var streakBar = el('div', { class: 'streak-bar' });

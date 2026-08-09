@@ -822,3 +822,92 @@
   .scratch-card.crystal{max-width:258px;padding:10px}
   .scratch9-bonus .stile{flex:0 0 74px;height:38px}
 }
+
+/* ─────────── 18. SMAUGS SCHATZ ─────────── */
+.hst-scene{
+  position:relative;height:400px;border-radius:22px;overflow:hidden;
+  border:5px solid #6b3300;box-shadow:inset 0 0 70px rgba(0,0,0,.75);
+  background:radial-gradient(120% 90% at 50% 8%,#3a1400 0%,#1c0800 48%,#0a0300 100%)
+}
+.hst-glow{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(60% 45% at 50% 68%,rgba(255,180,60,.28),transparent 72%)
+}
+.hst-mist{
+  position:absolute;left:-20%;right:-20%;bottom:22%;height:70px;pointer-events:none;
+  filter:blur(16px);opacity:.35;background:radial-gradient(ellipse 50% 70% at 50% 50%,rgba(255,140,40,.5),transparent 72%);
+  animation:fogdrift 18s ease-in-out infinite alternate
+}
+/* Der Drache liegt im Hintergrund und wird über CSS-Variablen unruhiger */
+.hst-dragon{
+  position:absolute;top:6%;left:50%;translate:-50% 0;width:52%;aspect-ratio:1;
+  filter:drop-shadow(0 10px 30px rgba(0,0,0,.7)) saturate(calc(1 + var(--tension,0)*.5));
+  transition:filter .4s;animation:dragonbreathe 4.5s ease-in-out infinite
+}
+.hst-dragon img{width:100%;height:100%;border-radius:0}
+@keyframes dragonbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+.hst-dragon.stirring{animation:dragonstir 2.2s ease-in-out infinite}
+.hst-dragon.alert{animation:dragonstir 1.1s ease-in-out infinite}
+@keyframes dragonstir{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.03) rotate(-0.6deg)}}
+.hst-eye{
+  position:absolute;top:41%;width:6%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,#fff6b0,#ff8a00 55%,transparent 75%);
+  opacity:0;transform:scale(.4);transition:opacity .5s,transform .5s;
+  box-shadow:0 0 12px 4px rgba(255,140,20,.8)
+}
+.hst-eye.l{left:36%}.hst-eye.r{left:52%}
+.hst-dragon.stirring .hst-eye{opacity:.55;transform:scale(.7)}
+.hst-dragon.alert .hst-eye{opacity:1;transform:scale(1);animation:eyeflare 1s ease-in-out infinite alternate}
+@keyframes eyeflare{from{filter:brightness(1)}to{filter:brightness(1.5)}}
+/* Schatzhaufen vorn: wächst mit jedem Griff */
+.hst-hoard{
+  position:absolute;left:0;right:0;bottom:56px;height:70px;pointer-events:none;
+  display:flex;align-items:flex-end;justify-content:center;flex-wrap:wrap-reverse;gap:2px;padding:0 10%
+}
+.hst-coin{
+  width:22px;height:22px;flex:0 0 auto;transform:rotate(var(--r,0));
+  animation:coindrop .35s cubic-bezier(.2,1.6,.4,1) both;animation-delay:calc(var(--i,0)*.02s)
+}
+@keyframes coindrop{from{transform:translateY(-18px) rotate(var(--r,0));opacity:0}to{transform:translateY(0) rotate(var(--r,0));opacity:1}}
+/* Dieb: huscht am unteren Rand entlang, je nach Fortschritt weiter ins Bild */
+.hst-thief{
+  position:absolute;left:8%;bottom:6px;width:34px;height:48px;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.6));transition:left .4s ease-out
+}
+.hst-thief.reaching{animation:thiefreach .36s ease-in-out}
+@keyframes thiefreach{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px) rotate(-4deg)}}
+.hst-thief.burned{animation:thiefburn .5s forwards}
+@keyframes thiefburn{
+  0%{filter:drop-shadow(0 4px 6px rgba(0,0,0,.6)) brightness(1)}
+  40%{filter:drop-shadow(0 4px 6px rgba(0,0,0,.6)) brightness(2.4) saturate(3) hue-rotate(-30deg)}
+  100%{opacity:0;transform:translateY(10px) scale(.7)}
+}
+/* Fortschrittsleiste unten: zehn Etappen, dezent, informativ */
+.hst-track-wrap{position:absolute;left:10%;right:10%;bottom:12px;height:26px}
+.hst-track{display:flex;gap:4px;height:100%}
+.hst-step{
+  flex:1;border-radius:6px;background:rgba(0,0,0,.4);border:1.5px solid rgba(255,180,80,.25);
+  display:grid;place-items:center;opacity:.35;transition:all .25s
+}
+.hst-step img,.hst-step svg{width:60%;height:60%}
+.hst-step.done{opacity:1;background:rgba(255,140,20,.22);border-color:rgba(255,180,80,.7)}
+.hst-step.here{opacity:1;border-color:#ffd12e;box-shadow:0 0 12px rgba(255,209,46,.6);animation:nextGlow 1.3s ease-in-out infinite}
+/* Feuerstoß beim Erwischtwerden: deckt kurz die ganze Szene ab */
+.hst-fire{
+  position:absolute;inset:0;pointer-events:none;opacity:0;z-index:5;
+  background:radial-gradient(120% 90% at 50% 15%,rgba(255,230,140,.95),rgba(255,120,20,.9) 40%,rgba(120,10,0,.85) 75%)
+}
+.hst-scene.caught .hst-fire{animation:firewash .75s ease-out}
+@keyframes firewash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+.hst-scene.caught{animation:none}
+.hst-info{font-family:'Bungee',sans-serif;font-size:.72rem;color:#ffb85c;text-align:center;min-height:18px}
+@media(max-width:620px){
+  .hst-scene{height:340px;border-width:3px}
+  .hst-hoard{bottom:48px;height:56px}
+  .hst-coin{width:18px;height:18px}
+  .hst-thief{width:28px;height:40px}
+  .hst-track-wrap{height:22px}
+}
+@media(max-width:400px){
+  .hst-scene{height:300px}
+}

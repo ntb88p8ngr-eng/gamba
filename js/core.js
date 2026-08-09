@@ -571,6 +571,12 @@
       Sound.noise({ dur: 0.24, freq: 680, filter: 'lowpass', vol: 0.17 });
       Sound.tone({ freq: 280, to: 110, dur: 0.2, type: 'sine', vol: 0.1 });
     },
+    /* Der Drache regt sich: tiefes, anschwellendes Knurren kurz vorm Erwachen */
+    growl:   function () {
+      Sound.tone({ freq: 68, to: 92, dur: 0.5, type: 'sawtooth', vol: 0.22 });
+      Sound.noise({ dur: 0.42, freq: 260, filter: 'lowpass', vol: 0.16 });
+      Sound.tone({ freq: 140, to: 110, dur: 0.35, type: 'triangle', vol: 0.1, delay: 0.08 });
+    },
     /* Landung auf der Scholle: kurzer Bass-Plumps plus Eisknirschen */
     plop:    function () {
       Sound.tone({ freq: 190, to: 78, dur: 0.16, type: 'sine', vol: 0.26 });

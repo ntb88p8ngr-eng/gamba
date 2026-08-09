@@ -134,7 +134,7 @@
 
         if (mines.indexOf(i) >= 0) {
           c.classList.add('boom', 'done');
-          c.innerHTML = GK.iconHTML('dragon');
+          c.innerHTML = GK.iconHTML('dragonblue');
           GK.sfx('boom');
           GK.shake(grid, true);
           endRound(false);

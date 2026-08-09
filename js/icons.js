@@ -392,6 +392,16 @@
       '<ellipse cx="20" cy="30" rx="6" ry="4" fill="#fff" opacity=".28" transform="rotate(-35 20 30)"/>'
   };
 
+  /* Vom Nutzer gestellte Drachenköpfe — Rasterbilder statt Vektor, deshalb
+     getrennt vom `I`-Set. Vier Farben, damit jedes Drachen-Spiel sein
+     eigenes Gesicht bekommt statt überall dasselbe Symbol zu zeigen. */
+  var DRAGON_IMGS = {
+    dragonred:    'assets/dragons/red.webp',
+    dragonblue:   'assets/dragons/blue.webp',
+    dragongreen:  'assets/dragons/green.webp',
+    dragonpurple: 'assets/dragons/purple.webp'
+  };
+
   /* Verläufe einmal ins Dokument hängen */
   var injected = false;
   function injectDefs() {
@@ -408,6 +418,9 @@
 
   /** Icon als String — praktisch für innerHTML. */
   GK.iconHTML = function (name, cls) {
+    if (DRAGON_IMGS[name]) {
+      return '<img class="gk-ic ' + (cls || '') + '" src="' + DRAGON_IMGS[name] + '" alt="" draggable="false">';
+    }
     var body = I[name];
     if (!body) return '';
     return '<svg class="gk-ic ' + (cls || '') + '" viewBox="0 0 64 64" aria-hidden="true">' + body + '</svg>';
@@ -422,7 +435,7 @@
     return wrap;
   };
 
-  GK.hasIcon = function (name) { return !!I[name]; };
+  GK.hasIcon = function (name) { return !!I[name] || !!DRAGON_IMGS[name]; };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectDefs);
   else injectDefs();

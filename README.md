@@ -4,7 +4,7 @@ Ein knallbuntes Fantasy-Casino für Challenges unter Freunden. **Kein Echtgeld, 
 Einzahlung, keine Auszahlung** — alle Chips sind wertlose Spielwährung. Es geht nur um
 Angeben, Ehre und die Krone im Leaderboard.
 
-17 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon-Set, prozedural
+18 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon- und Bild-Set, prozedural
 erzeugte Hintergrundmusik und ein gemeinsames Leaderboard über einen kleinen Server.
 
 ---
@@ -91,7 +91,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 ---
 
-## Die 17 Spiele
+## Die 18 Spiele
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
@@ -112,6 +112,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 15 | **Pinguin-Sprung** 🔒 Lv15 | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
 | 16 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
 | 17 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
+| 18 | **Smaugs Schatz** | 10 Griffe in den Hort, Erfolgschance sinkt von 93 % auf 50 %, jederzeit aussteigen | 19,87× | ~87 % |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
 gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,
@@ -255,13 +256,13 @@ Würfel auf den Server wandern.
 color, minLevel, rules, mount(root) })`. `mount` baut die Oberfläche und gibt optional
 eine Aufräumfunktion zurück.
 
-Getestet in Chromium, Desktop (1400 px) und Mobil (375/390/402 px): alle 17 Spiele,
+Getestet in Chromium, Desktop (1400 px) und Mobil (375/390/402 px): alle 18 Spiele,
 Level-Freischaltung, Admin-Flows, Server-Sync über zwei Geräte — ohne JS-Fehler.
 `prefers-reduced-motion` wird respektiert.
 
 **Auf dem Handy** liegt die ganze Bedienung in einer festen Leiste am unteren Rand:
 unten der Hauptknopf, darüber bei Bedarf die Zwischenaktion (Auszahlen, Hit/Stand,
-Weiter) und darüber das Einsatzfeld mit den Chips. Dadurch sind alle 17 Spiele sofort
+Weiter) und darüber das Einsatzfeld mit den Chips. Dadurch sind alle 18 Spiele sofort
 spielbar, ohne vorher zu scrollen — geprüft bei 402×700 und 375×640 sichtbarer Fläche.
 
 ---
