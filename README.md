@@ -98,7 +98,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 1 | **Fantasy Reels** | 3 Walzen, gestaffelter Stopp, Auto-Spin und Endlos-Modus | 100× | 81 % |
 | 2 | **Neon Roulette** | Europäisches Rad (0–36), mehrere Felder gleichzeitig belegbar | 32× | 86,5–97,3 % |
 | 3 | **Royal Blackjack** | 6 Decks, Hit/Stand/Doppeln, Dealer zieht bis 17, BJ zahlt 6:5 | 6:5 | ~97 % |
-| 4 | **Drachenmünze** | Krone oder Drache, 3D-Flip, feste Bonus-Chips für Siegesserien | 1,9× + Bonus | 95 % |
+| 4 | **Drachenmünze** | Krone oder Drache, 3D-Flip, feste Bonus-Chips für Siegesserien | 2× + Bonus | ~100 % + Serien-Bonus |
 | 5 | **Würfelduell** | Duell gegen den Dealer, Über/Unter 7, Exakt 7 | 5,1× | 85–92 % |
 | 6 | **Raketen-Crash** | Multiplikator steigt live, Cash-out vor dem Crash, Auto-Cashout | ∞ | 92 % |
 | 7 | **Drachenhöhle** | 5×5 Minenfeld, 1–24 Drachen, jederzeit auszahlen | ~200× | 92 % |

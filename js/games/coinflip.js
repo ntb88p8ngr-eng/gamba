@@ -9,11 +9,11 @@
     emoji: '🪙',
     icon: 'coin',
     blurb: 'Krone oder Drache. 50/50, keine Ausreden. Serien geben fette Bonus-Multiplikatoren.',
-    badge: '1.9× + SERIE',
+    badge: '2× + SERIE',
     color: '#ffd12e',
     rules: [
       'Wähle <b>Krone</b> oder <b>Drache</b> und wirf die Münze.',
-      'Richtig getippt zahlt <b>1,9×</b> deinen Einsatz.',
+      'Richtig getippt zahlt <b>2×</b> deinen Einsatz.',
       'Ab <b>3 Siegen in Folge</b> gibt es feste <b>Bonus-Chips</b>: 50, 100, 200, 400, 700, 1200 …',
       'Ein Fehlschlag setzt die Serie zurück auf null.'
     ],
@@ -37,7 +37,7 @@
 
       var streakBar = el('div', { class: 'streak-bar' });
       var multBox = el('div', { class: 'info-box' }, [
-        el('b', { text: '1.9×' }), el('span', { text: 'Auszahlung' })
+        el('b', { text: '2×' }), el('span', { text: 'Auszahlung' })
       ]);
       var streakBox = el('div', { class: 'info-box' }, [
         el('b', { text: '0' }), el('span', { text: 'Serie' })
@@ -48,9 +48,12 @@
       var resultBox = GK.resultBox();
       var flipBtn = el('button', { class: 'btn btn-gold btn-full', text: '🪙 MÜNZE WERFEN' });
 
-      var MULT = 1.9;
+      // Ein fairer 50/50-Wurf zahlt bei 2× im Kern genau 100 % zurück — die
+      // Serien-Bonis kommen obendrauf. Damit liegt Drachenmünze bewusst über
+      // dem Haus-Durchschnitt, dafür ohne den Nervenkitzel einer echten Quote.
+      var MULT = 2;
       // Feste Bonus-Chips statt Multiplikator: sonst könnte man mit 1 Chip eine
-      // Serie aufbauen und dann All-In gehen — das wäre über 100% Auszahlung.
+      // Serie aufbauen und dann All-In gehen — das wäre astronomisch über 100%.
       var STREAK_BONUS = { 3: 50, 4: 100, 5: 200, 6: 400, 7: 700, 8: 1200 };
       function bonusFor(s) { return STREAK_BONUS[s] || (s > 8 ? 2000 : 0); }
 
