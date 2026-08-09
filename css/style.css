@@ -176,9 +176,11 @@ img{max-width:100%}
   /* ── Feste Bedienleiste am unteren Rand ──
      Das Spielfeld ist auf einem Handy hoch genug, dass der Hauptknopf sonst
      unter dem Bildrand liegt. Er wird deshalb festgepinnt, darüber bei Bedarf
-     die Zwischenaktion (Auszahlen, Hit/Stand, Weiter). Der Inhalt bekommt
-     unten Platz, damit nichts dauerhaft verdeckt bleibt. */
-  #view-game{padding-bottom:122px}
+     die Zwischenaktion (Auszahlen, Hit/Stand, Weiter) und ganz oben das
+     Einsatzfeld. Der Inhalt bekommt unten Platz, damit nichts dauerhaft
+     verdeckt bleibt. */
+  #view-game{padding-bottom:178px}
+  #view-game.has-actions{padding-bottom:232px}
   /* Drei Dinge würden die feste Leiste sonst am Bildschirmrand vorbeischieben:
      die Einblend-Animation hinterlässt auf .view eine Transform-Matrix, und
      backdrop-filter bzw. overflow:hidden am Panel machen es zum Bezugsrahmen
@@ -196,15 +198,47 @@ img{max-width:100%}
   }
   /* drei Knöpfe müssen nebeneinander in die Leiste passen */
   #view-game .bj-actions .btn{flex:1;min-width:0;font-size:.72rem;padding:11px 6px}
+  /* ── Einsatz gehört mit in die Leiste ──
+     Bei zehn der Spiele ist die Szene so hoch, dass das Einsatzfeld erst nach
+     dem Scrollen auftaucht — man drückt dann auf einen Knopf, ohne zu sehen,
+     womit man spielt. Als eine flache Zeile passt es zusammen mit dem
+     Hauptknopf in dieselbe Leiste. */
+  #view-game .bet-panel{
+    position:fixed;left:10px;right:10px;z-index:45;
+    bottom:calc(max(10px,env(safe-area-inset-bottom)) + 54px);
+    display:flex;flex-direction:row;align-items:center;gap:6px;padding:7px;border-radius:15px;
+    background:rgba(30,6,62,.97);border:2px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.55)
+  }
+  #view-game.has-actions .bet-panel{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 108px)}
+  #view-game .bet-panel .bet-label{display:none}
+  /* min-width:0 ist hier nicht optional: ohne das zieht sich die Zeile auf die
+     Mindestbreite des Zahlenfelds (rund 227 px) auf und quetscht die Chips weg. */
+  #view-game .bet-panel .bet-row{flex:0 0 88px;min-width:0}
+  #view-game .bet-input{font-size:1rem;padding:7px 8px;border-radius:11px;text-align:center}
+  /* Rest der Breite für die Chips; passt es nicht, wird geschoben statt umgebrochen */
+  #view-game .bet-quick{flex:1;min-width:0;display:flex;flex-wrap:nowrap;gap:4px;overflow-x:auto;scrollbar-width:none}
+  #view-game .bet-quick::-webkit-scrollbar{display:none}
+  #view-game .bet-quick .chip-btn{flex:0 0 auto;padding:6px 8px;font-size:.66rem}
+  #view-game .bet-quick .qb-extra{display:none}
+  /* „ALL IN 🔥" ist der breiteste Chip und sprengt die Zeile — in der Leiste
+     heißt er kurz „MAX 🔥", auf dem Desktop bleibt die lange Beschriftung. */
+  #view-game .bet-quick .qb-allin{font-size:0}
+  #view-game .bet-quick .qb-allin::after{content:"MAX 🔥";font-size:.66rem}
   /* Untergrund, damit der Inhalt nicht durch die Leiste scheint */
   #view-game::after{
-    content:"";position:fixed;left:0;right:0;bottom:0;height:132px;z-index:44;pointer-events:none;
-    background:linear-gradient(180deg,rgba(18,0,43,0),rgba(18,0,43,.88) 30%,#12002b 62%)
+    content:"";position:fixed;left:0;right:0;bottom:0;height:188px;z-index:44;pointer-events:none;
+    background:linear-gradient(180deg,rgba(18,0,43,0),rgba(18,0,43,.88) 34%,#12002b 60%)
   }
+  #view-game.has-actions::after{height:242px}
   /* durchscheinende Knöpfe brauchen in der Leiste eine eigene Fläche */
   #view-game .bj-actions .btn-ghost{background:rgba(46,10,92,.97)}
+  /* Toasts erscheinen unten rechts und lagen damit genau auf dem festen
+     Hauptknopf — nach jeder Runde war er 3 Sekunden lang nicht klickbar. */
+  body:has(#view-game.active) #toasts{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 118px)}
+  body:has(#view-game.active.has-actions) #toasts{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 172px)}
   /* Am Seitenende liegt sonst die Fußzeile unter der Leiste */
-  main:has(#view-game.active)+.footer{padding-bottom:130px}
+  main:has(#view-game.active)+.footer{padding-bottom:186px}
+  main:has(#view-game.active.has-actions)+.footer{padding-bottom:240px}
 }
 .balance-pop{animation:balpop .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes balpop{0%{transform:scale(1)}40%{transform:scale(1.28) rotate(-3deg)}100%{transform:scale(1)}}

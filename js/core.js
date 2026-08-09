@@ -836,9 +836,11 @@
     input.addEventListener('change', function () { setVal(input.value, true); });
     input.addEventListener('blur', function () { setVal(input.value, true); });
 
-    function qb(label, fn, title) {
+    /* cls markiert die Knöpfe, die in der schmalen Handy-Leiste wegfallen —
+       +10 und +100 sind dort durch ½, 2× und +50 abgedeckt. */
+    function qb(label, fn, title, cls) {
       return GK.el('button', {
-        class: 'chip-btn', type: 'button', title: title || '',
+        class: 'chip-btn ' + (cls || ''), type: 'button', title: title || '',
         onClick: function () { fn(); }
       }, [label]);
     }
@@ -846,11 +848,11 @@
     var quick = GK.el('div', { class: 'bet-quick' }, [
       qb('½', function () { setVal(Math.floor(Number(input.value) / 2)); }, 'Halbieren'),
       qb('2×', function () { setVal(Number(input.value) * 2); }, 'Verdoppeln'),
-      qb('+10', function () { setVal(Number(input.value) + 10); }),
+      qb('+10', function () { setVal(Number(input.value) + 10); }, '', 'qb-extra'),
       qb('+50', function () { setVal(Number(input.value) + 50); }),
-      qb('+100', function () { setVal(Number(input.value) + 100); }),
+      qb('+100', function () { setVal(Number(input.value) + 100); }, '', 'qb-extra'),
       qb('MIN', function () { setVal(min); }),
-      qb('ALL IN 🔥', function () { setVal(maxFn()); }, 'Alles setzen')
+      qb('ALL IN 🔥', function () { setVal(maxFn()); }, 'Alles setzen', 'qb-allin')
     ]);
 
     var wrap = GK.el('div', { class: 'bet-panel' }, [
@@ -872,6 +874,137 @@
     // nur solange das Widget im DOM hängt (Spielwechsel räumt sich so selbst auf)
     GK.on('hud', function () { if (input.isConnected && !input.disabled) api.refresh(); });
     return api;
+  };
+
+  /* ─────────────────────────── RUBBELFELD ─────────────────────────── */
+  /**
+   * Ein freirubbelbares Feld. Liegt hier, weil sich beide Rubbellos-Spiele
+   * dieselbe Canvas-Mechanik teilen — dreimal dieselben 90 Zeilen wären sonst
+   * dreimal dieselbe Fehlerquelle.
+   *
+   * opts: { onReveal, cls }
+   * Rückgabe: { el, arm(html), reveal(), isDone(), reset(html) }
+   */
+  GK.scratchTile = function (opts) {
+    opts = opts || {};
+    var under = GK.el('div', { class: 'sym-under' });
+    var cv = GK.el('canvas');
+    var wrap = GK.el('div', { class: 'stile ' + (opts.cls || '') }, [under, cv]);
+    var ctx = cv.getContext('2d');
+    var drawing = false, strokes = 0, done = true, lastP = null;
+
+    var BRUSH = 0.27;      // Pinselradius relativ zur Feldbreite
+    var REVEAL_AT = 0.32;  // ab hier springt das Feld von selbst auf
+
+    function paintCover() {
+      var r = wrap.getBoundingClientRect();
+      cv.width = Math.max(60, r.width) * 2;
+      cv.height = Math.max(60, r.height) * 2;
+      var g = ctx.createLinearGradient(0, 0, cv.width, cv.height);
+      g.addColorStop(0, '#c9c9d8');
+      g.addColorStop(0.4, '#8d8da5');
+      g.addColorStop(0.6, '#e6e6f2');
+      g.addColorStop(1, '#7a7a94');
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.fillStyle = 'rgba(43,10,77,.55)';
+      ctx.font = 'bold ' + Math.round(cv.width * 0.24) + 'px Bungee, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('?', cv.width / 2, cv.height / 2);
+      cv.style.display = '';
+    }
+
+    function pos(ev) {
+      var r = cv.getBoundingClientRect();
+      var t = ev.touches ? ev.touches[0] : ev;
+      return {
+        x: (t.clientX - r.left) * (cv.width / r.width),
+        y: (t.clientY - r.top) * (cv.height / r.height)
+      };
+    }
+
+    function scratch(ev) {
+      if (done) return;
+      var p = pos(ev);
+      var r = cv.width * BRUSH;
+      ctx.globalCompositeOperation = 'destination-out';
+
+      // Strich zwischen letztem und aktuellem Punkt ziehen, damit schnelles
+      // Wischen keine Lücken lässt (sonst muss man ewig nachrubbeln)
+      if (lastP) {
+        ctx.lineWidth = r * 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(lastP.x, lastP.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      lastP = p;
+
+      strokes++;
+      if (strokes % 4 === 0) GK.sfx('hover');
+      if (strokes % 3 === 0) checkReveal();
+    }
+
+    function checkReveal() {
+      if (!done && progress() > REVEAL_AT) reveal();
+    }
+
+    function progress() {
+      try {
+        var d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+        var clear = 0, total = 0;
+        for (var i = 3; i < d.length; i += 4 * 40) { total++; if (d[i] === 0) clear++; }
+        return total ? clear / total : 0;
+      } catch (e) { return 1; }
+    }
+
+    function reveal() {
+      if (done) return;
+      done = true;
+      cv.style.display = 'none';
+      wrap.classList.add('revealed');
+      GK.sfx('gem');
+      if (opts.onReveal) opts.onReveal();
+    }
+
+    function release() {
+      drawing = false;
+      lastP = null;
+      checkReveal();          // auch nach einem kurzen Wisch sofort prüfen
+    }
+
+    cv.addEventListener('mousedown', function (e) { drawing = true; lastP = null; scratch(e); });
+    cv.addEventListener('mousemove', function (e) { if (drawing) scratch(e); });
+    window.addEventListener('mouseup', function () { if (drawing) release(); });
+    cv.addEventListener('touchstart', function (e) { drawing = true; lastP = null; scratch(e); e.preventDefault(); }, { passive: false });
+    cv.addEventListener('touchmove', function (e) { if (drawing) scratch(e); e.preventDefault(); }, { passive: false });
+    cv.addEventListener('touchend', function () { if (drawing) release(); });
+
+    return {
+      el: wrap,
+      arm: function (html) {
+        under.innerHTML = html;
+        wrap.classList.remove('revealed');
+        done = false;
+        strokes = 0;
+        lastP = null;
+        paintCover();
+      },
+      reveal: reveal,
+      isDone: function () { return done; },
+      reset: function (html) {
+        under.innerHTML = html === undefined ? GK.iconHTML('question') : html;
+        done = true;
+        cv.style.display = 'none';
+        wrap.classList.remove('revealed');
+      }
+    };
   };
 
   /* ─────────────────────────── GAME REGISTRY ─────────────────────────── */

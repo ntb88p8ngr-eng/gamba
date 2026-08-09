@@ -28,6 +28,12 @@
     stageEl.innerHTML = '';
     document.documentElement.style.setProperty('--game-color', g.color);
     currentCleanup = g.mount(stageEl) || null;
+    /* Auf dem Handy klebt die Bedienung am unteren Rand. Spiele mit einer
+       Zwischenaktion (Hit/Stand, Weiter/Aussteigen) brauchen dort eine Zeile
+       mehr — das Einsatzfeld muss entsprechend höher sitzen. Welche das sind,
+       weiß nur das gemountete Spiel, deshalb hier am DOM ablesen. */
+    $('#view-game').classList.toggle('has-actions',
+      !!stageEl.querySelector('.bj-actions, .btn-lime.btn-full'));
     $('#btn-rules').onclick = function () { showRules(g); };
     showView('view-game');
     GK.sfx('whoosh');
