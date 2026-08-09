@@ -33,14 +33,7 @@
     return total;
   }
 
-  function cardEl(c, hidden) {
-    if (hidden) return el('div', { class: 'card back' });
-    return el('div', { class: 'card' + (c.red ? ' red' : '') }, [
-      el('div', { class: 'top', text: c.r + c.s }),
-      el('div', { class: 'mid', text: c.s }),
-      el('div', { class: 'bot', text: c.r + c.s })
-    ]);
-  }
+  function cardEl(c, hidden) { return GK.cardEl(c, hidden); }
 
   GK.registerGame({
     id: 'blackjack',

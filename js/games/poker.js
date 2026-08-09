@@ -272,13 +272,7 @@
       /* ── Darstellung ── */
 
       function cardEl(c, hidden, mini) {
-        var cls = 'card' + (mini ? ' mini' : '') + (hidden ? ' back' : (c.red ? ' red' : ''));
-        if (hidden) return el('div', { class: cls });
-        return el('div', { class: cls }, [
-          el('div', { class: 'top', text: c.r + c.s }),
-          el('div', { class: 'mid', text: c.s }),
-          el('div', { class: 'bot', text: c.r + c.s })
-        ]);
+        return GK.cardEl(c, hidden, mini ? 'mini' : '');
       }
 
       function render() {

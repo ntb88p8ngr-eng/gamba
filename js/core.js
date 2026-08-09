@@ -894,6 +894,27 @@
     return api;
   };
 
+  /* ─────────────────────────── SPIELKARTEN ─────────────────────────── */
+  /*
+     Blackjack und Poker teilen sich ein Kartenblatt als Bilddateien
+     (assets/cards/<Rang><Farbe>.webp, z. B. „QH" für Herz-Dame). Beide Spiele
+     führen ihre Farben als Zeichen ♠♥♦♣ — hier wird das auf den Dateibuchstaben
+     übersetzt, damit die Spielmodule ihre Datenstruktur behalten können.
+  */
+  var SUIT_FILE = { '♥': 'H', '♦': 'D', '♣': 'C', '♠': 'S' };
+
+  /**
+   * Eine Spielkarte als Element.
+   * card = { r: 'A'..'K', s: '♠♥♦♣' }, hidden = Rückseite, cls = Zusatzklassen
+   */
+  GK.cardEl = function (card, hidden, cls) {
+    var e = GK.el('div', { class: 'card ' + (cls || '') + (hidden ? ' back' : '') });
+    var file = hidden ? 'back_dragon' : (card.r + (SUIT_FILE[card.s] || 'S'));
+    var img = GK.el('img', { src: 'assets/cards/' + file + '.webp', alt: '', draggable: 'false' });
+    e.appendChild(img);
+    return e;
+  };
+
   /* ─────────────────────────── RUBBELFELD ─────────────────────────── */
   /**
    * Ein freirubbelbares Feld. Liegt hier, weil sich beide Rubbellos-Spiele
