@@ -86,16 +86,19 @@
 .bj-side{margin-bottom:18px}
 .bj-side h4{font-family:'Bungee',sans-serif;font-size:.85rem;margin:0 0 8px;display:flex;gap:10px;align-items:center;color:#eafff2}
 .bj-score{background:rgba(0,0,0,.55);border:2px solid var(--gold);border-radius:999px;padding:3px 12px;font-size:.8rem;color:var(--gold)}
-.hand{display:flex;gap:9px;flex-wrap:wrap;min-height:118px}
+.hand{display:flex;gap:9px;flex-wrap:wrap;min-height:166px}
 /* Karten sind jetzt Bilder aus assets/cards — der Rahmen kommt vom Blatt
    selbst, deshalb kein eigener Verlauf und kein Innenabstand mehr. */
 .card{
-  width:78px;height:112px;border-radius:9px;overflow:hidden;position:relative;
+  /* Das Blatt zeichnet ungewoehnlich schmale Karten (96x211, Verhaeltnis 0,457
+     statt der ueblichen 0,7). Die Box uebernimmt genau dieses Mass, sonst
+     schneidet object-fit oben und unten die Karte an. */
+  width:74px;aspect-ratio:96/211;height:auto;border-radius:9px;overflow:hidden;position:relative;
   box-shadow:0 8px 22px rgba(0,0,0,.55);
   animation:dealin .42s cubic-bezier(.2,1.4,.4,1) both;
   background:#f0e8d8
 }
-.card img{width:100%;height:100%;display:block;object-fit:cover}
+.card img{width:100%;height:100%;display:block;object-fit:contain}
 @keyframes dealin{from{opacity:0;transform:translate(70px,-90px) rotate(28deg) scale(.7)}to{opacity:1;transform:none}}
 .card.back{background:#1a0a06}
 .bj-actions{display:flex;gap:9px;flex-wrap:wrap}
@@ -373,14 +376,14 @@
 .pk-pot-label{font-family:'Bungee',sans-serif;font-size:.62rem;color:var(--gold)}
 .pk-pot-val{font-family:'Bungee',sans-serif;font-size:1.05rem;color:#fff}
 .pk-board-cards{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
-.card.mini{width:52px;height:76px;border-radius:7px}
+.card.mini{width:46px;height:auto;border-radius:7px}
 .card.slot{background:rgba(255,255,255,.07);border:2px dashed rgba(255,255,255,.22);
   box-shadow:none;animation:none}
 .pk-handinfo{font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--cyan);min-height:18px}
 @media(max-width:620px){
   .pk-bots{grid-template-columns:1fr 1fr}
   .pk-bots .pk-seat:last-child{grid-column:span 2}
-  .card.mini{width:44px;height:64px;font-size:.62rem}
+  .card.mini{width:38px}
   .card.mini .mid{font-size:1.05rem}
 }
 
