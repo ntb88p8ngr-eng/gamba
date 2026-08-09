@@ -4,7 +4,7 @@ Ein knallbuntes Fantasy-Casino für Challenges unter Freunden. **Kein Echtgeld, 
 Einzahlung, keine Auszahlung** — alle Chips sind wertlose Spielwährung. Es geht nur um
 Angeben, Ehre und die Krone im Leaderboard.
 
-15 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon-Set, prozedural
+17 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon-Set, prozedural
 erzeugte Hintergrundmusik und ein gemeinsames Leaderboard über einen kleinen Server.
 
 ---
@@ -91,7 +91,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 ---
 
-## Die 15 Spiele
+## Die 17 Spiele
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
@@ -110,6 +110,8 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack, Scatter-Truhe, Endlos-Modus | 1900× | 78 % |
 | 14 | **Königs-Poker** 🔒 Lv10 | Texas Hold'em gegen drei KI-Gegner, Blinds, Bluffs und Showdown | ganzer Pot | 8 % Rake |
 | 15 | **Pinguin-Sprung** 🔒 Lv15 | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
+| 16 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
+| 17 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
 gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,
@@ -153,7 +155,7 @@ du anderswo benutzt.
 ## ⭐ Level & XP
 
 XP gibt es fürs Spielen: **Einsatz/8** pro Runde (max. 60) plus Bonus-XP für Gewinne.
-Fünf Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10 und 15).
+Sieben Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10, 15, 20 und 25).
 
 **Nach oben ist offen** — es gibt kein Maximallevel mehr. Bis Level 30 wird jede Stufe
 teurer als die vorige (Level 2 braucht 280 XP, Level 10 schon 6.840, Level 15 dann
@@ -228,7 +230,7 @@ docs/DOCKER.md      Anleitung für den Betrieb neben einer bestehenden Website
 index.html          Grundgerüst
 css/style.css       Layout, Neon-Look, Level-Leiste, Modals, Responsive
 css/games.css       Styles der einzelnen Spiele
-js/core.js          State, Sync, Audio-Engine, Effekte, XP/Level, Einsatz-Widget
+js/core.js          State, Sync, Audio-Engine, Effekte, XP/Level, Einsatz-Widget, Rubbelfeld
 js/net.js           Server-Anbindung, Anmeldung und Sitzungen, Offline-Fallback
 js/icons.js         Eigenes SVG-Icon-Set (Drachen, Früchte, Meerestiere, …)
 js/music.js         Sequencer für die Hintergrund-Loops
@@ -253,14 +255,14 @@ Würfel auf den Server wandern.
 color, minLevel, rules, mount(root) })`. `mount` baut die Oberfläche und gibt optional
 eine Aufräumfunktion zurück.
 
-Getestet in Chromium, Desktop (1400 px) und Mobil (375/390 px): alle 15 Spiele,
+Getestet in Chromium, Desktop (1400 px) und Mobil (375/390/402 px): alle 17 Spiele,
 Level-Freischaltung, Admin-Flows, Server-Sync über zwei Geräte — ohne JS-Fehler.
 `prefers-reduced-motion` wird respektiert.
 
-**Auf dem Handy** liegt der Hauptknopf in einer festen Leiste am unteren Rand, darüber
-bei Bedarf die Zwischenaktion (Auszahlen, Hit/Stand, Weiter). Dadurch ist in allen
-15 Spielen sofort spielbar, ohne vorher zu scrollen — geprüft auf iPhone-14- und
-iPhone-SE-Maßen (390×700 und 375×560 sichtbare Fläche).
+**Auf dem Handy** liegt die ganze Bedienung in einer festen Leiste am unteren Rand:
+unten der Hauptknopf, darüber bei Bedarf die Zwischenaktion (Auszahlen, Hit/Stand,
+Weiter) und darüber das Einsatzfeld mit den Chips. Dadurch sind alle 17 Spiele sofort
+spielbar, ohne vorher zu scrollen — geprüft bei 402×700 und 375×640 sichtbarer Fläche.
 
 ---
 

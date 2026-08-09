@@ -59,7 +59,7 @@
       var tiles = [];
       var tileRow = el('div', { class: 'scratch-tiles' });
 
-      for (var i = 0; i < 3; i++) tiles.push(makeTile(i));
+      for (var i = 0; i < 3; i++) tiles.push(GK.scratchTile({ onReveal: onRevealed }));
       tiles.forEach(function (t) { tileRow.appendChild(t.el); });
 
       var card = el('div', { class: 'scratch-card' }, [
@@ -96,123 +96,6 @@
       ]);
       root.appendChild(stage);
 
-      function makeTile(idx) {
-        var under = el('div', { class: 'sym-under', html: GK.iconHTML('question') });
-        var cv = el('canvas');
-        var wrap = el('div', { class: 'stile' }, [under, cv]);
-        var ctx = cv.getContext('2d');
-        var drawing = false, strokes = 0, done = true, lastP = null;
-
-        function paintCover() {
-          var r = wrap.getBoundingClientRect();
-          cv.width = Math.max(60, r.width) * 2;
-          cv.height = Math.max(60, r.height) * 2;
-          var g = ctx.createLinearGradient(0, 0, cv.width, cv.height);
-          g.addColorStop(0, '#c9c9d8');
-          g.addColorStop(0.4, '#8d8da5');
-          g.addColorStop(0.6, '#e6e6f2');
-          g.addColorStop(1, '#7a7a94');
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.fillStyle = g;
-          ctx.fillRect(0, 0, cv.width, cv.height);
-          ctx.fillStyle = 'rgba(43,10,77,.55)';
-          ctx.font = 'bold ' + Math.round(cv.width * 0.24) + 'px Bungee, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('?', cv.width / 2, cv.height / 2);
-          cv.style.display = '';
-        }
-
-        function pos(ev) {
-          var r = cv.getBoundingClientRect();
-          var t = ev.touches ? ev.touches[0] : ev;
-          return {
-            x: (t.clientX - r.left) * (cv.width / r.width),
-            y: (t.clientY - r.top) * (cv.height / r.height)
-          };
-        }
-
-        var BRUSH = 0.27;      // Pinselradius relativ zur Feldbreite
-        var REVEAL_AT = 0.32;  // ab hier springt das Feld von selbst auf
-
-        function scratch(ev) {
-          if (done) return;
-          var p = pos(ev);
-          var r = cv.width * BRUSH;
-          ctx.globalCompositeOperation = 'destination-out';
-
-          // Strich zwischen letztem und aktuellem Punkt ziehen, damit schnelles
-          // Wischen keine Lücken lässt (sonst muss man ewig nachrubbeln)
-          if (lastP) {
-            ctx.lineWidth = r * 2;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(lastP.x, lastP.y);
-            ctx.lineTo(p.x, p.y);
-            ctx.stroke();
-          }
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-          ctx.fill();
-          lastP = p;
-
-          strokes++;
-          if (strokes % 4 === 0) GK.sfx('hover');
-          if (strokes % 3 === 0) checkReveal();
-        }
-
-        function checkReveal() {
-          if (!done && progress() > REVEAL_AT) reveal();
-        }
-
-        function progress() {
-          try {
-            var d = ctx.getImageData(0, 0, cv.width, cv.height).data;
-            var clear = 0, total = 0;
-            for (var i = 3; i < d.length; i += 4 * 40) { total++; if (d[i] === 0) clear++; }
-            return total ? clear / total : 0;
-          } catch (e) { return 1; }
-        }
-
-        function reveal() {
-          if (done) return;
-          done = true;
-          cv.style.display = 'none';
-          wrap.classList.add('revealed');
-          GK.sfx('gem');
-          onRevealed();
-        }
-
-        function release() {
-          drawing = false;
-          lastP = null;
-          checkReveal();          // auch nach einem kurzen Wisch sofort prüfen
-        }
-
-        cv.addEventListener('mousedown', function (e) { drawing = true; lastP = null; scratch(e); });
-        cv.addEventListener('mousemove', function (e) { if (drawing) scratch(e); });
-        window.addEventListener('mouseup', function () { if (drawing) release(); });
-        cv.addEventListener('touchstart', function (e) { drawing = true; lastP = null; scratch(e); e.preventDefault(); }, { passive: false });
-        cv.addEventListener('touchmove', function (e) { if (drawing) scratch(e); e.preventDefault(); }, { passive: false });
-        cv.addEventListener('touchend', function () { if (drawing) release(); });
-
-        return {
-          el: wrap,
-          arm: function (sym) {
-            under.innerHTML = GK.iconHTML(sym);
-            wrap.classList.remove('revealed');
-            done = false;
-            strokes = 0;
-            lastP = null;
-            paintCover();
-          },
-          reveal: reveal,
-          isDone: function () { return done; },
-          reset: function () { under.innerHTML = GK.iconHTML('question'); done = true; cv.style.display = 'none'; wrap.classList.remove('revealed'); }
-        };
-      }
-
-
       function buy() {
         if (active || stopped) return;
         stake = bet.value();
@@ -228,7 +111,7 @@
         GK.sfx('chip');
         // Layout abwarten, dann Deckschicht malen
         requestAnimationFrame(function () {
-          tiles.forEach(function (t, i) { t.arm(symbols[i]); });
+          tiles.forEach(function (t, i) { t.arm(GK.iconHTML(symbols[i])); });
         });
       }
 

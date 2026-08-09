@@ -559,6 +559,18 @@
         Sound.noise({ dur: 0.05, freq: 420, filter: 'lowpass', vol: 0.08, delay: d });
       });
     },
+    /* Mitternachts-Mysterium: eine Seele setzt sich auf den Altar — tiefes
+       Anschwellen statt hellem Klick, sonst klingt die Gruft wie ein Automat. */
+    soul:    function () {
+      Sound.tone({ freq: 196, to: 294, dur: 0.34, type: 'sine', vol: 0.2 });
+      Sound.tone({ freq: 98, to: 147, dur: 0.4, type: 'triangle', vol: 0.13, delay: 0.02 });
+      Sound.noise({ dur: 0.26, freq: 620, filter: 'bandpass', vol: 0.05, delay: 0.04 });
+    },
+    /* Eine Kerze geht aus: kurzer Luftzug, kein Knall */
+    snuff:   function () {
+      Sound.noise({ dur: 0.24, freq: 680, filter: 'lowpass', vol: 0.17 });
+      Sound.tone({ freq: 280, to: 110, dur: 0.2, type: 'sine', vol: 0.1 });
+    },
     /* Landung auf der Scholle: kurzer Bass-Plumps plus Eisknirschen */
     plop:    function () {
       Sound.tone({ freq: 190, to: 78, dur: 0.16, type: 'sine', vol: 0.26 });

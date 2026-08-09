@@ -171,6 +171,34 @@
       '<path d="M24 20 v24" stroke="' + OUT + '" stroke-width="2.4" stroke-dasharray="4 4"/>' +
       s('M40 24 L43 31 L50 32 L45 37 L46 44 L40 40 L34 44 L35 37 L30 32 L37 31 Z', '#fff6b0'),
 
+    /* Rubbellos mit neun Feldern — die Diagonale ist schon frei gerubbelt */
+    ticket9:
+      s('M7 9 h50 a4 4 0 0 1 4 4 v38 a4 4 0 0 1 -4 4 H7 a4 4 0 0 1 -4 -4 V13 a4 4 0 0 1 4 -4 Z', 'url(#gkg-cyan)') +
+      '<g stroke="' + OUT + '" stroke-width="1.8">' +
+        '<rect x="10" y="14" width="13" height="12" rx="3" fill="url(#gkg-gold)"/>' +
+        '<rect x="25.5" y="14" width="13" height="12" rx="3" fill="#1c0138"/>' +
+        '<rect x="41" y="14" width="13" height="12" rx="3" fill="#1c0138"/>' +
+        '<rect x="10" y="27.5" width="13" height="12" rx="3" fill="#1c0138"/>' +
+        '<rect x="25.5" y="27.5" width="13" height="12" rx="3" fill="url(#gkg-gold)"/>' +
+        '<rect x="41" y="27.5" width="13" height="12" rx="3" fill="#1c0138"/>' +
+        '<rect x="10" y="41" width="13" height="12" rx="3" fill="#1c0138"/>' +
+        '<rect x="25.5" y="41" width="13" height="12" rx="3" fill="#1c0138"/>' +
+        '<rect x="41" y="41" width="13" height="12" rx="3" fill="url(#gkg-gold)"/>' +
+      '</g>' +
+      '<path d="M16 20 L32 33.5 L47.5 47" fill="none" stroke="#fff6b0" stroke-width="2.6" stroke-linecap="round" opacity=".9"/>',
+
+    /* Mysterien-Maske: Goldrand, glühende Augenschlitze, Stein auf der Stirn */
+    mask:
+      s('M15 11 L7 1 L21 7 Z', 'url(#gkg-gold)') +
+      s('M49 11 L57 1 L43 7 Z', 'url(#gkg-gold)') +
+      s('M32 6 C47 6 58 13 58 24 C58 41 46 55 32 61 C18 55 6 41 6 24 C6 13 17 6 32 6 Z', 'url(#gkg-gold)') +
+      s('M32 12 C44 12 52 17 52 25 C52 39 43 49 32 54 C21 49 12 39 12 25 C12 17 20 12 32 12 Z', '#2b0a4d') +
+      '<path d="M17 28 q7 -9 15 -3 q-7 9 -15 3 Z" fill="url(#gkg-cyan)" stroke="' + OUT + '" stroke-width="1.8"/>' +
+      '<path d="M47 28 q-7 -9 -15 -3 q7 9 15 3 Z" fill="url(#gkg-cyan)" stroke="' + OUT + '" stroke-width="1.8"/>' +
+      '<circle cx="32" cy="18" r="3.6" fill="#ff2fd0" stroke="' + OUT + '" stroke-width="1.8"/>' +
+      '<path d="M25 41 q7 6 14 0" fill="none" stroke="#ff2fd0" stroke-width="3" stroke-linecap="round"/>' +
+      '<path d="M32 45 v5" stroke="#ff2fd0" stroke-width="2.4" stroke-linecap="round" opacity=".7"/>',
+
     /* Ganzes Pferd im Profil. Der Körper nimmt currentColor an,
        damit jedes Pferd im Rennen seine eigene Farbe bekommt. */
     horse:

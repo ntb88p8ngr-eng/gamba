@@ -533,6 +533,153 @@
 .track-row.fast{border-color:rgba(255,59,107,.45)}
 .track-row.fast .tr-bpm{color:var(--red);border-color:rgba(255,59,107,.5)}
 
+/* ─────────── 16. KRISTALL-RUBBELLOS (9 FELDER) ─────────── */
+/* Ohne Deckel wird die Karte in der breiten Spalte riesig: neun Felder à
+   225 px mit briefmarkengroßen Runen darin. */
+.scratch-card.crystal{
+  background:linear-gradient(150deg,#00e5ff,#8b3bff 55%,#ff2fd0);
+  max-width:430px;margin-left:auto;margin-right:auto
+}
+.scratch9-wrap{position:relative}
+.scratch9-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+/* Neun kleine Felder statt drei großer — die Runen müssen mitschrumpfen */
+/* Die Karte ist gedeckelt, vw taugt also nur als Mittelwert: unten greift
+   die Handybreite, oben der feste Deckel von 2,8rem. */
+.scratch9-grid .sym-under{font-size:clamp(1.4rem,11vw,2.8rem)}
+/* Die Gewinnlinien liegen über dem Raster, dürfen aber nichts abfangen */
+.scratch9-lines{
+  position:absolute;inset:0;pointer-events:none;z-index:3;
+  filter:drop-shadow(0 0 7px rgba(255,246,176,.95));animation:winpop .45s
+}
+.stile.online{box-shadow:0 0 22px var(--gold),inset 0 0 0 3px rgba(255,246,176,.75)}
+.scratch9-bonus{
+  display:flex;align-items:center;gap:10px;margin-top:12px;padding:8px 10px;
+  background:rgba(0,0,0,.32);border-radius:14px
+}
+.scratch9-bonus .b-label{flex:1;font-family:'Bungee',sans-serif;font-size:.66rem;color:#fff;letter-spacing:.06em}
+/* Das Bonusfeld ist breit statt quadratisch */
+.scratch9-bonus .stile{flex:0 0 104px;aspect-ratio:auto;height:48px}
+.b-val{font-family:'Bungee',sans-serif;font-size:1rem;color:#8fa0c0}
+.b-val.hit{color:var(--gold);text-shadow:0 0 12px rgba(255,209,46,.9)}
+
+/* ─────────── 17. MITTERNACHTS-MYSTERIUM ─────────── */
+.mys-scene{
+  position:relative;display:flex;flex-direction:column;height:430px;
+  border-radius:22px;overflow:hidden;
+  border:5px solid #6b2fae;box-shadow:inset 0 0 70px rgba(0,0,0,.75);
+  background:radial-gradient(125% 85% at 50% 2%,#3f1878 0%,#1d0a3f 46%,#0a0220 100%)
+}
+/* Der Himmel nimmt, was der Altar uebrig laesst — so bleiben Mond und Ruinen
+   auf jeder Bildschirmhoehe sichtbar. */
+.mys-sky{position:relative;flex:1 1 auto;min-height:70px;overflow:hidden}
+.mys-stars{
+  position:absolute;inset:0 0 30% 0;pointer-events:none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 9% 22%,#fff,transparent),
+    radial-gradient(1px 1px at 24% 12%,#e6d9ff,transparent),
+    radial-gradient(1.5px 1.5px at 37% 30%,#fff,transparent),
+    radial-gradient(1px 1px at 52% 15%,#fff,transparent),
+    radial-gradient(1.5px 1.5px at 66% 26%,#e6d9ff,transparent),
+    radial-gradient(1px 1px at 88% 18%,#fff,transparent),
+    radial-gradient(1.5px 1.5px at 95% 34%,#fff,transparent);
+  animation:twinkle 4s ease-in-out infinite alternate
+}
+.mys-moon{
+  position:absolute;top:16px;right:30px;width:58px;height:58px;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#fffbe6,#ffe9a8 55%,#e2bd63);
+  box-shadow:0 0 42px 14px rgba(255,232,168,.32),0 0 100px 34px rgba(255,190,110,.14);
+  animation:moonpulse 7s ease-in-out infinite alternate
+}
+/* Krater — reine Verläufe, damit kein Bild nachgeladen wird */
+.mys-moon::after{
+  content:"";position:absolute;inset:0;border-radius:50%;opacity:.5;
+  background:
+    radial-gradient(circle at 62% 28%,rgba(150,115,55,.55) 0 5px,transparent 6px),
+    radial-gradient(circle at 38% 60%,rgba(150,115,55,.45) 0 7px,transparent 8px),
+    radial-gradient(circle at 70% 66%,rgba(150,115,55,.4) 0 4px,transparent 5px)
+}
+@keyframes moonpulse{from{filter:brightness(1)}to{filter:brightness(1.12)}}
+/* Die Ruinen stehen immer auf der Altarkante, egal wie hoch der Himmel ist */
+.mys-ruins{position:absolute;left:0;right:0;bottom:0;height:min(132px,86%);pointer-events:none}
+.mys-fog{position:absolute;left:-25%;right:-25%;pointer-events:none;filter:blur(18px)}
+.mys-fog.f1{
+  bottom:-14px;height:82px;opacity:.6;z-index:2;
+  animation:fogdrift 21s ease-in-out infinite alternate;
+  background:
+    radial-gradient(ellipse 38% 70% at 22% 50%,rgba(186,160,255,.55),transparent 70%),
+    radial-gradient(ellipse 44% 62% at 64% 55%,rgba(140,116,222,.5),transparent 70%)
+}
+.mys-fog.f2{
+  bottom:38px;height:66px;opacity:.34;
+  animation:fogdrift 31s ease-in-out infinite alternate-reverse;
+  background:radial-gradient(ellipse 50% 70% at 45% 50%,rgba(210,190,255,.5),transparent 72%)
+}
+@keyframes fogdrift{from{transform:translateX(-7%)}to{transform:translateX(7%)}}
+/* Der Altar liegt vorn; seine durchsichtige Oberkante ueberlappt die Ruinen */
+.mys-altar{
+  position:relative;z-index:3;flex:0 0 auto;margin-top:-26px;padding:8px 12px 14px;
+  background:linear-gradient(180deg,rgba(11,3,32,0),rgba(11,3,32,.86) 32%,#0a0220 66%)
+}
+/* Steinboden vor dem Altar, damit unten keine schwarze Fläche steht */
+.mys-altar::before{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:62%;pointer-events:none;opacity:.5;
+  background:
+    repeating-linear-gradient(90deg,transparent 0 46px,rgba(150,120,210,.16) 46px 48px),
+    repeating-linear-gradient(0deg,transparent 0 26px,rgba(150,120,210,.13) 26px 28px),
+    linear-gradient(180deg,transparent,rgba(60,30,110,.4))
+}
+/* Die Steinplatte fasst das Raster ein und trägt den violetten Schein */
+.mys-slab{
+  position:relative;max-width:340px;margin:0 auto;padding:10px;border-radius:18px;
+  background:linear-gradient(180deg,#3a2a56,#221434 70%,#1a0f2a);
+  border:2px solid #6b4a9e;
+  box-shadow:inset 0 6px 20px rgba(0,0,0,.65),inset 0 -2px 0 rgba(255,255,255,.06),0 10px 26px rgba(0,0,0,.5)
+}
+.mys-slab::before{
+  content:"";position:absolute;inset:-20px;z-index:-1;border-radius:28px;filter:blur(12px);
+  background:radial-gradient(ellipse at 50% 45%,rgba(139,59,255,.45),transparent 70%)
+}
+.mys-candles{position:relative;display:flex;justify-content:center;gap:34px;height:36px;margin-bottom:6px}
+.mys-candle{position:relative;display:block;width:12px;height:36px}
+.mc-stick{position:absolute;bottom:0;left:1px;width:10px;height:22px;border-radius:3px;background:linear-gradient(180deg,#f6e6c8,#b99a6c)}
+.mc-flame{
+  position:absolute;top:0;left:3px;width:7px;height:14px;
+  border-radius:50% 50% 45% 45%/62% 62% 38% 38%;
+  background:radial-gradient(circle at 50% 72%,#fff6b0,#ff8a00 58%,#ff3b6b);
+  box-shadow:0 0 15px rgba(255,180,60,.95);
+  animation:flicker .45s ease-in-out infinite alternate
+}
+@keyframes flicker{
+  from{transform:scaleY(1) translateX(0);opacity:1}
+  to{transform:scaleY(1.28) translateX(1px);opacity:.82}
+}
+.mys-candle.out .mc-flame{opacity:0;animation:none}
+.mys-candle.out .mc-stick{filter:grayscale(.7) brightness(.55)}
+.mys-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-width:212px;margin:0 auto}
+.mys-cell{
+  position:relative;aspect-ratio:1;border-radius:10px;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 38%,rgba(96,64,158,.5),rgba(18,5,42,.9));
+  border:2px solid rgba(140,100,220,.35);box-shadow:inset 0 3px 10px rgba(0,0,0,.6)
+}
+.mys-cell.soul{
+  background:radial-gradient(circle at 40% 32%,#fff6d0,#ffd12e 46%,#c06a00);
+  border-color:#fff2b0;box-shadow:0 0 18px rgba(255,209,46,.75);
+  animation:soulpop .42s cubic-bezier(.2,1.7,.4,1)
+}
+/* Seelen ab 2× glühen blau statt golden — man sieht den dicken Fang sofort */
+.mys-cell.soul.big{
+  background:radial-gradient(circle at 40% 32%,#e9ffff,#00e5ff 46%,#0067a8);
+  border-color:#d8ffff;box-shadow:0 0 24px rgba(0,229,255,.85)
+}
+@keyframes soulpop{
+  0%{transform:scale(.2) rotate(-22deg);opacity:0}
+  60%{transform:scale(1.18) rotate(4deg);opacity:1}
+  100%{transform:none}
+}
+.mc-val{font-family:'Bungee',sans-serif;font-size:.56rem;color:#3a1400}
+.mys-cell.soul.big .mc-val{color:#04283a}
+.mys-info{font-family:'Bungee',sans-serif;font-size:.72rem;color:#c9a6ff;text-align:center;min-height:18px}
+
 /* ═══════════════════════════════════════════════════════════
    HANDY: die einzelnen Spielflächen
    Auf schmalen Bildschirmen schrumpfen Räder, Walzen, Karten und Tische,
@@ -649,4 +796,29 @@
   .oc-sym{height:62px!important;flex:0 0 62px!important}
   /* Der Tipp steht auch in den Regeln — auf winzigen Schirmen kostet er nur Platz */
   #game-stage .hint{display:none}
+}
+
+/* Handy: die beiden Spiele ab Level 20 und 25 */
+@media(max-width:620px){
+  /* Sonst fuellen neun Felder à 113 px den ganzen Schirm und die Bonus-Rune
+     rutscht unter die Bedienleiste. */
+  .scratch-card.crystal{max-width:292px;padding:12px}
+  .scratch9-grid{gap:6px}
+  .scratch9-bonus{margin-top:9px;padding:6px 8px}
+  .scratch9-bonus .stile{flex:0 0 86px;height:42px}
+  .b-val{font-size:.85rem}
+  .mys-scene{height:352px;border-width:3px}
+  .mys-moon{width:46px;height:46px;top:12px;right:18px}
+  .mys-grid{max-width:190px;gap:5px}
+  .mys-slab{max-width:240px;padding:8px;border-radius:15px}
+  .mys-candles{gap:26px;height:30px}
+  .mys-candle{height:30px}
+  .mc-val{font-size:.5rem}
+  .mys-candles{gap:22px;height:24px;margin-bottom:6px}
+}
+@media(max-width:400px){
+  .mys-scene{height:312px}
+  .mys-grid{max-width:168px}
+  .scratch-card.crystal{max-width:258px;padding:10px}
+  .scratch9-bonus .stile{flex:0 0 74px;height:38px}
 }
