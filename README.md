@@ -198,9 +198,10 @@ Admin**, im Footer gibt es dafür keinen Knopf mehr.
 
 ## 🎵 Musik & Sound
 
-* **Acht Loops** — vier ruhige (Neon Lounge, Tiefsee, Retro Chips, Mitternacht) und
-  vier schnelle (Turbo-Rausch 140, Jackpot-Fieber 128, Adrenalin 152, All In 170 BPM),
-  komplett per Web Audio erzeugt — keine Audio-Dateien, kein Nachladen.
+* **Neun Loops** — fünf ruhige (Neon Lounge, Tiefsee, Retro Chips, Mitternacht,
+  Ruhiger Schacht) und vier schnelle (Turbo-Rausch 140, Jackpot-Fieber 128,
+  Adrenalin 152, All In 170 BPM), komplett per Web Audio erzeugt — keine
+  Audio-Dateien, kein Nachladen.
 * **Lautstärkeregler** direkt neben dem Mute-Button in der Kopfzeile.
 * **🎵-Button** öffnet das Menü mit Track-Auswahl, getrennten Reglern für Musik und
   Spiel-Sounds und einem klaren **Musik aus**.

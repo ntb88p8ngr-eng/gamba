@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    GAMBAKING — Hintergrundmusik
-   Acht Loops, komplett per Web Audio erzeugt. Jeder Track hat seine
+   Neun Loops, komplett per Web Audio erzeugt. Jeder Track hat seine
    eigene Besetzung, sein eigenes Schlagzeug und sein eigenes Groove-
    Gefühl — vom Jazz-Trio am Roulettetisch bis zum Hardcore-Kick.
    Keine Audio-Dateien, kein Nachladen, jederzeit abschaltbar.
@@ -242,7 +242,7 @@
     return null;
   }
 
-  /* ══════════════ Die acht Tracks ══════════════
+  /* ══════════════ Die neun Tracks ══════════════
      Jeder Track baut seinen Takt selbst zusammen. x liefert dabei:
      s     = Schritt im Takt (0–15, Sechzehntel)
      step  = fortlaufender Schrittzähler seit Start
@@ -369,6 +369,46 @@
         // Vinyl-Knistern unter allem
         if (Math.random() < 0.35) {
           noise(x.t + Math.random() * 0.08, 0.012, { vol: 0.012, filter: 'highpass', freq: 4200 });
+        }
+      }
+    },
+
+    {
+      /* Eigene, neu komponierte Nummer — kein Zitat, keine Anlehnung an ein
+         bestehendes Stück. Bewusst percussion-frei und sehr karg: eine warme
+         FM-Kalimba tropft über liegenden Flächenklängen, dazwischen viel Stille. */
+      id: 'schacht', name: 'Ruhiger Schacht', mood: 'Ambient · Kalimba-Tropfen & Hall',
+      bpm: 64, swing: 0, cut: 1900,
+      chords: [[57, [0, 4, 7, 11]], [50, [0, 5, 9, 14]], [55, [0, 4, 7, 10]], [45, [0, 7, 12, 16]]],
+      mel: [
+        [[3, 19, 3], [11, 16, 4]],
+        [[6, 21, 3]],
+        [[1, 17, 4], [9, 20, 3], [13, 14, 2]],
+        []
+      ],
+      step: function (x) {
+        // Fläche: kriecht sehr langsam über den ganzen Takt herein
+        if (x.s === 0) {
+          x.ivs.forEach(function (iv, i) {
+            voice(midi(x.root + iv), x.t, x.beat * 4.4, {
+              type: 'sine', vol: 0.085 / (i + 1.2), detune: 6,
+              atk: x.beat * 2, cut: 1100, pan: (i % 2 ? 0.4 : -0.4)
+            });
+          });
+          voice(midi(x.root - 24), x.t, x.beat * 4.2, { type: 'sine', vol: 0.11, atk: 1.1 });
+        }
+        // Kalimba: warme FM-Stimme, spärlich über die Phrase verteilt
+        var m = melNote(this.mel, x.bar, x.s);
+        if (m) fm(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.55,
+                  { ratio: 1.4, index: 1.8, vol: 0.075, pan: (m[0] % 2 ? 0.25 : -0.25), atk: 0.008 });
+        // vereinzeltes Erzglitzern, kaum hörbar — ersetzt jedes Schlagzeug
+        if (x.s === 9 && x.bar % 2 === 0) {
+          voice(2400 + Math.random() * 600, x.t, 0.08,
+                { type: 'sine', vol: 0.02, glide: 1600, atk: 0.004, pan: Math.random() * 1.4 - 0.7 });
+        }
+        // ein einzelner, ferner Tropfen zum Phrasenende
+        if (x.last && x.s === 15) {
+          voice(660, x.t, 0.5, { type: 'sine', vol: 0.05, glide: 300, atk: 0.01, cut: 1400 });
         }
       }
     },
