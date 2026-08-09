@@ -10,7 +10,7 @@
     { id: 'clover', name: 'Klee',    w: 22, m3: 11,  m2: 0.7 },
     { id: 'bell',   name: 'Glocke',  w: 18, m3: 16,  m2: 0.8 },
     { id: 'star',   name: 'Stern',   w: 14, m3: 24,  m2: 1.0 },
-    { id: 'dragon', icon: 'dragonpurple', name: 'Drache', w: 10, m3: 35, m2: 1.3 },
+    { id: 'dragon', icon: 'dragonhead', name: 'Drache', w: 10, m3: 35, m2: 1.3 },
     { id: 'gem',    name: 'Juwel',   w: 7,  m3: 50,  m2: 1.8 },
     { id: 'crown',  name: 'Krone',   w: 3,  m3: 100, m2: 3.0 }
   ];
