@@ -404,9 +404,9 @@
 
   /* Das gemalte Symbolset. Wo ein Name hier steht, gewinnt das Bild gegen das
      gezeichnete SVG weiter unten — so wandern die Artworks in einem Rutsch in
-     alle Spiele, Kacheln und Gewinntabellen. Namen ohne Bild (Truhe, Schädel,
+     alle Spiele, Kacheln und Gewinntabellen. Namen ohne Bild (Schädel,
      Fragezeichen, Rad …) bleiben Vektor. */
-  var SYMBOLS = ('bar bear bear2 bell cards cherry chip clover club coins crab crown ' +
+  var SYMBOLS = ('bar bear bear2 bell cards cherry chest chip clover club coins crab crown ' +
     'diamondsuit dragon fish flame gem gift heart horse1 horse2 horse3 horse4 horse5 ' +
     'horsehead horseshoe iceberg kelp melon moneybag octopus pearl penguin penguin2 ' +
     'plum reeffish rocket seven shark shell shield spade star trident trophy ' +

@@ -24,6 +24,7 @@
     blurb: 'Schleich dich an den schlafenden Drachen heran und greif dir sein Gold — Griff für Griff wird er wacher.',
     badge: 'BIS 19,87×',
     color: '#ff8a00',
+    minLevel: 30,
     rules: [
       'Du schleichst dich an einen schlafenden Drachen heran und greifst <b>Griff für Griff</b> nach seinem Gold.',
       'Jeder Griff erhöht den <b>Multiplikator</b> — aber auch die Chance, dass der Drache erwacht.',

@@ -112,7 +112,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 15 | **Pinguin-Sprung** 🔒 Lv15 | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
 | 16 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
 | 17 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
-| 18 | **Smaugs Schatz** | 10 Griffe in den Hort, Erfolgschance sinkt von 93 % auf 50 %, jederzeit aussteigen | 19,87× | ~87 % |
+| 18 | **Smaugs Schatz** 🔒 Lv30 | 10 Griffe in den Hort, Erfolgschance sinkt von 93 % auf 50 %, jederzeit aussteigen | 19,87× | ~87 % |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
 gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,
@@ -156,7 +156,7 @@ du anderswo benutzt.
 ## ⭐ Level & XP
 
 XP gibt es fürs Spielen: **Einsatz/8** pro Runde (max. 60) plus Bonus-XP für Gewinne.
-Sieben Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10, 15, 20 und 25).
+Acht Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10, 15, 20, 25 und 30).
 
 **Nach oben ist offen** — es gibt kein Maximallevel mehr. Bis Level 30 wird jede Stufe
 teurer als die vorige (Level 2 braucht 280 XP, Level 10 schon 6.840, Level 15 dann
