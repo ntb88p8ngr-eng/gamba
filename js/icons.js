@@ -384,6 +384,21 @@
       '<path d="M23 24 a9 9 0 1 1 12 9 v5" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>' +
       '<circle cx="35" cy="46" r="4" fill="#fff"/>',
 
+    key:
+      '<circle cx="22" cy="18" r="11" fill="none" stroke="' + OUT + '" stroke-width="9"/>' +
+      '<circle cx="22" cy="18" r="11" fill="none" stroke="url(#gkg-gold)" stroke-width="6"/>' +
+      s('M19 17 h6 v39 a3 3 0 0 1 -6 0 Z', 'url(#gkg-gold)') +
+      '<rect x="25" y="43" width="9" height="6" rx="1.6" fill="url(#gkg-gold)" stroke="' + OUT + '" stroke-width="2"/>' +
+      '<rect x="25" y="52" width="11" height="6" rx="1.6" fill="url(#gkg-gold)" stroke="' + OUT + '" stroke-width="2"/>' +
+      '<ellipse cx="18" cy="14" rx="2.6" ry="1.8" fill="#fff" opacity=".6" transform="rotate(-30 18 14)"/>',
+
+    potion:
+      s('M27 4 h10 v11 l9 15 a15 15 0 1 1 -28 0 L27 15 Z', 'url(#gkg-cyan)') +
+      s('M25 4 h14 a2.5 2.5 0 0 1 0 5 H25 a2.5 2.5 0 0 1 0 -5 Z', 'url(#gkg-steel)') +
+      '<path d="M18 40 a14 14 0 0 0 28 0 Z" fill="#8b3bff" opacity=".55"/>' +
+      '<circle cx="26" cy="38" r="2.6" fill="#fff" opacity=".75"/><circle cx="37" cy="45" r="1.8" fill="#fff" opacity=".65"/>' +
+      '<circle cx="32" cy="34" r="2.1" fill="#fff" opacity=".6"/>',
+
     bomb:
       '<circle cx="28" cy="38" r="20" fill="#2b2b3d" stroke="' + OUT + '" stroke-width="2.4"/>' +
       '<rect x="38" y="12" width="10" height="10" rx="2" fill="#5a5a72" stroke="' + OUT + '" stroke-width="2" transform="rotate(35 43 17)"/>' +
