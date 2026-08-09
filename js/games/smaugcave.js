@@ -107,7 +107,7 @@
     color: '#ff8a00',
     minLevel: 30,
     rules: [
-      'Jede Runde bekommst du eine <b>Ersatzkachel</b>: drehen und in eine der drei markierten Reihen/Spalten schieben — das ganze Labyrinth verschiebt sich.',
+      'Jede Runde bekommst du eine <b>Ersatzkachel</b>: drehen und in eine der drei markierten Reihen/Spalten schieben — das ganze Labyrinth verschiebt sich. Steht deine Figur auf dieser Reihe/Spalte, wandert sie mit und taucht am anderen Rand wieder auf.',
       'Danach kannst du bis zu <b>5 Felder weit</b> zu jedem erreichbaren Ziel laufen. Ein Klick genügt, der Abenteurer läuft automatisch.',
       'Gold, Edelsteine und Perlen erhöhen deinen <b>Multiplikator</b>. Sterne verdoppeln den nächsten Fund, Tränke schützen kurz vor Verdacht, Fische lenken Smaug ab.',
       'Fallen und Feuerkammern kosten etwas Schatz und machen Smaug deutlich wacher.',
@@ -147,10 +147,7 @@
       boardWrap.appendChild(dragonPawn);
 
       var caveWindow = el('div', { class: 'cave-window' }, [boardWrap]);
-      var caveFrame = el('div', { class: 'cave-frame' }, [
-        el('div', { class: 'cave-title-ov' }, ['SMAUGS HÖHLE']),
-        caveWindow
-      ]);
+      var caveFrame = el('div', { class: 'cave-frame' }, [caveWindow]);
 
       var spareBox = el('div', { class: 'cave-spare' });
       var spareTile = el('div', { class: 'cave-tile cave-spare-tile' });
@@ -379,11 +376,16 @@
         spare = popped;
         if (!spare.item && !spare.special) spare.item = rollItem('mid');
 
+        /* Steht eine Figur auf der geschobenen Reihe/Spalte, wandert sie mit —
+           inklusive Umbruch an den Rand, genau wie beim echten "Verrückten
+           Labyrinth": die Randkachel wird zur Ersatzkachel, die Figur kann
+           nicht mit ins Aus wandern und taucht am anderen Ende wieder auf. */
         function shiftPawn(p) {
-          if (kind === 'row' && p.r === idx) p.c = ((p.c + dir) % GRID + GRID) % GRID;
-          if (kind === 'col' && p.c === idx) p.r = ((p.r + dir) % GRID + GRID) % GRID;
+          if (kind === 'row' && p.r === idx) { p.c = ((p.c + dir) % GRID + GRID) % GRID; return true; }
+          if (kind === 'col' && p.c === idx) { p.r = ((p.r + dir) % GRID + GRID) % GRID; return true; }
+          return false;
         }
-        shiftPawn(player);
+        var playerWrapped = shiftPawn(player);
         if (dragon.active) shiftPawn(dragon);
 
         phase = 'move';
@@ -393,6 +395,12 @@
         placePawns(false);
         syncPushControls();
         syncInfo();
+
+        if (playerWrapped) {
+          GK.toast('Deine Figur stand auf der geschobenen Kachel und ist mitgewandert!', 'gold', '🔀');
+          playerPawn.classList.add('cave-wrapped');
+          wait(650, function () { playerPawn.classList.remove('cave-wrapped'); });
+        }
 
         /* Nur der Startpunkt selbst (dist 0) ist "erreichbar" — komplett
            eingemauert. Ohne Ausweg würde die Runde sonst nie enden. */

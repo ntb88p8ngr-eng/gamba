@@ -867,14 +867,6 @@
   background-image:url('../assets/cave/frame.webp');background-size:100% 100%;background-position:center;
   box-shadow:0 0 30px rgba(0,0,0,.5)
 }
-.cave-title-ov{
-  position:absolute;left:34.8%;top:1.7%;width:29.3%;height:19.8%;
-  display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none;
-  font-family:'Bungee',sans-serif;font-size:clamp(.85rem,2.6vw,1.4rem);line-height:1.15;
-  background:linear-gradient(180deg,#fff3a8,#ffd12e 45%,#b06a00);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:0 2px 3px rgba(0,0,0,.85)
-}
 .cave-window{
   position:absolute;left:15%;top:22%;width:69.9%;height:72.8%;
   display:flex;align-items:center;justify-content:center;padding:2%
@@ -931,6 +923,11 @@
 }
 .cave-pawn svg,.cave-pawn img{width:100%;height:100%;object-fit:contain}
 .cave-dragon{z-index:4}
+.cave-pawn.cave-wrapped{animation:caveWrapPulse .65s ease-out}
+@keyframes caveWrapPulse{
+  0%{transform:scale(1.9);filter:drop-shadow(0 0 14px #ffd12e) drop-shadow(0 3px 5px rgba(0,0,0,.7))}
+  100%{transform:scale(1);filter:drop-shadow(0 3px 5px rgba(0,0,0,.7))}
+}
 
 .cave-push-layer{position:absolute;inset:0;pointer-events:none;z-index:5}
 .cave-push{
