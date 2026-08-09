@@ -4,11 +4,13 @@
   var el = GK.el;
 
   var HORSES = [
-    { nr: 1, name: 'Blitzhuf',     color: '#ff2fd0', p: 0.32 },
-    { nr: 2, name: 'Donnerwolke',  color: '#00e5ff', p: 0.25 },
-    { nr: 3, name: 'Goldmähne',    color: '#ffd12e', p: 0.20 },
-    { nr: 4, name: 'Schattentanz', color: '#7cff3b', p: 0.15 },
-    { nr: 5, name: 'Alte Berta',   color: '#ff8a00', p: 0.08 }
+    /* Namen und Farben folgen den Artworks: Farbe = Trikot des Jockeys,
+       Name = Fell des Pferdes. Die Quoten bleiben unveraendert. */
+    { nr: 1, name: 'Blitzhuf',     color: '#ff3b6b', p: 0.32 },   // Fuchs, rotes Trikot
+    { nr: 2, name: 'Donnerwolke',  color: '#3b7bff', p: 0.25 },   // Schimmel, blaues Trikot
+    { nr: 3, name: 'Kleefuchs',    color: '#7cff3b', p: 0.20 },   // Fuchs, gruenes Trikot
+    { nr: 4, name: 'Schattentanz', color: '#a855ff', p: 0.15 },   // Rappe, lila Trikot
+    { nr: 5, name: 'Goldmähne',    color: '#ffd12e', p: 0.08 }    // Palomino, gelbes Trikot
   ];
   HORSES.forEach(function (h) { h.odds = Math.round((0.88 / h.p) * 10) / 10; });
 
@@ -25,7 +27,7 @@
       'Setz auf eines von fünf Pferden — jedes hat seine eigene <b>Quote</b>.',
       'Gewinnt dein Pferd, bekommst du <b>Einsatz × Quote</b>.',
       '<b>Blitzhuf</b> gewinnt am häufigsten und zahlt deshalb am wenigsten.',
-      '<b>Alte Berta</b> gewinnt fast nie — dafür zahlt sie <b>11×</b>.',
+      '<b>Goldmähne</b> gewinnt fast nie — dafür zahlt sie <b>11×</b>.',
       'Das Rennen läuft live, Führungswechsel inklusive.'
     ],
     mount: function (root) {
