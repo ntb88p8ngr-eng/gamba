@@ -534,7 +534,7 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
   cursor:pointer;border:2px solid var(--line);background:rgba(0,0,0,.3);border-radius:12px;
   padding:5px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .16s;width:58px
 }
-.cardtheme-thumb img{width:100%;aspect-ratio:260/366;object-fit:cover;border-radius:6px;display:block}
+.cardtheme-thumb img{width:100%;aspect-ratio:260/358;object-fit:cover;border-radius:6px;display:block}
 .cardtheme-thumb span{font-size:.6rem;color:var(--muted);text-align:center;line-height:1.15}
 .cardtheme-thumb:hover{border-color:var(--gold);transform:translateY(-2px)}
 .cardtheme-thumb.sel{border-color:var(--gold);background:rgba(255,209,46,.16);box-shadow:0 0 14px rgba(255,209,46,.5)}

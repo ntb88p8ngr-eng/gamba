@@ -914,8 +914,8 @@
   var SUIT_FILE = { '♥': 'H', '♦': 'D', '♣': 'C', '♠': 'S' };
 
   GK.CARD_THEMES = [
-    { id: 'eerie',      name: 'Eerie',      aspect: '260/366' },
-    { id: 'prismnight', name: 'Prismnight', aspect: '260/366' }
+    { id: 'eerie',      name: 'Eerie',      aspect: '260/358' },
+    { id: 'prismnight', name: 'Prismnight', aspect: '260/358' }
   ];
 
   GK.cardThemeById = function (id) {

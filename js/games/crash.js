@@ -26,7 +26,7 @@
 
       var canvas = el('canvas');
       var multEl = el('div', { class: 'crash-mult', text: '1.00×' });
-      var rocket = el('div', { class: 'crash-rocket', text: '🚀' });
+      var rocket = el('div', { class: 'crash-rocket', html: GK.iconHTML('rocket') });
       var screen = el('div', { class: 'crash-screen' }, [canvas, multEl, rocket]);
       var histBar = el('div', { class: 'crash-hist' });
 
@@ -72,6 +72,20 @@
 
       var ctx = canvas.getContext('2d');
       var points = [];
+      var zigSeed = 0, zigPeriod = 520;
+
+      /* Zickzack: zwei ungleich schnelle Dreieckswellen, deren Ausschlag mit dem
+         Multiplikator wächst. Der Wert wird beim Anlegen des Punktes eingefroren,
+         damit die schon gezeichnete Linie stehen bleibt und nicht mitzappelt. */
+      function tri(t, period) {
+        var x = ((t / period + zigSeed) % 1 + 1) % 1;
+        return 4 * Math.abs(x - 0.5) - 1;
+      }
+      function pushPoint(t, m) {
+        var strength = Math.min(1, (m - 1) / 5);
+        var z = (tri(t, zigPeriod) * 0.62 + tri(t, zigPeriod * 1.73) * 0.38) * strength;
+        points.push({ t: t, m: m, z: z });
+      }
 
       function resize() {
         var r = screen.getBoundingClientRect();
@@ -100,11 +114,17 @@
         }
 
         if (points.length < 2) return;
-        var maxT = Math.max(4000, points[points.length - 1].t);
-        var maxM = Math.max(2, points[points.length - 1].m);
+        var last = points[points.length - 1];
+        var maxT = Math.max(4000, last.t);
+        /* Kopffreiheit: die Skala reicht deutlich über den aktuellen Multiplikator
+           hinaus, sonst klebt die Spitze der Kurve immer am oberen Rand. */
+        var maxM = Math.max(2.4, last.m * 1.55);
 
-        function px(p) { return (p.t / maxT) * (W * 0.92) + W * 0.04; }
-        function py(p) { return H - ((Math.log(p.m) / Math.log(maxM)) * (H * 0.84) + H * 0.08); }
+        function px(p) { return (p.t / maxT) * (W * 0.84) + W * 0.05; }
+        function py(p) {
+          var f = Math.min(1, Math.log(p.m) / Math.log(maxM));
+          return H - (f * (H * 0.70) + H * 0.10) + p.z * (H * 0.05);
+        }
 
         // Fläche unter der Kurve
         var grad = ctx.createLinearGradient(0, 0, 0, H);
@@ -129,10 +149,22 @@
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        var last = points[points.length - 1];
         var rx = px(last) / 2, ry = py(last) / 2;
-        rocket.style.left = (rx - 16) + 'px';
-        rocket.style.top = (ry - 20) + 'px';
+        var prev = points[Math.max(0, points.length - 6)];
+        var tilt = Math.atan2(py(last) - py(prev), px(last) - px(prev)) * 180 / Math.PI + 90;
+        tilt = Math.max(-15, Math.min(52, tilt));
+
+        /* Je höher der Multiplikator, desto stärker rüttelt die Rakete. */
+        var amp = running ? Math.min(7, (last.m - 1) * 1.3) : 0;
+        var jx = (Math.random() - 0.5) * 2 * amp;
+        var jy = (Math.random() - 0.5) * 2 * amp;
+        var jr = (Math.random() - 0.5) * 2 * amp * 1.6;
+
+        rocket.style.left = rx + 'px';
+        rocket.style.top = ry + 'px';
+        rocket.style.transform =
+          'translate(-50%,-50%) translate(' + jx.toFixed(1) + 'px,' + jy.toFixed(1) + 'px) ' +
+          'rotate(' + (tilt + jr).toFixed(1) + 'deg)';
       }
 
       function pushHistory(v) {
@@ -167,7 +199,7 @@
           return;
         }
 
-        points.push({ t: elapsed, m: mult });
+        pushPoint(elapsed, mult);
         if (points.length > 900) points.shift();
         multEl.textContent = mult.toFixed(2) + '×';
         draw();
@@ -190,7 +222,12 @@
         cashedAt = 0;
         crashAt = rollCrash();
         mult = 1;
-        points = [{ t: 0, m: 1 }];
+        zigSeed = Math.random();
+        zigPeriod = 380 + Math.random() * 420;
+        points = [];
+        pushPoint(0, 1);
+        rocket.classList.remove('boom');
+        rocket.innerHTML = GK.iconHTML('rocket');
         startTime = performance.now();
         startBtn.disabled = true;
         cashBtn.disabled = false;
@@ -225,10 +262,11 @@
         running = false;
         if (raf) cancelAnimationFrame(raf);
         mult = crashAt;
-        points.push({ t: performance.now() - startTime, m: crashAt });
+        pushPoint(performance.now() - startTime, crashAt);
         draw();
         multEl.className = 'crash-mult boom';
         multEl.textContent = '💥 ' + crashAt.toFixed(2) + '×';
+        rocket.classList.add('boom');
         rocket.textContent = '💥';
         GK.payout(0, { stake: stake });
         GK.logPlay('Raketen-Crash', stake, 0);
@@ -236,7 +274,11 @@
         GK.sfx('boom');
         GK.shake(screen, true);
         pushHistory(crashAt);
-        setTimeout(function () { if (!stopped) rocket.textContent = '🚀'; }, 1400);
+        setTimeout(function () {
+          if (stopped) return;
+          rocket.classList.remove('boom');
+          rocket.innerHTML = GK.iconHTML('rocket');
+        }, 1400);
         reset();
       }
 
