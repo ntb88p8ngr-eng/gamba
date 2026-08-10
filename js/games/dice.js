@@ -29,7 +29,9 @@
     id: 'dice',
     name: 'Würfelduell',
     emoji: '🎲',
-    icon: 'dice',
+    /* Das Duell wird mit zwei Würfeln gespielt — daher das Doppel-Symbol.
+       Der einzelne Würfel bleibt dem Zufallsspiel-Knopf im Hauptmenü. */
+    icon: 'dices',
     blurb: 'Zwei Würfel, vier Wettarten und ein Dealer, der dich auslachen will.',
     badge: 'BIS 5.1×',
     color: '#8b3bff',
