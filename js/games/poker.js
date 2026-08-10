@@ -212,6 +212,7 @@
 
       /* ── Aufbau ── */
       var bet = GK.betPanel({ start: 20, min: 2, label: 'GRUNDEINSATZ (BIG BLIND)' });
+      var themePicker = GK.cardThemePicker();
       var potEl = el('div', { class: 'pk-pot' }, [
         el('span', { class: 'pk-pot-label', text: 'POT' }),
         el('span', { class: 'pk-pot-val', text: '0' })
@@ -255,6 +256,8 @@
         GK.panel([table, el('div', { style: 'height:10px' }), commentary]),
         GK.panel([
           bet.el,
+          el('div', { style: 'height:12px' }),
+          themePicker.el,
           el('div', { style: 'height:12px' }),
           handInfo,
           el('div', { style: 'height:10px' }),
@@ -620,6 +623,7 @@
 
       setActions(false);
       render();
+      GK.on('cardtheme', function () { if (boardEl.isConnected) render(); });
 
       return function () {
         stopped = true;

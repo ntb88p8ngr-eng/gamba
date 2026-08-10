@@ -97,14 +97,17 @@
 .bj-side{margin-bottom:18px}
 .bj-side h4{font-family:'Bungee',sans-serif;font-size:.85rem;margin:0 0 8px;display:flex;gap:10px;align-items:center;color:#eafff2}
 .bj-score{background:rgba(0,0,0,.55);border:2px solid var(--gold);border-radius:999px;padding:3px 12px;font-size:.8rem;color:var(--gold)}
-.hand{display:flex;gap:9px;flex-wrap:wrap;min-height:166px}
+/* align-items:flex-start ist Pflicht: ohne das streckt der Flex-Standard
+   (stretch) jede Karte auf min-height, egal was ihr eigenes aspect-ratio
+   sagt — das ergab sichtbar verzerrte, oben/unten ausgebeulte Karten. */
+.hand{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-start;min-height:112px}
 /* Karten sind jetzt Bilder aus assets/cards — der Rahmen kommt vom Blatt
    selbst, deshalb kein eigener Verlauf und kein Innenabstand mehr. */
 .card{
-  /* Das Blatt zeichnet ungewoehnlich schmale Karten (96x211, Verhaeltnis 0,457
-     statt der ueblichen 0,7). Die Box uebernimmt genau dieses Mass, sonst
-     schneidet object-fit oben und unten die Karte an. */
-  width:74px;aspect-ratio:96/211;height:auto;border-radius:9px;overflow:hidden;position:relative;
+  /* Jedes Kartendeck-Theme bringt sein eigenes Seitenverhaeltnis mit —
+     --card-ar kommt von GK.setCardTheme, sonst schneidet object-fit oben
+     und unten die Karte an. */
+  width:74px;aspect-ratio:var(--card-ar,260/366);height:auto;border-radius:9px;overflow:hidden;position:relative;
   box-shadow:0 8px 22px rgba(0,0,0,.55);
   animation:dealin .42s cubic-bezier(.2,1.4,.4,1) both;
   background:#f0e8d8
@@ -379,8 +382,8 @@
 .pk-tag:empty{display:none}
 .pk-tag.out{background:rgba(255,59,107,.3);color:#ffc3d2}
 .pk-tag.won{background:var(--gold);color:#20003f}
-.pk-cards{display:flex;gap:6px;min-height:78px}
-.pk-mine .pk-cards{min-height:118px}
+.pk-cards{display:flex;gap:6px;align-items:flex-start;min-height:68px}
+.pk-mine .pk-cards{min-height:108px}
 .pk-foot{display:flex;justify-content:space-between;align-items:center;margin-top:6px;min-height:20px}
 .pk-in{font-size:.66rem;color:#bff5d6}
 .pk-dealer{font-family:'Bungee',sans-serif;font-size:.6rem;color:#20003f;background:#fff;
@@ -391,7 +394,7 @@
   border:2px solid var(--gold);border-radius:999px;padding:5px 16px}
 .pk-pot-label{font-family:'Bungee',sans-serif;font-size:.62rem;color:var(--gold)}
 .pk-pot-val{font-family:'Bungee',sans-serif;font-size:1.05rem;color:#fff}
-.pk-board-cards{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+.pk-board-cards{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
 .card.mini{width:46px;height:auto;border-radius:7px}
 .card.slot{background:rgba(255,255,255,.07);border:2px dashed rgba(255,255,255,.22);
   box-shadow:none;animation:none}
@@ -789,8 +792,8 @@
   .poker-table{padding:10px;border-width:3px}
   .pk-middle{padding:8px 0 2px;gap:6px}
   .pk-seat{padding:6px 7px}
-  .pk-cards{min-height:66px}
-  .pk-mine .pk-cards{min-height:88px}
+  .pk-cards{min-height:58px}
+  .pk-mine .pk-cards{min-height:78px}
   .pk-pot{padding:3px 12px}
   .pk-pot-val{font-size:.9rem}
 

@@ -61,7 +61,7 @@
       currentId: null,
       players: {},
       feed: [],
-      settings: { sound: true, volume: 50, adminPin: '1337', chaos: true },
+      settings: { sound: true, volume: 50, adminPin: '1337', chaos: true, cardTheme: 'eerie' },
       admin: false
     };
   };
@@ -75,6 +75,7 @@
       if (d.currentId) state.currentId = d.currentId;
       if (d.sound !== undefined) state.settings.sound = d.sound;
       if (d.volume !== undefined) state.settings.volume = d.volume;
+      if (d.cardTheme && GK.cardThemeById(d.cardTheme)) state.settings.cardTheme = d.cardTheme;
     } catch (e) {}
   }
   function saveDevice() {
@@ -82,7 +83,8 @@
       localStorage.setItem(DEVICE_KEY, JSON.stringify({
         currentId: state.currentId,
         sound: state.settings.sound,
-        volume: state.settings.volume
+        volume: state.settings.volume,
+        cardTheme: state.settings.cardTheme
       }));
     } catch (e) {}
   }
@@ -136,6 +138,7 @@
     loadDevice();
     loadLocal();
     state.admin = false;                       // Admin-Modus nie persistent
+    applyCardThemeVar();
     if (!GK.net) return Promise.resolve(false);
     return GK.net.probe().then(function (online) {
       if (!online) loadLocal();                // Serverstand hat lokale Kopie nicht ersetzt
@@ -896,12 +899,45 @@
 
   /* ─────────────────────────── SPIELKARTEN ─────────────────────────── */
   /*
-     Blackjack und Poker teilen sich ein Kartenblatt als Bilddateien
-     (assets/cards/<Rang><Farbe>.webp, z. B. „QH" für Herz-Dame). Beide Spiele
-     führen ihre Farben als Zeichen ♠♥♦♣ — hier wird das auf den Dateibuchstaben
-     übersetzt, damit die Spielmodule ihre Datenstruktur behalten können.
+     Blackjack, Poker und jedes künftige Kartenspiel teilen sich ihre
+     Kartenblätter als Bilddateien unter assets/cards/themes/<theme>/
+     (z. B. „QH.webp" für Herz-Dame, „back.webp" für die Rückseite). Beide
+     Spiele führen ihre Farben als Zeichen ♠♥♦♣ — hier wird das auf den
+     Dateibuchstaben übersetzt, damit die Spielmodule ihre Datenstruktur
+     behalten können.
+
+     Jedes Theme bringt sein eigenes Seitenverhältnis mit (die Community-
+     Kartenblätter sind deutlich breiter als das ursprüngliche schmale Set),
+     deshalb setzt setCardTheme eine CSS-Variable, statt das Verhältnis fest
+     in games.css zu verdrahten.
   */
   var SUIT_FILE = { '♥': 'H', '♦': 'D', '♣': 'C', '♠': 'S' };
+
+  GK.CARD_THEMES = [
+    { id: 'eerie',      name: 'Eerie',      aspect: '260/366' },
+    { id: 'prismnight', name: 'Prismnight', aspect: '260/366' }
+  ];
+
+  GK.cardThemeById = function (id) {
+    for (var i = 0; i < GK.CARD_THEMES.length; i++) if (GK.CARD_THEMES[i].id === id) return GK.CARD_THEMES[i];
+    return null;
+  };
+  GK.cardTheme = function () {
+    return GK.cardThemeById(state.settings.cardTheme) || GK.CARD_THEMES[0];
+  };
+
+  function applyCardThemeVar() {
+    document.documentElement.style.setProperty('--card-ar', GK.cardTheme().aspect);
+  }
+
+  /** Deck-Theme wechseln — gilt sofort für jedes offene Kartenspiel. */
+  GK.setCardTheme = function (id) {
+    if (!GK.cardThemeById(id) || id === state.settings.cardTheme) return;
+    state.settings.cardTheme = id;
+    saveDevice();
+    applyCardThemeVar();
+    GK.emit('cardtheme', id);
+  };
 
   /**
    * Eine Spielkarte als Element.
@@ -909,10 +945,40 @@
    */
   GK.cardEl = function (card, hidden, cls) {
     var e = GK.el('div', { class: 'card ' + (cls || '') + (hidden ? ' back' : '') });
-    var file = hidden ? 'back_dragon' : (card.r + (SUIT_FILE[card.s] || 'S'));
-    var img = GK.el('img', { src: 'assets/cards/' + file + '.webp', alt: '', draggable: 'false' });
+    var file = hidden ? 'back' : (card.r + (SUIT_FILE[card.s] || 'S'));
+    var img = GK.el('img', { src: 'assets/cards/themes/' + GK.cardTheme().id + '/' + file + '.webp', alt: '', draggable: 'false' });
     e.appendChild(img);
     return e;
+  };
+
+  /**
+   * Wiederverwendbarer Deck-Theme-Umschalter für Kartenspiele. Rendert die
+   * Rückseiten aller Themes als klickbare Kacheln; die Auswahl ist global
+   * (gilt geräteweit für alle Kartenspiele), nicht pro Spiel.
+   */
+  GK.cardThemePicker = function () {
+    var thumbs = {};
+    var wrap = GK.el('div', { class: 'cardtheme-picker' }, [
+      GK.el('div', { class: 'bet-label', text: 'KARTENDECK' }),
+      GK.el('div', { class: 'cardtheme-row' }, GK.CARD_THEMES.map(function (t) {
+        var thumb = GK.el('button', {
+          class: 'cardtheme-thumb', type: 'button', title: t.name,
+          onClick: function () { GK.sfx('chip'); GK.setCardTheme(t.id); }
+        }, [
+          GK.el('img', { src: 'assets/cards/themes/' + t.id + '/back.webp', alt: t.name, draggable: 'false' }),
+          GK.el('span', { text: t.name })
+        ]);
+        thumbs[t.id] = thumb;
+        return thumb;
+      }))
+    ]);
+    function sync() {
+      var cur = state.settings.cardTheme;
+      GK.CARD_THEMES.forEach(function (t) { thumbs[t.id].classList.toggle('sel', t.id === cur); });
+    }
+    sync();
+    GK.on('cardtheme', sync);
+    return { el: wrap };
   };
 
   /* ─────────────────────────── RUBBELFELD ─────────────────────────── */

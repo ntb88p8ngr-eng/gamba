@@ -56,6 +56,7 @@
       var player = [], dealer = [], stake = 0, phase = 'bet', hideHole = true;
 
       var bet = GK.betPanel({ start: 25 });
+      var themePicker = GK.cardThemePicker();
       var dealerHand = el('div', { class: 'hand' });
       var playerHand = el('div', { class: 'hand' });
       var dealerScore = el('span', { class: 'bj-score', text: '—' });
@@ -83,6 +84,8 @@
         felt,
         GK.panel([
           bet.el,
+          el('div', { style: 'height:14px' }),
+          themePicker.el,
           el('div', { style: 'height:14px' }),
           resultBox,
           el('div', { style: 'height:12px' }),
@@ -229,6 +232,7 @@
 
       setPhase('bet');
       render();
+      GK.on('cardtheme', function () { if (playerHand.isConnected) render(); });
       return function () { stopped = true; };
     }
   });
