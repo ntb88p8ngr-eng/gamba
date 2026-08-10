@@ -1,4 +1,4 @@
-f/* ═══════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
    GAMBAKING — core engine
    State, storage, audio, effects, bet controls, game registry.
    Kein Echtgeld. Alles lokal. Alles Fantasy.
