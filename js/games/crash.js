@@ -72,18 +72,25 @@
 
       var ctx = canvas.getContext('2d');
       var points = [];
-      var zigSeed = 0, zigPeriod = 520;
+      var zigSeed = 0, zigRate = 3;
+      var ROCKET_ART_ANGLE = 45;
 
       /* Zickzack: zwei ungleich schnelle Dreieckswellen, deren Ausschlag mit dem
          Multiplikator wächst. Der Wert wird beim Anlegen des Punktes eingefroren,
-         damit die schon gezeichnete Linie stehen bleibt und nicht mitzappelt. */
-      function tri(t, period) {
-        var x = ((t / period + zigSeed) % 1 + 1) % 1;
+         damit die schon gezeichnete Linie stehen bleibt und nicht mitzappelt.
+
+         Die Phase läuft über log(t), nicht über t: die Zeitachse wird mit jeder
+         Sekunde weiter gestaucht, eine feste Periode in Millisekunden würde bei
+         langen Flügen zum Sägeblatt zusammenlaufen. Logarithmisch wächst die
+         Wellenlänge im gleichen Maß mit und bleibt auf dem Schirm konstant. */
+      function tri(phase) {
+        var x = ((phase % 1) + 1) % 1;
         return 4 * Math.abs(x - 0.5) - 1;
       }
       function pushPoint(t, m) {
         var strength = Math.min(1, (m - 1) / 5);
-        var z = (tri(t, zigPeriod) * 0.62 + tri(t, zigPeriod * 1.73) * 0.38) * strength;
+        var lt = Math.log(Math.max(400, t)) * zigRate;
+        var z = (tri(lt + zigSeed) * 0.62 + tri(lt * 0.57 + zigSeed * 1.7) * 0.38) * strength;
         points.push({ t: t, m: m, z: z });
       }
 
@@ -150,9 +157,13 @@
         ctx.shadowBlur = 0;
 
         var rx = px(last) / 2, ry = py(last) / 2;
+        /* Das gemalte Raketen-Icon zeigt schon von Haus aus schräg nach rechts
+           oben (rund 45° aus der Senkrechten). Diese Eigenneigung muss raus,
+           sonst kippt die Rakete um 45° zu weit und fliegt quer. */
         var prev = points[Math.max(0, points.length - 6)];
-        var tilt = Math.atan2(py(last) - py(prev), px(last) - px(prev)) * 180 / Math.PI + 90;
-        tilt = Math.max(-15, Math.min(52, tilt));
+        var path = Math.atan2(py(last) - py(prev), px(last) - px(prev)) * 180 / Math.PI;
+        var tilt = path + 90 - ROCKET_ART_ANGLE;
+        tilt = Math.max(-30, Math.min(55, tilt));
 
         /* Je höher der Multiplikator, desto stärker rüttelt die Rakete. */
         var amp = running ? Math.min(7, (last.m - 1) * 1.3) : 0;
@@ -200,7 +211,14 @@
         }
 
         pushPoint(elapsed, mult);
-        if (points.length > 900) points.shift();
+        /* Nicht vorne abschneiden — der erste Punkt (t=0, m=1) ist der Anker
+           unten links. Fiel er weg, wanderte die ganze Kurve mit der Rakete
+           nach oben rechts. Stattdessen ausdünnen und Punkt 0 behalten. */
+        if (points.length > 4000) {
+          var thin = [];
+          for (var i = 0; i < points.length; i += 2) thin.push(points[i]);
+          points = thin;
+        }
         multEl.textContent = mult.toFixed(2) + '×';
         draw();
 
@@ -223,7 +241,7 @@
         crashAt = rollCrash();
         mult = 1;
         zigSeed = Math.random();
-        zigPeriod = 380 + Math.random() * 420;
+        zigRate = 2.4 + Math.random() * 1.5;
         points = [];
         pushPoint(0, 1);
         rocket.classList.remove('boom');
