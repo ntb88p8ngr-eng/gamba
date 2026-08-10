@@ -363,6 +363,11 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .hero-sub{max-width:640px;margin:0 auto 22px;color:var(--muted);font-size:clamp(.92rem,2.2vw,1.08rem)}
 .hero-sub b{color:var(--gold)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.hero-actions .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5em}
+/* Die gemalten Symbole sind eckig — der runde Zuschnitt von img.gk-ic
+   (gedacht für die Drachenköpfe) würde Würfel und Schloss beschneiden. */
+.btn-ic{font-size:1.35em;flex:0 0 auto}
+.btn-ic>img,.btn-ic>svg{width:1em;height:1em;display:block;object-fit:contain;border-radius:0}
 
 /* ═══════════ BUTTONS ═══════════ */
 .btn{
