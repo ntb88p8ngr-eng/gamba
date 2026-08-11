@@ -23,53 +23,30 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 THEMES_DIR = os.path.join(ROOT, 'assets', 'cards', 'themes')
 
 CARD_W, CARD_H = 260, 364   # muss zu aspect in GK.CARD_THEMES passen
-PAD = 22                    # Mindest-Luft rundum, in Pixeln des Originals
 QUALITY = 85
 
 
-def expand(im, left, top, right, bottom):
-    """Rand anlegen, indem die Randpixel fortgesetzt werden.
+def fit(im):
+    """Mittig auf das Zielverhaeltnis beschneiden.
 
-    Ein einfarbiger Rand wuerde bei Decks mit getoentem Papier (Excaliber)
-    als sichtbarer Balken stehen.
+    Beschneiden statt Rand anlegen: eine fortgesetzte Randreihe schleppt
+    jeden Rest mit, der im Original am aeussersten Pixel klebt. Bei Eerie und
+    Prismnight sass dort ein heller Sprenkel vom Scan, aus dem prompt ein
+    weisser Eckklotz wurde. Was hier wegfaellt, ist der dunkle Ueberstand
+    ausserhalb der abgerundeten Blattecke — kein Motiv.
+
+    Hart auf CARD_W x CARD_H zu skalieren geht nicht: Decks mit abweichendem
+    Verhaeltnis zoegen sich in die Breite.
     """
     w, h = im.size
-    out = Image.new('RGB', (w + left + right, h + top + bottom))
-    out.paste(im, (left, top))
-    if top:
-        out.paste(im.crop((0, 0, w, 1)).resize((w, top)), (left, 0))
-    if bottom:
-        out.paste(im.crop((0, h - 1, w, h)).resize((w, bottom)), (left, h + top))
-    if left:
-        out.paste(im.crop((0, 0, 1, h)).resize((left, h)), (0, top))
-    if right:
-        out.paste(im.crop((w - 1, 0, w, h)).resize((right, h)), (w + left, top))
-    for bx, by, bw, bh, src in [(0, 0, left, top, (0, 0)),
-                                (w + left, 0, right, top, (w - 1, 0)),
-                                (0, h + top, left, bottom, (0, h - 1)),
-                                (w + left, h + top, right, bottom, (w - 1, h - 1))]:
-        if bw and bh:
-            out.paste(im.getpixel(src), (bx, by, bx + bw, by + bh))
-    return out
-
-
-def fit(im, pad):
-    """Auf das Zielverhaeltnis bringen, ohne die Grafik zu verzerren.
-
-    Erst die Mindest-Luft rundum, dann auf der Achse nachlegen, die noch zu
-    knapp ist. Wuerde man stattdessen hart auf CARD_W x CARD_H skalieren,
-    zieht sich jedes Deck mit abweichendem Verhaeltnis in die Breite — und
-    genau das macht object-fit:contain danach als helle Balken sichtbar.
-    """
-    w, h = im.size
-    bw, bh = w + 2 * pad, h + 2 * pad
     target = CARD_W / CARD_H
-    if bw / bh > target:            # zu breit -> oben und unten auffuellen
-        bh = round(bw / target)
-    else:                           # zu schmal -> links und rechts auffuellen
-        bw = round(bh * target)
-    ex, ey = bw - w, bh - h
-    return expand(im, ex // 2, ey // 2, ex - ex // 2, ey - ey // 2)
+    if w / h > target:              # zu breit -> seitlich beschneiden
+        nw = round(h * target)
+        x = (w - nw) // 2
+        return im.crop((x, 0, x + nw, h))
+    nh = round(w / target)          # zu hoch -> oben und unten beschneiden
+    y = (h - nh) // 2
+    return im.crop((0, y, w, y + nh))
 
 
 def build(theme, force=False):
@@ -79,7 +56,6 @@ def build(theme, force=False):
         return 0
     done = 0
     for path in files:
-        is_back = os.path.basename(path).lower() == 'back.webp'
         im = Image.open(path)
         im.load()
         im = im.convert('RGB')
@@ -87,9 +63,8 @@ def build(theme, force=False):
         if im.size == (CARD_W, CARD_H) and not force:
             continue
         # Die Rueckseite laeuft durch dieselbe Muehle: sie steckt im selben
-        # .card-Kasten, also muss sie dasselbe Verhaeltnis haben. Weil fit()
-        # nur auffuellt und nie beschneidet, bleibt das Muster vollstaendig.
-        out = fit(im, 0 if is_back else PAD).resize((CARD_W, CARD_H), Image.LANCZOS)
+        # .card-Kasten, also braucht sie dasselbe Verhaeltnis.
+        out = fit(im).resize((CARD_W, CARD_H), Image.LANCZOS)
 
         out.save(path, 'WEBP', quality=QUALITY)
         done += 1
@@ -104,7 +79,7 @@ def main():
         d for d in os.listdir(THEMES_DIR)
         if os.path.isdir(os.path.join(THEMES_DIR, d))
     )
-    print('Kartendecks -> %dx%d, Rand %dpx, WEBP q%d' % (CARD_W, CARD_H, PAD, QUALITY))
+    print('Kartendecks -> %dx%d, mittig beschnitten, WEBP q%d' % (CARD_W, CARD_H, QUALITY))
     total = sum(build(t, force) for t in themes)
     print('Fertig, %d Karten geschrieben.' % total)
 
