@@ -50,7 +50,7 @@
       '<b>Doppeln</b>: Einsatz verdoppeln, genau eine Karte, dann automatisch stehen.',
       'Gleichstand = <b>Push</b>, du bekommst deinen Einsatz zurück.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false;
       var shoe = newShoe();
       var player = [], dealer = [], stake = 0, phase = 'bet', hideHole = true;
@@ -150,7 +150,7 @@
             fn(); render(); GK.sfx('card');
             if (i === 3) {
               if (isBJ(player)) { setTimeout(settle, 450); }
-              else setPhase('play');
+              else { setPhase('play'); snapshot(); }
             }
           }, i * 260);
         });
@@ -162,6 +162,7 @@
         GK.sfx('card');
         render();
         dblBtn.disabled = true;
+        snapshot();
         if (handValue(player) > 21) { setTimeout(settle, 400); }
         else if (handValue(player) === 21) { setTimeout(stand, 400); }
       }
@@ -174,6 +175,7 @@
         player.push(draw());
         GK.sfx('card');
         render();
+        snapshot();
         setTimeout(stand, 500);
       }
 
@@ -223,6 +225,7 @@
         else GK.sfx('coin');
 
         setPhase('bet');
+        snapshot();                 // Phase ist 'bet' -> wirft den Stand weg
       }
 
       dealBtn.addEventListener('click', function () { GK.sfx('click'); deal(); });
@@ -230,10 +233,33 @@
       standBtn.addEventListener('click', function () { GK.sfx('click'); stand(); });
       dblBtn.addEventListener('click', function () { GK.sfx('click'); double(); });
 
-      setPhase('bet');
-      render();
+      /* ── Unterbrochene Hand ──
+         Wer mitten im Spiel in die Lobby geht, findet die Hand beim naechsten
+         Oeffnen genau so wieder vor. Gesichert wird nach jeder Aktion, damit
+         auch ein zugeschlagenes Fenster nichts verschluckt. Der Schuh kommt
+         mit, sonst waeren die schon gesehenen Karten wieder im Spiel. */
+      function snapshot() {
+        if (phase !== 'play') { GK.clearGameState('blackjack'); return; }
+        GK.saveGameState('blackjack', {
+          player: player, dealer: dealer, shoe: shoe, stake: stake
+        });
+      }
+
+      function restore(st) {
+        if (!st || !st.player || !st.player.length) return false;
+        player = st.player; dealer = st.dealer; shoe = st.shoe || shoe;
+        stake = st.stake; hideHole = true;
+        bet.set && bet.set(stake);
+        setPhase('play');
+        render();
+        GK.setResult(resultBox, 'Weiter geht’s — deine Hand von vorhin.', '');
+        GK.toast('Unterbrochene Hand fortgesetzt · Einsatz ' + GK.fmt(stake), 'gold', '🃏');
+        return true;
+      }
+
+      if (!restore(resume)) { setPhase('bet'); render(); }
       GK.on('cardtheme', function () { if (playerHand.isConnected) render(); });
-      return function () { stopped = true; };
+      return function () { stopped = true; snapshot(); };
     }
   });
 })(window.GK);
