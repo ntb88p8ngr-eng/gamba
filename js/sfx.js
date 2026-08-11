@@ -58,7 +58,7 @@
    */
   function resolve(name, gameId) {
     var m = pack.manifest;
-    if (!m) return null;
+    if (!m || !name || isNote(name)) return null;
 
     var base = normalize(m.sounds && m.sounds[name]);
     var over = null;
@@ -201,6 +201,13 @@
 
   /* ── Laden und Nachladen ───────────────────────────────────────────── */
 
+  /* Schluessel, die mit _ beginnen, sind Anmerkungen in der Datei und kein
+     Klang. Ohne diese Pruefung hat das Vorladen den Kommentartext als
+     Dateipfad genommen — und weil "games._" ebenfalls ein Text ist, lief die
+     innere Schleife ueber dessen einzelne Buchstaben. Das ergab dutzende
+     erfundene 404er, in denen echte Fehler untergingen. */
+  function isNote(key) { return key.charAt(0) === '_'; }
+
   function preloadAll() {
     var m = pack.manifest;
     if (!m) return;
@@ -211,8 +218,12 @@
       if (cfg.preload || always) cfg.files.forEach(load);
     }
     var k, g;
-    for (k in m.sounds || {}) maybe(m.sounds[k]);
-    for (g in m.games || {}) for (k in m.games[g]) maybe(m.games[g][k]);
+    for (k in m.sounds || {}) if (!isNote(k)) maybe(m.sounds[k]);
+    for (g in m.games || {}) {
+      var grp = m.games[g];
+      if (isNote(g) || !grp || typeof grp !== 'object') continue;
+      for (k in grp) if (!isNote(k)) maybe(grp[k]);
+    }
   }
 
   /**
