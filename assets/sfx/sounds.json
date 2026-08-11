@@ -1,18 +1,21 @@
 {
-  "_": "Sound-Pack von GAMBAKING. Alles hier ist freiwillig — was leer bleibt, klingt weiter wie eingebaut. Anleitung mit allen Feldern: assets/sfx/README.md",
+  "_": "Sound-Pack was leer bleibt, default sounds. Anleitung mit allen Feldern: assets/sfx/README.md",
 
   "version": 1,
 
   "defaults": {
     "_": "Gilt fuer alle Klaenge. volume ist ein Faktor auf alles, preload laedt beim Seitenstart statt beim ersten Abspielen.",
     "volume": 1,
-    "preload": false
+    "preload": true
   },
 
   "sounds": {
     "_": "Globale Belegung. Kurzform: \"click\": \"ui/klick.mp3\". Mehrere Varianten: \"card\": [\"a.mp3\", \"b.mp3\"]. Langform mit allen Reglern siehe README.",
 
-    "click":     { "files": [] },
+    "click":     { "files": [ui/click.mp3], 
+	               "volume": 0.8,
+                   "rateJitter": 0.06},
+				   
     "hover":     { "files": [] },
     "chip":      { "files": [] },
     "spin":      { "files": [] },
