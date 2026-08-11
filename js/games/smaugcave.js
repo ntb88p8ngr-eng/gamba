@@ -115,7 +115,7 @@
       'Drei <b>Schlüssel</b> öffnen Smaugs Hort in der Mitte — dort wartet eine riskante Extra-Beute.',
       'Wacht Smaug ganz auf, jagt er dich durchs Labyrinth. Schiebe Reihen/Spalten, um seinen Weg zu blockieren, und erreiche den <b>Ausgang</b> vor ihm — sonst verbrennt er dich samt Schatz.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false, running = false, busy = false, phase = 'idle';
       var timers = [];
       function wait(ms, fn) { var t = setTimeout(function () { if (!stopped) fn(); }, ms); timers.push(t); return t; }
@@ -348,6 +348,7 @@
         renderSpare();
         movesLeft = PLAYER_MOVES;
         syncPushControls();
+        snapshot();
         syncInfo();
         pushHint.textContent = huntingActive
           ? 'Nutze das Labyrinth: schiebe Smaug aus, dann lauf zum Ausgang!'
@@ -395,6 +396,7 @@
         placePawns(false);
         syncPushControls();
         syncInfo();
+        snapshot();
 
         if (playerWrapped) {
           GK.toast('Deine Figur stand auf der geschobenen Kachel und ist mitgewandert!', 'gold', '🔀');
@@ -605,6 +607,7 @@
       }
 
       function endUI() {
+        GK.clearGameState('smaugcave');
         phase = 'idle';
         goBtn.disabled = false;
         cashBtn.disabled = true;
@@ -664,15 +667,64 @@
       goBtn.addEventListener('click', function () { GK.sfx('click'); start(); });
       cashBtn.addEventListener('click', function () { GK.sfx('click'); cashOut(); });
 
+      /* ── Unterbrochener Zug durch die Höhle ──
+         Hier haengt am meisten dran: das ganze Labyrinth, wer wo steht, wie
+         wach Smaug ist und was schon eingesammelt wurde. Waere davon etwas
+         neu gewuerfelt, koennte man sich durch Rausgehen eine bessere Höhle
+         holen. Gesichert wird an den beiden ruhigen Punkten einer Runde —
+         wenn geschoben werden darf und wenn gelaufen werden darf. */
+      function snapshot() {
+        if (!running) { GK.clearGameState('smaugcave'); return; }
+        GK.saveGameState('smaugcave', {
+          tiles: tiles, spare: spare, player: player, dragon: dragon,
+          keys: keys, hoardUnlocked: hoardUnlocked, hoardLooted: hoardLooted,
+          huntingActive: huntingActive, mult: mult, awareness: awareness,
+          shieldRounds: shieldRounds, starActive: starActive,
+          stake: stake, movesLeft: movesLeft, phase: phase
+        });
+      }
+
+      function restore(st) {
+        if (!st || !st.tiles) return false;
+        tiles = st.tiles; spare = st.spare; player = st.player; dragon = st.dragon;
+        keys = st.keys; hoardUnlocked = st.hoardUnlocked; hoardLooted = st.hoardLooted;
+        huntingActive = st.huntingActive; mult = st.mult; awareness = st.awareness;
+        shieldRounds = st.shieldRounds; starActive = st.starActive;
+        stake = st.stake; movesLeft = st.movesLeft;
+        phase = st.phase === 'move' ? 'move' : 'push';
+        running = true; busy = false;
+
+        bet.set && bet.set(stake);
+        goBtn.disabled = true;
+        bet.disable(true);
+
+        /* In der Laufphase muessen die erreichbaren Felder neu berechnet
+           werden — sie ergeben sich aus dem Labyrinth und gehoeren deshalb
+           nicht in den gesicherten Stand. */
+        reachable = phase === 'move' ? bfs(player, PLAYER_MOVES).dist : {};
+        renderSpare();
+        renderBoard();
+        placePawns(false);
+        syncPushControls();
+        syncInfo();
+        GK.setResult(resultBox, phase === 'move'
+          ? 'Weiter geht’s — du bist am Zug.'
+          : 'Weiter geht’s — schieb eine Reihe.', '');
+        GK.toast('Unterbrochener Zug fortgesetzt · ' + fmtX(mult) + ' · Einsatz ' + GK.fmt(stake), 'gold', '🐉');
+        return true;
+      }
+
       setupBoard();
       buildPushControls();
       renderBoard();
       placePawns(false);
       syncPushControls();
       syncInfo();
+      restore(resume);
 
       return function () {
         stopped = true;
+        snapshot();
         timers.forEach(clearTimeout);
       };
     }
