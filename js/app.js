@@ -23,6 +23,9 @@
       return;
     }
     closeGame();
+    /* Das Sound-Pack darf Klaenge pro Spiel ueberschreiben und braucht dafuer
+       den Kontext. */
+    GK.currentGame = g.id;
     $('#game-title').innerHTML = (g.icon ? GK.iconHTML(g.icon, 'title-ic') : '') + '<span>' + g.name + '</span>';
     var stageEl = $('#game-stage');
     stageEl.innerHTML = '';
@@ -42,6 +45,7 @@
   function closeGame() {
     if (currentCleanup) { try { currentCleanup(); } catch (e) {} }
     currentCleanup = null;
+    GK.currentGame = null;
     $('#game-stage').innerHTML = '';
   }
 

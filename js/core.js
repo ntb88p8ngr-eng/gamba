@@ -587,9 +587,30 @@
     }
   };
 
-  GK.sfx = function (name) {
+  /* Die Namen aller eingebauten Klaenge — das Sound-Pack liest sie aus, um
+     zu zeigen, was ueberhaupt austauschbar ist. */
+  GK.SFX_NAMES = SFX;
+
+  /** Welches Spiel gerade offen ist; das Sound-Pack kann darauf hoeren. */
+  GK.currentGame = null;
+
+  /**
+   * Einen Ton spielen.
+   *
+   * Zuerst darf das Sound-Pack ran (assets/sfx/sounds.json). Nur wenn dort
+   * nichts fuer diesen Namen hinterlegt ist oder die Datei noch nicht im
+   * Speicher liegt, uebernimmt der eingebaute Synthesizer. Damit laesst sich
+   * jeder Klang einzeln austauschen, ohne dass etwas verstummt.
+   *
+   * @param {string} name  Klangname, siehe GK.SFX_NAMES
+   * @param {string} [gameId]  Spiel-Kontext; ohne Angabe gilt GK.currentGame
+   */
+  GK.sfx = function (name, gameId) {
     Sound.init();
     Sound.resume();
+    if (GK.sfxPack) {
+      try { if (GK.sfxPack.play(name, gameId)) return; } catch (e) {}
+    }
     if (SFX[name]) { try { SFX[name](); } catch (e) {} }
   };
 

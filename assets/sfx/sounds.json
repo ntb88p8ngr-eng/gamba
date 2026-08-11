@@ -1,0 +1,65 @@
+{
+  "_": "Sound-Pack von GAMBAKING. Alles hier ist freiwillig — was leer bleibt, klingt weiter wie eingebaut. Anleitung mit allen Feldern: assets/sfx/README.md",
+
+  "version": 1,
+
+  "defaults": {
+    "_": "Gilt fuer alle Klaenge. volume ist ein Faktor auf alles, preload laedt beim Seitenstart statt beim ersten Abspielen.",
+    "volume": 1,
+    "preload": false
+  },
+
+  "sounds": {
+    "_": "Globale Belegung. Kurzform: \"click\": \"ui/klick.mp3\". Mehrere Varianten: \"card\": [\"a.mp3\", \"b.mp3\"]. Langform mit allen Reglern siehe README.",
+
+    "click":     { "files": [] },
+    "hover":     { "files": [] },
+    "chip":      { "files": [] },
+    "spin":      { "files": [] },
+    "tick":      { "files": [] },
+    "reel":      { "files": [] },
+    "card":      { "files": [] },
+    "coin":      { "files": [] },
+    "cash":      { "files": [] },
+    "win":       { "files": [] },
+    "bigwin":    { "files": [] },
+    "jackpot":   { "files": [] },
+    "lose":      { "files": [] },
+    "error":     { "files": [] },
+    "boom":      { "files": [] },
+    "gem":       { "files": [] },
+    "rocket":    { "files": [] },
+    "hoof":      { "files": [] },
+    "startbell": { "files": [] },
+    "whoosh":    { "files": [] },
+    "waddle":    { "files": [] },
+    "soul":      { "files": [] },
+    "snuff":     { "files": [] },
+    "growl":     { "files": [] },
+    "plop":      { "files": [] }
+  },
+
+  "games": {
+    "_": "Pro Spiel abweichende Klaenge. Ein Eintrag hier ueberschreibt nur die Felder, die er selbst setzt — \"boom\": { \"volume\": 1.6 } behaelt also die globale Datei und dreht nur lauter.",
+
+    "slots": {},
+    "roulette": {},
+    "blackjack": {},
+    "coinflip": {},
+    "dice": {},
+    "crash": {},
+    "mines": {},
+    "wheel": {},
+    "plinko": {},
+    "scratch": {},
+    "horses": {},
+    "icebear": {},
+    "ocean": {},
+    "poker": {},
+    "penguin": {},
+    "scratch9": {},
+    "mystery": {},
+    "smaugcave": {},
+    "baccarat": {}
+  }
+}

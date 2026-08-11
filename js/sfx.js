@@ -1,0 +1,266 @@
+/* ═══════════════════════════════════════════════════════════
+   GAMBAKING — Sound-Pack
+   Laedt assets/sfx/sounds.json und legt eigene Audiodateien ueber die
+   eingebauten, synthetisch erzeugten Klaenge aus core.js.
+
+   Nichts hier ist Pflicht: fehlt die Datei, fehlt ein Eintrag oder schlaegt
+   das Laden fehl, spielt weiterhin der eingebaute Klang. Man kann also
+   einzelne Sounds austauschen und den Rest so lassen.
+
+   GK.sfx() fragt bei jedem Ton hier an — siehe den Aufruf von
+   GK.sfxPack.play() in core.js.
+   ═══════════════════════════════════════════════════════════ */
+(function (GK) {
+  'use strict';
+
+  var MANIFEST = 'assets/sfx/sounds.json';
+  var BASE = 'assets/sfx/';
+
+  var pack = GK.sfxPack = {
+    manifest: null,
+    loaded: false,
+    /* Fehlermeldungen sammeln, statt die Konsole vollzuschreiben — jede
+       kaputte Datei genau einmal melden. */
+    problems: []
+  };
+
+  var buffers = {};        // pfad -> AudioBuffer
+  var pending = {};        // pfad -> true, solange dekodiert wird
+  var failed = {};         // pfad -> true, nie wieder versuchen
+  var lastVariant = {};    // schluessel -> zuletzt gespielter Index
+
+  /* ── Konfiguration einlesen ────────────────────────────────────────── */
+
+  /** Kurzform 'datei.mp3' und Langform { file: … } zur selben Struktur. */
+  function normalize(entry) {
+    if (!entry) return null;
+    if (typeof entry === 'string') return { files: [entry] };
+    if (Array.isArray(entry)) return { files: entry.slice() };
+    if (typeof entry !== 'object') return null;
+
+    var cfg = {};
+    for (var k in entry) if (Object.prototype.hasOwnProperty.call(entry, k)) cfg[k] = entry[k];
+    if (typeof cfg.file === 'string') cfg.files = [cfg.file];
+    if (typeof cfg.files === 'string') cfg.files = [cfg.files];
+    if (!Array.isArray(cfg.files)) cfg.files = [];
+    return cfg;
+  }
+
+  /**
+   * Was gilt fuer diesen Ton in diesem Spiel?
+   *
+   * Reihenfolge, spaeter schlaegt frueher:
+   *   1. sounds.<name>          — global
+   *   2. games.<spiel>.<name>   — nur in diesem Spiel
+   * Ein Spiel-Eintrag ersetzt den globalen nicht komplett, sondern
+   * ueberschreibt nur die Felder, die er selbst setzt. So kann man etwa nur
+   * die Lautstaerke eines Tons in einem Spiel anheben.
+   */
+  function resolve(name, gameId) {
+    var m = pack.manifest;
+    if (!m) return null;
+
+    var base = normalize(m.sounds && m.sounds[name]);
+    var over = null;
+    var game = gameId || GK.currentGame;
+    if (game && m.games && m.games[game]) over = normalize(m.games[game][name]);
+    if (!base && !over) return null;
+
+    var cfg = {};
+    var src, k;
+    for (var i = 0; i < 2; i++) {
+      src = i ? over : base;
+      if (!src) continue;
+      for (k in src) if (Object.prototype.hasOwnProperty.call(src, k)) {
+        /* Eine leere Dateiliste im Spiel-Eintrag soll die globale nicht
+           loeschen — sonst kann man dort nicht nur die Lautstaerke drehen. */
+        if (k === 'files' && (!src[k] || !src[k].length)) continue;
+        cfg[k] = src[k];
+      }
+    }
+    if (cfg.enabled === false) return { muted: true };
+    if (!cfg.files || !cfg.files.length) return null;
+    return cfg;
+  }
+
+  /* ── Dateien holen ─────────────────────────────────────────────────── */
+
+  function url(file) {
+    if (/^(https?:)?\/\//.test(file) || file.charAt(0) === '/') return file;
+    return BASE + file;
+  }
+
+  function note(msg) {
+    if (pack.problems.indexOf(msg) >= 0) return;
+    pack.problems.push(msg);
+    if (window.console && console.warn) console.warn('[sfx] ' + msg);
+  }
+
+  /**
+   * Datei laden und dekodieren. Laeuft im Hintergrund: der erste Aufruf
+   * eines Tons faellt noch auf den eingebauten Klang zurueck, ab dem zweiten
+   * liegt die Datei im Cache. Wer das nicht will, setzt preload.
+   */
+  function load(file) {
+    var u = url(file);
+    if (buffers[u] || pending[u] || failed[u]) return;
+    var ctx = GK.sound && GK.sound.ctx;
+    if (!ctx) return;
+    pending[u] = true;
+    fetch(u).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    }).then(function (buf) {
+      return new Promise(function (res, rej) {
+        /* Safari kennt die Promise-Form von decodeAudioData nicht. */
+        var p = ctx.decodeAudioData(buf, res, rej);
+        if (p && p.then) p.then(res, rej);
+      });
+    }).then(function (decoded) {
+      buffers[u] = decoded;
+      delete pending[u];
+    }).catch(function (e) {
+      failed[u] = true;
+      delete pending[u];
+      note(u + ' liess sich nicht laden (' + e.message + ') — eingebauter Klang bleibt aktiv');
+    });
+  }
+
+  /* ── Abspielen ─────────────────────────────────────────────────────── */
+
+  function pickFile(cfg, key) {
+    var files = cfg.files;
+    if (files.length === 1) return files[0];
+    var i;
+    if (cfg.pick === 'reihum') {
+      i = ((lastVariant[key] === undefined ? -1 : lastVariant[key]) + 1) % files.length;
+    } else {
+      /* Zufall, aber nie zweimal dieselbe Variante hintereinander — sonst
+         faellt bei schnellen Klickfolgen die Wiederholung auf. */
+      i = Math.floor(Math.random() * files.length);
+      if (files.length > 1 && i === lastVariant[key]) i = (i + 1) % files.length;
+    }
+    lastVariant[key] = i;
+    return files[i];
+  }
+
+  function jitter(base, amount) {
+    if (!amount) return base;
+    return base + (Math.random() * 2 - 1) * amount;
+  }
+
+  /**
+   * Gibt true zurueck, wenn dieser Ton aus einer Datei kommt — dann laesst
+   * core.js den eingebauten Klang aus. Bei false uebernimmt der Synthesizer.
+   */
+  pack.play = function (name, gameId) {
+    if (!pack.loaded || !pack.manifest) return false;
+    var snd = GK.sound;
+    if (!snd || !snd.ready || !snd.enabled()) return false;
+
+    var cfg = resolve(name, gameId);
+    if (!cfg) return false;
+    /* Ausdruecklich stummgeschaltet: nichts spielen, aber auch nicht auf den
+       eingebauten Klang zurueckfallen. */
+    if (cfg.muted) return true;
+
+    var key = (gameId || GK.currentGame || '') + '/' + name;
+    var file = pickFile(cfg, key);
+    var u = url(file);
+
+    if (!buffers[u]) { load(file); return false; }
+    if (failed[u]) return false;
+
+    var ctx = snd.ctx;
+    var src = ctx.createBufferSource();
+    src.buffer = buffers[u];
+
+    var rate = cfg.rate === undefined ? 1 : cfg.rate;
+    rate = jitter(rate, cfg.rateJitter);
+    src.playbackRate.value = Math.max(0.05, Math.min(6, rate));
+    if (cfg.detune && src.detune) src.detune.value = cfg.detune;
+
+    var g = ctx.createGain();
+    var vol = cfg.volume === undefined ? 1 : cfg.volume;
+    var globalVol = (pack.manifest.defaults && pack.manifest.defaults.volume);
+    vol *= (globalVol === undefined ? 1 : globalVol);
+    vol = jitter(vol, cfg.volumeJitter);
+    g.gain.value = Math.max(0, Math.min(4, vol));
+
+    src.connect(g);
+    /* Ueber den Master, damit der Lautstaerkeregler der Seite auch fuer
+       eigene Dateien gilt. */
+    g.connect(snd.master);
+
+    var t0 = ctx.currentTime + (cfg.delay || 0);
+    var off = cfg.offset || 0;
+    if (cfg.duration) src.start(t0, off, cfg.duration);
+    else src.start(t0, off);
+    return true;
+  };
+
+  /* ── Laden und Nachladen ───────────────────────────────────────────── */
+
+  function preloadAll() {
+    var m = pack.manifest;
+    if (!m) return;
+    function maybe(entry) {
+      var cfg = normalize(entry);
+      if (!cfg || !cfg.files.length) return;
+      var always = m.defaults && m.defaults.preload;
+      if (cfg.preload || always) cfg.files.forEach(load);
+    }
+    var k, g;
+    for (k in m.sounds || {}) maybe(m.sounds[k]);
+    for (g in m.games || {}) for (k in m.games[g]) maybe(m.games[g][k]);
+  }
+
+  /**
+   * Manifest neu einlesen, ohne die Seite neu zu laden. Praktisch beim
+   * Zusammenstellen eines Packs: Datei tauschen, in der Konsole
+   * GK.sfxPack.reload() aufrufen, anhoeren.
+   */
+  pack.reload = function () {
+    buffers = {}; pending = {}; failed = {}; pack.problems = [];
+    return fetch(MANIFEST + '?t=' + Date.now())
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (json) {
+        pack.manifest = json;
+        pack.loaded = true;
+        preloadAll();
+        return json;
+      })
+      .catch(function (e) {
+        pack.loaded = true;          // nicht bei jedem Ton erneut versuchen
+        pack.manifest = null;
+        note('sounds.json nicht gelesen (' + e.message + ') — es bleibt bei den eingebauten Klaengen');
+        return null;
+      });
+  };
+
+  /** Welche Datei wuerde dieser Ton gerade benutzen? Fuer die Fehlersuche. */
+  pack.debug = function (name, gameId) {
+    var cfg = resolve(name, gameId);
+    if (!cfg) return { name: name, quelle: 'eingebaut' };
+    if (cfg.muted) return { name: name, quelle: 'stumm' };
+    return {
+      name: name,
+      quelle: 'datei',
+      dateien: cfg.files.map(url),
+      geladen: cfg.files.map(function (f) { return !!buffers[url(f)]; }),
+      konfiguration: cfg
+    };
+  };
+
+  /** Alle Tonnamen, die das Spiel ueberhaupt kennt. */
+  pack.names = function () { return Object.keys(GK.SFX_NAMES || {}); };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { pack.reload(); });
+  } else {
+    pack.reload();
+  }
+})(window.GK);

@@ -492,6 +492,12 @@ var MIME = {
      application/octet-stream raus. Chrome errät den Typ und zeigt sie
      trotzdem, Safari ist da deutlich strenger. */
   '.webp': 'image/webp',
+  /* Eigene Klänge aus assets/sfx — siehe assets/sfx/README.md */
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.webm': 'audio/webm',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2'
 };
