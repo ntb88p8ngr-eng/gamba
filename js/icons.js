@@ -450,7 +450,11 @@
   GK.iconHTML = function (name, cls) {
     var img = DRAGON_IMGS[name] || SYMBOL_IMGS[name];
     if (img) {
-      return '<img class="gk-ic ' + (cls || '') + '" src="' + img + '" alt="" draggable="false">';
+      /* Nur die Drachenkoepfe sind Portraits und wollen rund beschnitten
+         werden. Bei den gemalten Symbolen kappt ein runder Zuschnitt die
+         Ecken — der Raketenspitze fehlte so die Nase. */
+      var round = DRAGON_IMGS[name] ? ' gk-round' : '';
+      return '<img class="gk-ic' + round + ' ' + (cls || '') + '" src="' + img + '" alt="" draggable="false">';
     }
     var body = I[name];
     if (!body) return '';

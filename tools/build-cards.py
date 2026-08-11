@@ -22,28 +22,54 @@ from PIL import Image
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 THEMES_DIR = os.path.join(ROOT, 'assets', 'cards', 'themes')
 
-CARD_W, CARD_H = 260, 358   # muss zu aspect in GK.CARD_THEMES passen
-PAD = 22                    # Luft rundum, in Pixeln des Originals
+CARD_W, CARD_H = 260, 364   # muss zu aspect in GK.CARD_THEMES passen
+PAD = 22                    # Mindest-Luft rundum, in Pixeln des Originals
 QUALITY = 85
 
 
-def expand(im, pad):
+def expand(im, left, top, right, bottom):
     """Rand anlegen, indem die Randpixel fortgesetzt werden.
 
     Ein einfarbiger Rand wuerde bei Decks mit getoentem Papier (Excaliber)
     als sichtbarer Balken stehen.
     """
     w, h = im.size
-    out = Image.new('RGB', (w + 2 * pad, h + 2 * pad))
-    out.paste(im, (pad, pad))
-    out.paste(im.crop((0, 0, w, 1)).resize((w, pad)), (pad, 0))
-    out.paste(im.crop((0, h - 1, w, h)).resize((w, pad)), (pad, h + pad))
-    out.paste(im.crop((0, 0, 1, h)).resize((pad, h)), (0, pad))
-    out.paste(im.crop((w - 1, 0, w, h)).resize((pad, h)), (w + pad, pad))
-    for bx, by, src in [(0, 0, (0, 0)), (w + pad, 0, (w - 1, 0)),
-                        (0, h + pad, (0, h - 1)), (w + pad, h + pad, (w - 1, h - 1))]:
-        out.paste(im.getpixel(src), (bx, by, bx + pad, by + pad))
+    out = Image.new('RGB', (w + left + right, h + top + bottom))
+    out.paste(im, (left, top))
+    if top:
+        out.paste(im.crop((0, 0, w, 1)).resize((w, top)), (left, 0))
+    if bottom:
+        out.paste(im.crop((0, h - 1, w, h)).resize((w, bottom)), (left, h + top))
+    if left:
+        out.paste(im.crop((0, 0, 1, h)).resize((left, h)), (0, top))
+    if right:
+        out.paste(im.crop((w - 1, 0, w, h)).resize((right, h)), (w + left, top))
+    for bx, by, bw, bh, src in [(0, 0, left, top, (0, 0)),
+                                (w + left, 0, right, top, (w - 1, 0)),
+                                (0, h + top, left, bottom, (0, h - 1)),
+                                (w + left, h + top, right, bottom, (w - 1, h - 1))]:
+        if bw and bh:
+            out.paste(im.getpixel(src), (bx, by, bx + bw, by + bh))
     return out
+
+
+def fit(im, pad):
+    """Auf das Zielverhaeltnis bringen, ohne die Grafik zu verzerren.
+
+    Erst die Mindest-Luft rundum, dann auf der Achse nachlegen, die noch zu
+    knapp ist. Wuerde man stattdessen hart auf CARD_W x CARD_H skalieren,
+    zieht sich jedes Deck mit abweichendem Verhaeltnis in die Breite — und
+    genau das macht object-fit:contain danach als helle Balken sichtbar.
+    """
+    w, h = im.size
+    bw, bh = w + 2 * pad, h + 2 * pad
+    target = CARD_W / CARD_H
+    if bw / bh > target:            # zu breit -> oben und unten auffuellen
+        bh = round(bw / target)
+    else:                           # zu schmal -> links und rechts auffuellen
+        bw = round(bh * target)
+    ex, ey = bw - w, bh - h
+    return expand(im, ex // 2, ey // 2, ex - ex // 2, ey - ey // 2)
 
 
 def build(theme, force=False):
@@ -58,16 +84,12 @@ def build(theme, force=False):
         im.load()
         im = im.convert('RGB')
 
-        if is_back:
-            # Die Rueckseite behaelt ihr eigenes Seitenverhaeltnis — sie zeigt
-            # ein Muster, das ein erzwungener Zuschnitt nur beschneiden wuerde.
-            if im.width == CARD_W and not force:
-                continue
-            out = im.resize((CARD_W, round(CARD_W * im.height / im.width)), Image.LANCZOS)
-        else:
-            if im.size == (CARD_W, CARD_H) and not force:
-                continue
-            out = expand(im, PAD).resize((CARD_W, CARD_H), Image.LANCZOS)
+        if im.size == (CARD_W, CARD_H) and not force:
+            continue
+        # Die Rueckseite laeuft durch dieselbe Muehle: sie steckt im selben
+        # .card-Kasten, also muss sie dasselbe Verhaeltnis haben. Weil fit()
+        # nur auffuellt und nie beschneidet, bleibt das Muster vollstaendig.
+        out = fit(im, 0 if is_back else PAD).resize((CARD_W, CARD_H), Image.LANCZOS)
 
         out.save(path, 'WEBP', quality=QUALITY)
         done += 1

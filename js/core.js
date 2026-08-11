@@ -914,10 +914,10 @@
   var SUIT_FILE = { '♥': 'H', '♦': 'D', '♣': 'C', '♠': 'S' };
 
   GK.CARD_THEMES = [
-    { id: 'juggler',    name: 'Juggler',    aspect: '260/358' },
-    { id: 'excaliber',  name: 'Excaliber',  aspect: '260/358' },
-    { id: 'eerie',      name: 'Eerie',      aspect: '260/358' },
-    { id: 'prismnight', name: 'Prismnight', aspect: '260/358' }
+    { id: 'juggler',    name: 'Juggler',    aspect: '260/364' },
+    { id: 'excaliber',  name: 'Excaliber',  aspect: '260/364' },
+    { id: 'eerie',      name: 'Eerie',      aspect: '260/364' },
+    { id: 'prismnight', name: 'Prismnight', aspect: '260/364' }
   ];
 
   GK.cardThemeById = function (id) {

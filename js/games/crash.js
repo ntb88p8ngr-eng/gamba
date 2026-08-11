@@ -26,7 +26,7 @@
 
       var canvas = el('canvas');
       var multEl = el('div', { class: 'crash-mult', text: '1.00×' });
-      var rocket = el('div', { class: 'crash-rocket', html: GK.iconHTML('rocket') });
+      var rocket = el('div', { class: 'crash-rocket idle', html: GK.iconHTML('rocket') });
       var screen = el('div', { class: 'crash-screen' }, [canvas, multEl, rocket]);
       var histBar = el('div', { class: 'crash-hist' });
 
@@ -173,6 +173,9 @@
 
         rocket.style.left = rx + 'px';
         rocket.style.top = ry + 'px';
+        /* Erst jetzt sichtbar machen: ohne left/top saesse sie auf 0,0 und
+           lugte vor dem Start halb aus der linken oberen Ecke. */
+        rocket.classList.remove('idle');
         rocket.style.transform =
           'translate(-50%,-50%) translate(' + jx.toFixed(1) + 'px,' + jy.toFixed(1) + 'px) ' +
           'rotate(' + (tilt + jr).toFixed(1) + 'deg)';

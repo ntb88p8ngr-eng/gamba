@@ -107,7 +107,7 @@
   /* Jedes Kartendeck-Theme bringt sein eigenes Seitenverhaeltnis mit —
      --card-ar kommt von GK.setCardTheme, sonst schneidet object-fit oben
      und unten die Karte an. */
-  width:74px;aspect-ratio:var(--card-ar,260/358);height:auto;border-radius:9px;overflow:hidden;position:relative;
+  width:70px;aspect-ratio:var(--card-ar,260/364);height:auto;border-radius:9px;overflow:hidden;position:relative;
   box-shadow:0 8px 22px rgba(0,0,0,.55);
   animation:dealin .42s cubic-bezier(.2,1.4,.4,1) both;
   background:#f0e8d8
@@ -182,6 +182,8 @@
   filter:drop-shadow(0 0 12px rgba(255,138,0,.9));will-change:transform;transform:translate(-50%,-50%)
 }
 .crash-rocket img,.crash-rocket svg{width:100%;height:100%;object-fit:contain;display:block}
+/* Vor dem ersten Zeichnen hat sie noch keine Position — bis dahin unsichtbar */
+.crash-rocket.idle{display:none}
 .crash-rocket.boom{font-size:2rem;line-height:40px;text-align:center}
 .crash-hist{display:flex;gap:6px;flex-wrap:wrap}
 .ch-pill{font-family:'Bungee',sans-serif;font-size:.7rem;padding:5px 10px;border-radius:999px;border:2px solid var(--line);background:rgba(0,0,0,.35)}

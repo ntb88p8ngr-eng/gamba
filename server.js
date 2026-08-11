@@ -488,6 +488,10 @@ var MIME = {
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  /* Ohne diesen Eintrag gingen alle Karten und Symbole als
+     application/octet-stream raus. Chrome errät den Typ und zeigt sie
+     trotzdem, Safari ist da deutlich strenger. */
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2'
 };
