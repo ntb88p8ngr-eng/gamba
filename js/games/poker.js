@@ -228,7 +228,19 @@
       function mySeats() { return seats.filter(function (p) { return p.me; }); }
 
       /* ── Aufbau ── */
-      var bet = GK.betPanel({ start: 20, min: 2, label: 'GRUNDEINSATZ (BIG BLIND)' });
+      var bet = GK.betPanel({ start: 20, min: 2, label: 'GRUNDEINSATZ HAND 1' });
+      /* Jede Hand bringt ihren eigenen Grundeinsatz mit — zwei Haende heisst
+         also nicht zwangslaeufig den doppelten Betrag. Das zweite Feld taucht
+         erst auf, wenn ueberhaupt zwei Haende gespielt werden. */
+      var bet2 = GK.betPanel({ start: 20, min: 2, label: 'GRUNDEINSATZ HAND 2' });
+      var bet2Box = el('div', {}, [el('div', { style: 'height:12px' }), bet2.el]);
+      bet2Box.hidden = true;
+
+      /** Grundeinsatz eines Sitzes. Die Bots richten sich nach Hand 1. */
+      function baseOf(p) {
+        if (p && p.me && p.hand === 1) return bet2.value();
+        return bet.value();
+      }
       var themePicker = GK.cardThemePicker();
       var potEl = el('div', { class: 'pk-pot' }, [
         el('span', { class: 'pk-pot-label', text: 'POT' }),
@@ -290,6 +302,7 @@
         b.addEventListener('click', function () {
           if (running || handCount === n) return;
           handCount = n;
+          bet2Box.hidden = handCount < 2;
           buildSeats();
           buildTable();
           button = button % N;
@@ -308,6 +321,7 @@
         GK.panel([table, el('div', { style: 'height:10px' }), commentary]),
         GK.panel([
           bet.el,
+          bet2Box,
           el('div', { style: 'height:12px' }),
           el('div', { class: 'bet-label', text: 'WIE VIELE HÄNDE' }),
           el('div', { style: 'height:6px' }),
@@ -394,7 +408,7 @@
           return;
         }
         var need = toCall - me.bet;
-        var step = stake * (street >= 2 ? 2 : 1);
+        var step = baseOf(me) * (street >= 2 ? 2 : 1);
         callBtn.textContent = need > 0 ? '📞 MITGEHEN (' + GK.fmt(need) + ')' : '✔️ CHECK';
         raiseBtn.textContent = '🔥 ERHÖHEN (' + GK.fmt(need + step) + ')';
         if (need > 0 && !GK.canBet(need)) {
@@ -461,7 +475,7 @@
 
         function apply(p, action) {
           var need = toCall - p.bet;
-          var step = stake * (street >= 2 ? 2 : 1);
+          var step = baseOf(p) * (street >= 2 ? 2 : 1);
           // Erhöhen geht nicht mehr? Dann wird daraus ein Mitgehen.
           if (action === 'raise' && raises >= MAX_RAISES) action = 'call';
 
@@ -519,7 +533,9 @@
       function newHand() {
         if (running || stopped) return;
         stake = bet.value();
-        if (!GK.canBet(stake)) {
+        /* Gedeckt sein muss, was beide Haende zusammen in die Blinds legen. */
+        var noetig = mySeats().reduce(function (a, p) { return a + baseOf(p); }, 0);
+        if (!GK.canBet(noetig)) {
           GK.toast('Für diesen Grundeinsatz reichen die Chips nicht', 'bad', '🪙');
           GK.sfx('error');
           return;
@@ -537,19 +553,24 @@
         running = true;
         dealBtn.disabled = true;
         bet.disable(true);
+        bet2.disable(true);
         GK.setResult(resultBox, 'Karten laufen…', '');
         boardEl._key = null;
         render();
 
         // Blinds setzen
         var sb = seats[(button + 1) % N], bb = seats[(button + 2) % N];
-        var small = Math.ceil(stake / 2);
+        /* Jeder Blind richtet sich nach dem Grundeinsatz dessen, der ihn
+           legt. Mitgehen muessen danach alle denselben Betrag — das ist der
+           groessere der beiden Blinds. */
+        var big = baseOf(bb);
+        var small = Math.ceil(baseOf(sb) / 2);
         if (!put(sb, small)) return abort();
-        if (!put(bb, stake)) return abort();
+        if (!put(bb, big)) return abort();
         sb.tag = 'SMALL BLIND';
         bb.tag = 'BIG BLIND';
-        toCall = stake;
-        say('Blinds stehen — ' + GK.fmt(small) + ' und ' + GK.fmt(stake) + '.');
+        toCall = Math.max(big, small);
+        say('Blinds stehen — ' + GK.fmt(small) + ' und ' + GK.fmt(big) + '.');
 
         // je zwei Karten austeilen
         var order = [], deals = N * 2;
@@ -568,6 +589,7 @@
         running = false;
         dealBtn.disabled = false;
         bet.disable(false);
+        bet2.disable(false);
         var eingesetzt = mySeats().reduce(function (a, p) { return a + p.total; }, 0);
         if (eingesetzt > 0) {
           GK.payout(0, { stake: eingesetzt });
@@ -678,6 +700,7 @@
         setActions(false);
         dealBtn.disabled = false;
         bet.disable(false);
+        bet2.disable(false);
       }
 
       /* ── Bedienung ── */
