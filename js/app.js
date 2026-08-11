@@ -896,9 +896,17 @@
     });
   }
 
+  /* Die Zahl im Hero kam aus dem HTML und blieb bei jedem neuen Spiel stehen.
+     Jetzt zaehlt sie die Registry — einmal registriert, stimmt sie von selbst. */
+  function renderGameCount() {
+    var n = $('#game-count');
+    if (n) n.textContent = GK.games.length + ' SPIELE';
+  }
+
   function boot() {
     GK.initFX();
     fillStaticIcons();
+    renderGameCount();
     renderGames();
 
     GK.init().then(function (online) {
