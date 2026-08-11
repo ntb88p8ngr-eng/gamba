@@ -191,6 +191,8 @@ GK.sfxPack.debug('click')          // welche Datei gilt gerade?
 GK.sfxPack.debug('boom', 'crash')  // und im Spiel Crash?
 GK.sfxPack.problems                // Liste der Ladefehler
 GK.sfxPack.broken                  // Einträge, die nicht gelesen werden konnten
+GK.sfxPack.unknown                 // Einträge mit einem Namen, den es nicht gibt
+GK.sfxPack.names()                 // alle gültigen Tonnamen
 GK.sfxPack.reload()                // sounds.json neu einlesen
 ```
 
@@ -201,6 +203,10 @@ Häufige Ursachen:
 
 * **Pfad falsch.** Pfade gelten ab diesem Ordner: `ui/klick.mp3` meint
   `assets/sfx/ui/klick.mp3`.
+* **Name falsch geschrieben.** Ein Eintrag, den kein Spiel abruft, liegt still
+  da und der bisherige Klang läuft weiter — etwa `loss` statt `lose`. Solche
+  Namen werden beim Laden gemeldet und stehen in `GK.sfxPack.unknown`; das
+  gilt auch für einen Spielnamen unter `games`, den es nicht gibt.
 * **Erster Ton kommt noch eingebaut.** Dateien werden beim ersten Bedarf
   geladen; ab dem zweiten Mal liegen sie bereit. Mit `"preload": true` ist
   schon der erste Ton die Datei.

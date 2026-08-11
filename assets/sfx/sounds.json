@@ -52,8 +52,8 @@
     "mines": {},
     "wheel": {},
     "plinko": {
-      "loss": {"file": "ui/plinko-loss.mp3",
-               "volume": 0.2}},
+      "lose": { "file": "ui/plinko-loss.mp3", "volume": 0.2 }
+    },
     "scratch": {},
     "horses": {},
     "icebear": {},

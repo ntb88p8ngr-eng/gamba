@@ -23,7 +23,9 @@
        kaputte Datei genau einmal melden. */
     problems: [],
     /* Eintraege aus sounds.json, die sich nicht lesen liessen. */
-    broken: []
+    broken: [],
+    /* Eintraege mit einem Namen, den es im Spiel nicht gibt. */
+    unknown: []
   };
 
   var buffers = {};        // pfad -> AudioBuffer
@@ -372,6 +374,33 @@
      erfundene 404er, in denen echte Fehler untergingen. */
   function isNote(key) { return key.charAt(0) === '_'; }
 
+  /**
+   * Tippfehler in den Namen finden. Ein Eintrag, den kein Spiel je abruft,
+   * bleibt sonst still liegen und man sucht den Fehler bei der Audiodatei —
+   * so geschehen mit "loss" unter plinko, wo der Ton "lose" heisst. Auch ein
+   * unbekannter Spielname faellt so auf.
+   */
+  function checkNames() {
+    var m = pack.manifest;
+    if (!m) return [];
+    var bekannt = GK.SFX_NAMES || {};
+    var spiele = {};
+    (GK.games || []).forEach(function (g) { spiele[g.id] = true; });
+    var falsch = [], k, g;
+
+    for (k in m.sounds || {}) {
+      if (!isNote(k) && !bekannt[k]) falsch.push('sounds.' + k);
+    }
+    for (g in m.games || {}) {
+      if (isNote(g) || !m.games[g] || typeof m.games[g] !== 'object') continue;
+      if (!spiele[g]) { falsch.push('games.' + g + ' (kein Spiel mit dieser id)'); continue; }
+      for (k in m.games[g]) {
+        if (!isNote(k) && !bekannt[k]) falsch.push('games.' + g + '.' + k);
+      }
+    }
+    return falsch;
+  }
+
   function preloadAll() {
     var m = pack.manifest;
     if (!m) return;
@@ -419,7 +448,19 @@
               : 'sounds.json: ' + res.hint, 'bad', '🔇');
           }
         }
-        if (res.data) preloadAll();
+        if (res.data) {
+          var unbekannt = checkNames();
+          pack.unknown = unbekannt;
+          if (unbekannt.length) {
+            note('unbekannte Namen, die nie abgespielt werden: ' + unbekannt.join(', ') +
+                 ' — gueltige Tonnamen: GK.sfxPack.names()');
+            if (GK.toast) {
+              GK.toast('sounds.json: ' + unbekannt.join(', ') + ' — diesen Namen gibt es nicht',
+                       'bad', '🔇');
+            }
+          }
+          preloadAll();
+        }
         return res.data;
       })
       .catch(function (e) {
