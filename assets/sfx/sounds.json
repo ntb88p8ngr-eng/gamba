@@ -28,7 +28,7 @@
     "boom":      { "files": [] },
     "gem":       { "files": [] },
     "rocket":    { "files": [] },
-    "hoof":      { "files": ["ui/hoof.mp3"], "volume": 0.3, "rateJitter": 0.06 },
+    "hoof":      { "files": ["ui/hoof.mp3"], "volume": 0.3, "rateJitter": 1.00 },
     "startbell": { "files": [] },
     "whoosh":    { "files": [] },
     "waddle":    { "files": [] },
@@ -52,7 +52,7 @@
     "mines": {},
     "wheel": {},
     "plinko": {
-      "loss": {"file": "sounds/plinko-loss.mp3",
+      "loss": {"file": "ui/plinko-loss.mp3",
                "volume": 0.2}},
     "scratch": {},
     "horses": {},
