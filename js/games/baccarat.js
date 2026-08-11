@@ -36,7 +36,9 @@
 
   var MODES = [
     { id: 'player', label: '🔵 PLAYER', mult: 2,    hint: 'Zahlt 1:1. Gewinnt, wenn die Spielerhand naeher an 9 liegt.' },
-    { id: 'banker', label: '🔴 BANKER', mult: 1.95, hint: 'Zahlt 1:1 minus 5 % Kommission — dafuer die etwas bessere Hand.' },
+    /* Ohne die uebliche 5-%-Kommission — im Spielsalon zahlt die Bank hier
+       voll aus. Das macht Banker rechnerisch zur besten Wette am Tisch. */
+    { id: 'banker', label: '🔴 BANKER', mult: 2,    hint: 'Zahlt 1:1, ohne Kommission — und gewinnt etwas oefter als Player.' },
     { id: 'tie',    label: '🟢 TIE',    mult: 9,    hint: 'Zahlt 8:1, trifft aber selten. Bei Gleichstand kassiert nur diese Wette.' }
   ];
 
@@ -51,7 +53,7 @@
     rules: [
       'Beide Seiten bekommen zwei Karten. Wer naeher an <b>9</b> liegt, gewinnt.',
       'Nur die <b>letzte Stelle</b> zaehlt: 7 + 8 = 15 → <b>5</b>. Bild und Zehn zaehlen null, das Ass eins.',
-      '<b>Player</b> zahlt 1:1, <b>Banker</b> 1:1 minus 5 % Kommission, <b>Tie</b> zahlt 8:1.',
+      '<b>Player</b> und <b>Banker</b> zahlen beide 1:1, ohne Kommission. <b>Tie</b> zahlt 8:1.',
       'Bei <b>8 oder 9</b> aus den ersten zwei Karten steht die Hand sofort — das ist eine <b>Naturelle</b>.',
       'Ob eine dritte Karte kommt, entscheidet die Tabelle, nicht du. Zurücklehnen und zuschauen.',
       'Bei Gleichstand bekommst du deinen Einsatz auf Player oder Banker <b>zurück</b>.'
@@ -122,7 +124,7 @@
           el('div', { style: 'height:12px' }),
           dealBtn,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 8 Decks. Die dritte Karte folgt fester Tabelle — <b>Banker</b> ist minimal im Vorteil, deshalb die Kommission.' })
+          el('p', { class: 'hint', html: '💡 8 Decks. Die dritte Karte folgt fester Tabelle — <b>Banker</b> gewinnt etwas oefter als Player und zahlt hier trotzdem voll aus.' })
         ])
       ]);
       root.appendChild(stage);
