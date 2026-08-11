@@ -998,3 +998,23 @@
   .cave-spare .bet-label{margin-bottom:2px}
   .cave-hint-line{font-size:.62rem}
 }
+
+/* ─────────── 19. BACCARAT ─────────── */
+/* Die Gewinnerseite hebt sich ab, ohne dass das Blatt springt. */
+.bj-side.win h4{color:var(--gold)}
+.bj-side.win .bj-score{background:var(--gold);color:#20003f;box-shadow:0 0 18px rgba(255,209,46,.7)}
+
+/* Perlenreihe der letzten Runden — P blau, B rot, T gruen wie am Tisch */
+.bac-hist{display:flex;flex-wrap:wrap;gap:6px;min-height:28px}
+.bac-bead{
+  width:26px;height:26px;flex:0 0 26px;border-radius:50%;
+  display:grid;place-items:center;
+  font-family:'Bungee',sans-serif;font-size:.66rem;color:#fff;
+  border:2px solid rgba(0,0,0,.45)
+}
+.bac-bead.player{background:#2f6bff}
+.bac-bead.banker{background:#d81b3c}
+.bac-bead.tie{background:#12a05a}
+@media(max-width:620px){
+  .bac-bead{width:22px;height:22px;flex:0 0 22px;font-size:.58rem}
+}
