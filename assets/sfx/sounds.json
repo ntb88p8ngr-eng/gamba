@@ -17,7 +17,7 @@
     "hover":     { "files": ["ui/hover.mp3"], "volume": 0.4, "rateJitter": 0.06 },
 
     "chip":      { "files": [] },
-    "spin":      { "files": ["ui/spin.mp3"], "volume": 0.6, "rateJitter": 0.06 },
+    "spin":      { "files": ["ui/spin.mp3"], "volume": 0.3, "rateJitter": 0.06 },
     "tick":      { "files": [] },
     "reel":      { "files": [] },
     "card":      { "files": ["ui/card.mp3"], "volume": 0.6, "rateJitter": 0.06 },
