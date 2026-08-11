@@ -608,7 +608,14 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .modal-x:hover{border-color:var(--red);color:var(--red);transform:rotate(90deg)}
 .modal h3{font-size:clamp(1.2rem,4vw,1.7rem);margin:0 0 6px;background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .modal p{color:var(--muted);font-size:.92rem;margin:0 0 16px;line-height:1.5}
-.modal-emoji{font-size:3.2rem;text-align:center;display:block;margin-bottom:6px;animation:bounce 2s infinite}
+/* width:max-content ist hier wesentlich: bounce dreht das Element um ±5°, und
+   ein Kasten ueber die volle Breite schwingt dabei mit den Ecken aus dem
+   Dialog heraus — das ergab eine seitliche Scrollleiste. Auf Inhaltsbreite
+   gestutzt bleibt die Drehung beim Symbol selbst. */
+.modal-emoji{
+  font-size:3.2rem;display:block;width:max-content;max-width:100%;
+  margin:0 auto 6px;animation:bounce 2s infinite
+}
 .field{margin-bottom:14px}
 .field label{display:block;font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--muted);margin-bottom:7px;letter-spacing:.1em}
 .input{
