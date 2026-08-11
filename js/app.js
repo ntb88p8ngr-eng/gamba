@@ -835,6 +835,29 @@
       renderList(); renderAll();
     } });
 
+    /* Einzelnen Spieler auf Anfang stellen. Konto, Name und Passwort bleiben —
+       nur Chips, XP und Statistik gehen zurueck. Der Gluecks-Regler bleibt
+       ebenfalls stehen, den dreht der Admin bewusst. */
+    var resetOneBtn = el('button', { class: 'btn btn-ghost btn-small', text: '♻️ SPIELER ZURÜCKSETZEN', onClick: function () {
+      var p = target();
+      if (!p) { GK.toast('Erst einen Spieler auswählen!', 'bad', '👆'); return; }
+      if (!window.confirm(p.name + ' auf 0 XP und ' + GK.START_BALANCE + ' Chips zurücksetzen?\n\n' +
+                          'Konto und Passwort bleiben erhalten.')) return;
+
+      p.balance = GK.START_BALANCE;
+      p.granted = 0; p.wagered = 0; p.returned = 0;
+      p.plays = 0; p.wins = 0; p.losses = 0;
+      p.biggestWin = 0; p.peak = GK.START_BALANCE;
+      p.xp = 0; p.claimedLevel = 1;
+      p.lastBailout = 0;
+
+      GK.commit('resetPlayer', { id: p.id });
+      GK.logFeed('👑 ADMIN: ' + p.name + ' startet neu — 0 XP, ' + GK.fmt(GK.START_BALANCE) + ' Chips', 'admin');
+      GK.toast(p.name + ' zurückgesetzt ♻️', 'gold', '♻️');
+      GK.sfx('cash');
+      renderList(); renderAll(); syncLuck();
+    } });
+
     var resetBtn = el('button', { class: 'btn btn-ghost btn-small', text: '♻️ ALLE AUF 500', onClick: function () {
       if (!window.confirm('Alle Spieler auf ' + GK.START_BALANCE + ' Chips zurücksetzen?')) return;
       GK.playerList().forEach(function (p) {
@@ -906,6 +929,11 @@
         el('div', { style: 'height:6px' }),
         el('div', { class: 'range-row' }, [luckSlider, el('div', { class: 'info-box', style: 'min-width:74px' }, [luckVal, el('span', { text: 'Luck' })])]),
         el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet. Wirkt auf Slots, Roulette, Münze, Würfel, Crash, Rad, Plinko und Rubbellos.' }),
+        el('div', { style: 'height:16px' }),
+        el('div', { class: 'bet-label', text: 'EINZELNEN SPIELER ZURÜCKSETZEN' }),
+        el('div', { style: 'height:6px' }),
+        el('div', { class: 'modal-actions' }, [resetOneBtn]),
+        el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' }),
         el('div', { style: 'height:16px' }),
         el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
         el('div', { style: 'height:8px' }),

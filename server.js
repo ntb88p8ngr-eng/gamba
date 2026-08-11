@@ -319,7 +319,7 @@ function findByName(name) {
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetAll: 1, setPin: 1, luck: 1, wipe: 1, resetPassword: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, wipe: 1, resetPassword: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -439,6 +439,21 @@ function applyOp(op) {
     case 'deletePlayer': {
       dropSessionsOf(op.id);
       delete db.players[op.id];
+      break;
+    }
+
+    /* Einzelnen Spieler zuruecksetzen. Konto, Name und Passwort bleiben — nur
+       Chips, XP und Statistik gehen auf Anfang. Der Glueck-Regler bleibt
+       ebenfalls stehen, den dreht der Admin bewusst. */
+    case 'resetPlayer': {
+      var rp = db.players[op.id];
+      if (!rp) return { error: 'Spieler nicht gefunden', code: 404 };
+      rp.balance = START_BALANCE;
+      rp.granted = 0; rp.wagered = 0; rp.returned = 0;
+      rp.plays = 0; rp.wins = 0; rp.losses = 0;
+      rp.biggestWin = 0; rp.peak = START_BALANCE;
+      rp.xp = 0; rp.claimedLevel = 1;
+      rp.lastBailout = 0;
       break;
     }
 
