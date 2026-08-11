@@ -171,7 +171,10 @@
             b.t -= 1;
             b.k += b.dir;
             b.row++;
-            GK.sfx('tick');
+            /* In der letzten Reihe steht kein Stift mehr — dort faellt die
+               Kugel ins Fach. Der Tick lag bisher genau auf dem Ergebnisklang
+               und hat ihn zugedeckt. */
+            if (b.row < ROWS) GK.sfx('tick');
             if (b.row >= ROWS) {
               land(b);
               balls.splice(i, 1);

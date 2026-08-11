@@ -15,7 +15,6 @@
     { id: 'crown',  name: 'Krone',   w: 3,  m3: 100, m2: 3.0 }
   ];
   var TOTAL_W = SYMS.reduce(function (s, x) { return s + x.w; }, 0);
-  var ROW = 120;
 
   /* ── Freispiele ──
      Der Stern ist zusaetzlich Ausloeser: drei davon bringen Freispiele, in
@@ -91,15 +90,14 @@
 
       function symIcon(s) { return GK.iconHTML(s.icon || s.id); }
 
-      /* Die Zellhoehe steht im CSS und schrumpft auf schmalen Schirmen (120 →
-         92 → 78). Mit einem festen Wert schob sich der Streifen am Ende des
-         Drehs zu weit nach oben und die Walze stand leer da. Deshalb am
-         gelegten Element messen statt zu raten — das deckt auch das Drehen
-         des Geraets ab. */
-      function rowHeight() {
-        var cell = strips[0] && strips[0].firstChild;
-        return (cell && cell.offsetHeight) || ROW;
-      }
+      /* Wie weit der Streifen hochfaehrt, damit unten das Endsymbol steht.
+         In Prozent der eigenen Hoehe, nicht in Pixeln: die Zellhoehe steht im
+         CSS und schrumpft auf schmalen Schirmen (120 → 92 → 78). Ein einmal
+         gesetzter Pixelwert passt danach nicht mehr — nach dem Drehen des
+         Geraets oder beim Zoomen stand die Walze leer da oder zeigte das
+         Nachbarsymbol halb mit. Der Prozentwert bezieht sich auf den Streifen
+         selbst und geht jede Groessenaenderung von allein mit. */
+      function stopAt(len) { return ((len - 1) / len) * 100; }
 
       /* Die Walzensymbole sind jetzt Bilder statt Inline-SVG. Auf iOS Safari
          verliert der Compositor nach ein paar Spins das Bild komplett, wenn
@@ -206,10 +204,9 @@
         });
         void strips[0].offsetWidth; // reflow
 
-        var row = rowHeight();
         strips.forEach(function (strip, i) {
           strip.style.transition = 'transform ' + (1.7 + i * 0.55) + 's cubic-bezier(.14,.72,.16,1)';
-          strip.style.transform = 'translateY(-' + ((lens[i] - 1) * row) + 'px)';
+          strip.style.transform = 'translateY(-' + stopAt(lens[i]) + '%)';
         });
 
         [0, 1, 2].forEach(function (i) {

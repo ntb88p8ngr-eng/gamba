@@ -3,7 +3,7 @@
   'use strict';
   var el = GK.el;
 
-  var ROWS = 3, REELS = 5, ROW_H = 92;
+  var ROWS = 3, REELS = 5;
 
   /* pay: [3 Gleiche, 4 Gleiche, 5 Gleiche] — bezogen auf den Linieneinsatz */
   var SYMS = [
@@ -300,14 +300,14 @@
           strip.style.transform = 'translateY(0)';
         });
         void strips[0].offsetWidth;
-        /* Zellhoehe am gelegten Element messen: das CSS schrumpft sie auf
-           schmalen Schirmen (92 → 70 → 62). Mit dem festen Wert schob sich der
-           Streifen zu weit und die Walzen standen am Ende leer da. */
-        var cell = strips[0] && strips[0].firstChild;
-        var rowH = (cell && cell.offsetHeight) || ROW_H;
+        /* In Prozent der Streifenhoehe statt in Pixeln: das CSS schrumpft die
+           Zellen auf schmalen Schirmen (92 → 70 → 62). Ein fester Pixelwert
+           passt nach einer Groessenaenderung nicht mehr — die Walzen standen
+           dann leer da oder zeigten die Nachbarreihe halb mit. Der Prozentwert
+           bezieht sich auf den Streifen selbst und geht jede Aenderung mit. */
         strips.forEach(function (strip, i) {
           strip.style.transition = 'transform ' + (1.5 + i * 0.32) + 's cubic-bezier(.15,.72,.16,1)';
-          strip.style.transform = 'translateY(-' + ((lens[i] - ROWS) * rowH) + 'px)';
+          strip.style.transform = 'translateY(-' + ((lens[i] - ROWS) / lens[i] * 100) + '%)';
         });
         strips.forEach(function (strip, i) {
           setTimeout(function () {
