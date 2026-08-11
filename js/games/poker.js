@@ -199,16 +199,33 @@
       var running = false, showdown = false;
       var toCall = 0, raises = 0, onHumanAction = null;
 
-      /* Sitz 0 bist du, danach im Uhrzeigersinn die drei Gegner. */
-      var seats = [{ me: true, name: 'DU', icon: 'crown', color: '#ffd12e' }].concat(
-        BOTS.map(function (b) {
+      /* Vorne sitzt du — auf Wunsch mit zwei Haenden gleichzeitig —, danach
+         im Uhrzeigersinn die drei Gegner. N ist die Zahl der Sitze und ersetzt
+         ueberall die fruehere feste 4. */
+      var handCount = 1;
+      var seats = [], N = 0;
+
+      function buildSeats() {
+        var mine = [];
+        for (var h = 0; h < handCount; h++) {
+          mine.push({
+            me: true, hand: h, icon: 'crown', color: '#ffd12e',
+            name: handCount > 1 ? 'DU · HAND ' + (h + 1) : 'DU'
+          });
+        }
+        seats = mine.concat(BOTS.map(function (b) {
           return { me: false, name: b.name, icon: b.icon, color: b.color, bot: b };
-        })
-      );
-      seats.forEach(function (p, i) {
-        p.idx = i; p.cards = []; p.bet = 0; p.total = 0;
-        p.folded = false; p.acted = false; p.tag = ''; p.win = false;
-      });
+        }));
+        N = seats.length;
+        seats.forEach(function (p, i) {
+          p.idx = i; p.cards = []; p.bet = 0; p.total = 0;
+          p.folded = false; p.acted = false; p.tag = ''; p.win = false; p.turn = false;
+        });
+      }
+      buildSeats();
+
+      /** Alle Sitze, die dir gehoeren. */
+      function mySeats() { return seats.filter(function (p) { return p.me; }); }
 
       /* ── Aufbau ── */
       var bet = GK.betPanel({ start: 20, min: 2, label: 'GRUNDEINSATZ (BIG BLIND)' });
@@ -237,12 +254,25 @@
         return p.el;
       }
 
-      var botRow = el('div', { class: 'pk-bots' }, seats.slice(1).map(seatEl));
+      var botRow = el('div', { class: 'pk-bots' });
+      var mineRow = el('div', { class: 'pk-mine' });
       var table = el('div', { class: 'poker-table' }, [
         botRow,
         el('div', { class: 'pk-middle' }, [potEl, boardEl]),
-        el('div', { class: 'pk-mine' }, [seatEl(seats[0])])
+        mineRow
       ]);
+
+      /* Die Sitze bekommen ihr DOM erst hier — beim Umschalten zwischen einer
+         und zwei Haenden wird der Tisch damit einfach neu gesetzt. */
+      function buildTable() {
+        botRow.innerHTML = '';
+        mineRow.innerHTML = '';
+        mineRow.classList.toggle('two', handCount > 1);
+        seats.forEach(function (p) {
+          (p.me ? mineRow : botRow).appendChild(seatEl(p));
+        });
+      }
+      buildTable();
 
       var resultBox = GK.resultBox();
       var foldBtn = el('button', { class: 'btn btn-ghost', text: '🏳️ PASSEN' });
@@ -252,10 +282,36 @@
       var dealBtn = el('button', { class: 'btn btn-gold btn-full', text: '♠️ NEUE HAND' });
       var handInfo = el('div', { class: 'pk-handinfo', text: '' });
 
+      var handBtns = [1, 2].map(function (n) {
+        var b = el('button', { class: 'rbet' + (n === handCount ? ' sel' : '') }, [
+          n === 1 ? '🃏 EINE HAND' : '🃏🃏 ZWEI HÄNDE',
+          el('small', { text: n === 1 ? 'ein Einsatz' : 'doppelter Einsatz' })
+        ]);
+        b.addEventListener('click', function () {
+          if (running || handCount === n) return;
+          handCount = n;
+          buildSeats();
+          buildTable();
+          button = button % N;
+          handBtns.forEach(function (x, i) { x.classList.toggle('sel', i + 1 === handCount); });
+          render();
+          GK.sfx('chip');
+          say(handCount > 1
+            ? 'Zwei Haende — beide zahlen den vollen Grundeinsatz.'
+            : 'Zurueck auf eine Hand.');
+        });
+        return b;
+      });
+      var handPick = el('div', { class: 'mode-pick' }, handBtns);
+
       var stage = el('div', { class: 'stage split' }, [
         GK.panel([table, el('div', { style: 'height:10px' }), commentary]),
         GK.panel([
           bet.el,
+          el('div', { style: 'height:12px' }),
+          el('div', { class: 'bet-label', text: 'WIE VIELE HÄNDE' }),
+          el('div', { style: 'height:6px' }),
+          handPick,
           el('div', { style: 'height:12px' }),
           themePicker.el,
           el('div', { style: 'height:12px' }),
@@ -309,11 +365,15 @@
           p.dealerEl.hidden = p.idx !== button;
         });
 
-        if (running && seats[0].cards.length && board.length) {
-          var ev = bestHand(seats[0].cards.concat(board));
-          handInfo.textContent = 'Deine Hand: ' + ev.name;
-        } else if (running) {
-          handInfo.textContent = 'Deine Hand: ' + seats[0].cards.map(function (c) { return c.r + c.s; }).join(' ');
+        var meAll = mySeats();
+        if (running && meAll[0].cards.length) {
+          handInfo.textContent = meAll.map(function (p, i) {
+            var was = board.length
+              ? bestHand(p.cards.concat(board)).name
+              : p.cards.map(function (c) { return c.r + c.s; }).join(' ');
+            var wer = meAll.length > 1 ? 'Hand ' + (i + 1) : 'Deine Hand';
+            return wer + ': ' + was + (p.folded ? ' (raus)' : '');
+          }).join('   ·   ');
         } else {
           handInfo.textContent = '';
         }
@@ -321,8 +381,8 @@
 
       function say(text) { commentary.textContent = '„' + text + '"'; }
 
-      function setActions(on) {
-        var me = seats[0];
+      function setActions(on, me) {
+        me = me || mySeats()[0];
         foldBtn.disabled = !on;
         callBtn.disabled = !on;
         raiseBtn.disabled = !on;
@@ -379,8 +439,8 @@
           if (alive().length < 2) { render(); return done(); }
 
           var p = null;
-          for (var i = 0; i < 4; i++) {
-            var q = seats[(idx + i) % 4];
+          for (var i = 0; i < N; i++) {
+            var q = seats[(idx + i) % N];
             if (needsAction(q)) { p = q; idx = q.idx; break; }
           }
           if (!p) { render(); return done(); }
@@ -388,7 +448,7 @@
           p.turn = true;
           render();
           if (p.me) {
-            setActions(true);
+            setActions(true, p);
             onHumanAction = function (a) {
               onHumanAction = null;
               setActions(false);
@@ -438,7 +498,7 @@
 
           p.acted = true;
           p.turn = false;
-          idx = (p.idx + 1) % 4;
+          idx = (p.idx + 1) % N;
           render();
           wait(420, next);
         }
@@ -468,7 +528,7 @@
         deck = newDeck();
         board = [];
         pot = 0; street = 0; toCall = 0; showdown = false;
-        button = (button + 1) % 4;
+        button = (button + 1) % N;
         seats.forEach(function (p) {
           p.cards = []; p.bet = 0; p.total = 0;
           p.folded = false; p.acted = false; p.tag = ''; p.win = false; p.turn = false;
@@ -482,7 +542,7 @@
         render();
 
         // Blinds setzen
-        var sb = seats[(button + 1) % 4], bb = seats[(button + 2) % 4];
+        var sb = seats[(button + 1) % N], bb = seats[(button + 2) % N];
         var small = Math.ceil(stake / 2);
         if (!put(sb, small)) return abort();
         if (!put(bb, stake)) return abort();
@@ -492,14 +552,14 @@
         say('Blinds stehen — ' + GK.fmt(small) + ' und ' + GK.fmt(stake) + '.');
 
         // je zwei Karten austeilen
-        var order = [];
-        for (var k = 0; k < 8; k++) order.push(seats[(button + 1 + k) % 4]);
+        var order = [], deals = N * 2;
+        for (var k = 0; k < deals; k++) order.push(seats[(button + 1 + k) % N]);
         order.forEach(function (p, i) {
           wait(140 * i, function () {
             p.cards.push(deck.pop());
             GK.sfx('card');
             render();
-            if (i === 7) wait(400, function () { bettingRound((button + 3) % 4, afterPreflop); });
+            if (i === deals - 1) wait(400, function () { bettingRound((button + 3) % N, afterPreflop); });
           });
         });
       }
@@ -508,9 +568,10 @@
         running = false;
         dealBtn.disabled = false;
         bet.disable(false);
-        if (seats[0].total > 0) {
-          GK.payout(0, { stake: seats[0].total });
-          GK.logPlay('Königs-Poker', seats[0].total, 0);
+        var eingesetzt = mySeats().reduce(function (a, p) { return a + p.total; }, 0);
+        if (eingesetzt > 0) {
+          GK.payout(0, { stake: eingesetzt });
+          GK.logPlay('Königs-Poker', eingesetzt, 0);
         }
         GK.setResult(resultBox, 'Hand abgebrochen — zu wenig Chips', 'lose');
       }
@@ -533,7 +594,7 @@
         }
         wait(260 * count + 260, function () {
           say(label);
-          bettingRound((button + 1) % 4, nextFn);
+          bettingRound((button + 1) % N, nextFn);
         });
       }
 
@@ -554,7 +615,7 @@
 
       function settle() {
         if (stopped) return;
-        var me = seats[0];
+        var meAll = mySeats();
         var left = alive();
         var winners;
 
@@ -573,35 +634,45 @@
         var rake = board.length >= 3 ? Math.floor(pot * RAKE) : 0;
         var share = Math.floor((pot - rake) / winners.length);
 
-        var iWon = winners.indexOf(me) >= 0;
-        var win = iWon ? share : 0;
+        /* Bei zwei Haenden koennen beide im Pot sein — dann teilen sie ihn
+           sich mit den uebrigen Gewinnern, und es zaehlt die Summe. */
+        var meWinners = winners.filter(function (p) { return p.me; });
+        var win = meWinners.length * share;
+        var eingesetzt = meAll.reduce(function (a, p) { return a + p.total; }, 0);
+        var iWon = meWinners.length > 0;
+
         // Wer vor dem Blind gepasst hat, hat nichts riskiert — das ist keine
         // gespielte Runde und gehört weder in die Statistik noch in den Feed.
-        if (me.total > 0) {
-          GK.payout(win, { stake: me.total });
-          GK.logPlay('Königs-Poker', me.total, win);
+        if (eingesetzt > 0) {
+          GK.payout(win, { stake: eingesetzt });
+          GK.logPlay('Königs-Poker', eingesetzt, win);
         }
 
         render();
 
-        var net = win - me.total;
+        var net = win - eingesetzt;
         var msg;
         if (iWon) {
-          var how = left.length === 1 ? 'Alle passen' : me.ev.name;
-          msg = how + ' — Pot ' + GK.fmt(share) + (net >= 0 ? ' (+' : ' (') + GK.fmt(net) + ')';
+          var top = meWinners[0];
+          var how = left.length === 1 ? 'Alle passen'
+            : (meWinners.length > 1 ? 'Beide Hände vorn' : (top.ev ? top.ev.name : 'Gewonnen'));
+          if (meAll.length > 1 && meWinners.length === 1) how = 'Hand ' + (top.hand + 1) + ': ' + how;
+          msg = how + ' — Pot ' + GK.fmt(win) + (net >= 0 ? ' (+' : ' (') + GK.fmt(net) + ')';
           GK.setResult(resultBox, msg, net > 0 ? 'win' : 'push');
-          if (net > 0) GK.celebrate(net, me.total ? win / me.total : 1);
+          if (net > 0) GK.celebrate(net, eingesetzt ? win / eingesetzt : 1);
           else GK.sfx('coin');
         } else {
           var w = winners[0];
           msg = w.name + ' gewinnt' + (showdown ? ' mit ' + w.ev.name : ' — alle anderen passen') +
-                ' (' + GK.fmt(me.total) + ' verloren)';
+                ' (' + GK.fmt(eingesetzt) + ' verloren)';
           GK.setResult(resultBox, msg, 'lose');
           GK.sfx('lose');
           GK.shake(table);
           if (!w.me && w.bot) say(GK.pick(w.bot.says));
         }
-        if (showdown && iWon) say('Du zeigst ' + me.ev.name + ' — der Pot gehört dir.');
+        if (showdown && iWon && meWinners[0].ev) {
+          say('Du zeigst ' + meWinners[0].ev.name + ' — der Pot gehört dir.');
+        }
 
         running = false;
         setActions(false);
