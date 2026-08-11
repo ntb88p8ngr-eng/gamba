@@ -13,14 +13,9 @@
     "_": "Globale Belegung. Kurzform: \"click\": \"ui/klick.mp3\". Mehrere Varianten: \"card\": [\"a.mp3\", \"b.mp3\"]. Langform mit allen Reglern siehe README.",
 
 
-    "click":     { "files": [ui/click.mp3], 
-	               "volume": 0.8,
-                   "rateJitter": 0.06},
-				   
-    "hover":     { "files": [ui/hover.mp3] 	               
-	               "volume": 0.8,
-                   "rateJitter": 0.06},
-				 
+    "click":     { "files": ["ui/click.mp3"], "volume": 0.8, "rateJitter": 0.06 },
+    "hover":     { "files": ["ui/hover.mp3"], "volume": 0.8, "rateJitter": 0.06 },
+
     "chip":      { "files": [] },
     "spin":      { "files": [] },
     "tick":      { "files": [] },

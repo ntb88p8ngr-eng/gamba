@@ -28,6 +28,7 @@
   var pending = {};        // pfad -> true, solange dekodiert wird
   var failed = {};         // pfad -> true, nie wieder versuchen
   var lastVariant = {};    // schluessel -> zuletzt gespielter Index
+  var queued = [];         // wartet auf den Audio-Kontext
 
   /* ── Konfiguration einlesen ────────────────────────────────────────── */
 
@@ -105,7 +106,14 @@
     var u = url(file);
     if (buffers[u] || pending[u] || failed[u]) return;
     var ctx = GK.sound && GK.sound.ctx;
-    if (!ctx) return;
+    if (!ctx) {
+      /* Beim Seitenstart gibt es noch keinen Audio-Kontext — der entsteht
+         erst beim ersten Ton. Vorladen lief deshalb bisher ins Leere, und
+         auch mit preload kam der erste Klick noch eingebaut. Gemerkte
+         Dateien werden nachgeholt, sobald der Kontext da ist. */
+      if (queued.indexOf(file) < 0) queued.push(file);
+      return;
+    }
     pending[u] = true;
     fetch(u).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -157,6 +165,9 @@
     if (!pack.loaded || !pack.manifest) return false;
     var snd = GK.sound;
     if (!snd || !snd.ready || !snd.enabled()) return false;
+
+    /* Jetzt steht der Kontext — was beim Start vorgemerkt wurde, kann laden. */
+    if (queued.length) { var q = queued; queued = []; q.forEach(load); }
 
     var cfg = resolve(name, gameId);
     if (!cfg) return false;
@@ -248,6 +259,14 @@
         pack.loaded = true;          // nicht bei jedem Ton erneut versuchen
         pack.manifest = null;
         note('sounds.json nicht gelesen (' + e.message + ') — es bleibt bei den eingebauten Klaengen');
+        /* Eine kaputte sounds.json legt saemtliche eigenen Klaenge still, und
+           zwar lautlos: alles klingt einfach weiter wie eingebaut. Ohne
+           Hinweis sucht man den Fehler bei den Dateien statt in der Datei.
+           Ein Komma zu viel oder ein fehlendes Anfuehrungszeichen reicht. */
+        if (GK.toast) {
+          GK.toast('sounds.json ist fehlerhaft — eigene Klänge sind aus. ' +
+                   String(e.message).slice(0, 90), 'bad', '🔇');
+        }
         return null;
       });
   };
