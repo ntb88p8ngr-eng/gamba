@@ -14,7 +14,7 @@
 
 
     "click":     { "files": ["ui/click.mp3"], "volume": 0.6, "rateJitter": 0.06 },
-    "hover":     { "files": ["ui/hover.mp3"], "volume": 0.4, "rateJitter": 0.06 },
+    "hover":     { "files": ["ui/hover.mp3"], "volume": 0.3, "rateJitter": 0.06 },
 
     "chip":      { "files": [] },
     "spin":      { "files": ["ui/spin.mp3"], "volume": 0.3, "rateJitter": 0.06 },
@@ -26,7 +26,7 @@
     "win":       { "files": ["ui/win.mp3"], "volume": 0.6, "rateJitter": 0.06 },
     "bigwin":    { "files": [] },
     "jackpot":   { "files": [] },
-    "lose":      { "files": ["ui/lose.mp3"], "volume": 0.8, "rateJitter": 0.06 },
+    "lose":      { "files": ["ui/lose.mp3"], "volume": 0.7, "rateJitter": 0.06 },
     "error":     { "files": ["ui/error.mp3"], "volume": 0.8, "rateJitter": 0.06 },
     "boom":      { "files": [] },
     "gem":       { "files": [] },
