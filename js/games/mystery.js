@@ -156,8 +156,6 @@
          Kulisse komplett hinter der Altarfläche und war nie zu sehen. */
       var scene = el('div', { class: 'mys-scene' }, [
         el('div', { class: 'mys-sky' }, [
-          el('div', { class: 'mys-fog f2' }),
-          el('div', { class: 'mys-fog f1' })
         ]),
         el('div', { class: 'mys-altar' }, [
           candleRow,
