@@ -175,6 +175,7 @@
     color: '#00e5ff',
     minLevel: 10,
     rules: [
+      'Wer <b>mitten in einer Hand</b> den Tisch verlässt, passt — die Chips im Pot bleiben liegen.',
       "Texas Hold'em: zwei eigene Karten, fünf offene in der Mitte — die beste <b>Fünf aus sieben</b> gewinnt.",
       'Dein Einsatz ist der <b>Grundeinsatz</b> (Big Blind). Der Geber wechselt jede Hand.',
       'Vier Runden: <b>Preflop, Flop, Turn, River</b>. Erhöhungen kosten vor dem Turn 1×, danach 2× den Grundeinsatz.',
@@ -429,6 +430,13 @@
         p.bet += amount;
         p.total += amount;
         pot += amount;
+        if (p.me) {
+          /* Eine Hand laesst sich ohne deine Entscheidungen nicht zu Ende
+             spielen. Wer mitten drin rausgeht, hat den Tisch verlassen — das
+             zaehlt als Passen, der Pot bleibt liegen. Ohne das koennte man
+             eine schlechte Hand einfach durch Schliessen zurueckholen. */
+          GK.commitResult(0, mySeats().reduce(function (a, q) { return a + q.total; }, 0));
+        }
         GK.sfx('chip');
         return true;
       }
