@@ -103,32 +103,7 @@
 
   function fmtM(m) { return String(Math.round(m * 100) / 100).replace('.', ',') + '×'; }
 
-  /* ── Kulisse: Ruinen im Gegenlicht, ein einziges SVG ── */
-  function ruins() {
-    var d = '#160a2e', d2 = '#1e0f3d';
-    return '<svg viewBox="0 0 400 130" preserveAspectRatio="none" width="100%" height="100%">' +
-      /* linker Turm */
-      '<polygon points="26,130 26,52 44,30 62,52 62,130" fill="' + d + '"/>' +
-      '<path d="M36 130 v-28 a8 8 0 0 1 16 0 v28 Z" fill="#0d0620"/>' +
-      /* Kathedrale in der Mitte, mit Spitzbogen-Fenster */
-      '<polygon points="150,130 150,44 200,8 250,44 250,130" fill="' + d2 + '"/>' +
-      '<path d="M186 130 v-44 a14 14 0 0 1 28 0 v44 Z" fill="#0d0620"/>' +
-      '<path d="M200 8 L200 -6" stroke="' + d + '" stroke-width="4"/>' +
-      /* rechte Ruine: halb eingestürzte Mauer mit zwei Bögen */
-      '<path d="M292 130 V60 h76 v70 Z" fill="' + d + '"/>' +
-      '<path d="M304 130 v-30 a10 10 0 0 1 20 0 v30 Z" fill="#0d0620"/>' +
-      '<path d="M338 130 v-30 a10 10 0 0 1 20 0 v30 Z" fill="#0d0620"/>' +
-      '<polygon points="368,60 368,44 380,52 392,40 392,130 368,130" fill="' + d2 + '"/>' +
-      /* toter Baum links */
-      '<path d="M96 130 V92 M96 104 l-14 -14 M96 98 l13 -13 M82 90 l-8 -3 M109 85 l4 -9" ' +
-        'fill="none" stroke="' + d + '" stroke-width="4" stroke-linecap="round"/>' +
-      /* Grabsteine */
-      '<path d="M120 130 v-16 a7 7 0 0 1 14 0 v16 Z" fill="' + d + '"/>' +
-      '<path d="M264 130 v-13 a6 6 0 0 1 12 0 v13 Z" fill="' + d + '"/>' +
-      '<rect x="70" y="120" width="16" height="10" fill="' + d + '"/>' +
-      '</svg>';
-  }
-
+  
   GK.registerGame({
     id: 'mystery',
     name: 'Mitternachts-Mysterium',
@@ -181,10 +156,7 @@
          Kulisse komplett hinter der Altarfläche und war nie zu sehen. */
       var scene = el('div', { class: 'mys-scene' }, [
         el('div', { class: 'mys-sky' }, [
-          el('div', { class: 'mys-stars' }),
-          el('div', { class: 'mys-moon' }),
           el('div', { class: 'mys-fog f2' }),
-          el('div', { class: 'mys-ruins', html: ruins() }),
           el('div', { class: 'mys-fog f1' })
         ]),
         el('div', { class: 'mys-altar' }, [

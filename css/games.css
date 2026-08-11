@@ -590,11 +590,16 @@
 .b-val.hit{color:var(--gold);text-shadow:0 0 12px rgba(255,209,46,.9)}
 
 /* ─────────── 17. MITTERNACHTS-MYSTERIUM ─────────── */
+/* Der Mondwald ist die Kulisse. Der violette Verlauf bleibt darunter liegen:
+   er faerbt das Foto ins Spielbild ein und traegt es, falls es nicht laedt. */
 .mys-scene{
   position:relative;display:flex;flex-direction:column;height:430px;
   border-radius:22px;overflow:hidden;
   border:5px solid #6b2fae;box-shadow:inset 0 0 70px rgba(0,0,0,.75);
-  background:radial-gradient(125% 85% at 50% 2%,#3f1878 0%,#1d0a3f 46%,#0a0220 100%)
+  background:
+    linear-gradient(180deg,rgba(63,24,120,.34),rgba(10,2,32,.2) 55%,rgba(10,2,32,.85)),
+    url('../assets/mystery/wald.webp') center 22%/cover no-repeat,
+    radial-gradient(125% 85% at 50% 2%,#3f1878 0%,#1d0a3f 46%,#0a0220 100%)
 }
 /* Der Himmel nimmt, was der Altar uebrig laesst — so bleiben Mond und Ruinen
    auf jeder Bildschirmhoehe sichtbar. */
@@ -627,7 +632,6 @@
 }
 @keyframes moonpulse{from{filter:brightness(1)}to{filter:brightness(1.12)}}
 /* Die Ruinen stehen immer auf der Altarkante, egal wie hoch der Himmel ist */
-.mys-ruins{position:absolute;left:0;right:0;bottom:0;height:min(132px,86%);pointer-events:none}
 .mys-fog{position:absolute;left:-25%;right:-25%;pointer-events:none;filter:blur(18px)}
 .mys-fog.f1{
   bottom:-14px;height:82px;opacity:.6;z-index:2;
@@ -644,12 +648,15 @@
 @keyframes fogdrift{from{transform:translateX(-7%)}to{transform:translateX(7%)}}
 /* Der Altar liegt vorn; seine durchsichtige Oberkante ueberlappt die Ruinen */
 .mys-altar{
-  position:relative;z-index:3;flex:0 0 auto;margin-top:-26px;padding:8px 12px 14px;
-  background:linear-gradient(180deg,rgba(11,3,32,0),rgba(11,3,32,.86) 32%,#0a0220 66%)
+  position:relative;z-index:3;flex:0 0 auto;margin-top:-52px;padding:8px 12px 14px;
+  /* Laenger und flacher verlaufend als frueher: hinter dem Altar steht jetzt
+     ein Foto, und eine kurze Blende setzte darauf als sichtbare Kante an. */
+  background:linear-gradient(180deg,
+    rgba(11,3,32,0),rgba(11,3,32,.28) 22%,rgba(11,3,32,.72) 48%,rgba(10,2,32,.94) 72%,#0a0220 88%)
 }
 /* Steinboden vor dem Altar, damit unten keine schwarze Fläche steht */
 .mys-altar::before{
-  content:"";position:absolute;left:0;right:0;bottom:0;height:62%;pointer-events:none;opacity:.5;
+  content:"";position:absolute;left:0;right:0;bottom:0;height:52%;pointer-events:none;opacity:.26;
   background:
     repeating-linear-gradient(90deg,transparent 0 46px,rgba(150,120,210,.16) 46px 48px),
     repeating-linear-gradient(0deg,transparent 0 26px,rgba(150,120,210,.13) 26px 28px),
