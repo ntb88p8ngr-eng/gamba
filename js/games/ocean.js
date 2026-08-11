@@ -26,6 +26,10 @@
 
   /* Scatter zahlt auf den Gesamteinsatz, egal wo die Truhen liegen */
   var SCATTER_PAY = { 3: 4, 4: 17, 5: 100 };
+  /* Dieselben Truhen bringen zusaetzlich Freispiele. Sie kosten nichts, jeder
+     Gewinn zaehlt darin doppelt, und drei weitere Truhen verlaengern. */
+  var FREE_SPINS = { 3: 8, 4: 12, 5: 20 };
+  var FREE_MULT = 2;
 
   var LINES = [
     { name: 'Mitte',   rows: [1, 1, 1, 1, 1], color: '#00e5ff' },
@@ -112,10 +116,13 @@
       'Gewinne zählen <b>von links</b>: ab 3 gleichen Symbolen auf einer Linie.',
       'Der <b>Dreizack</b> ist Wild und ersetzt jedes Symbol außer der Truhe.',
       'Die <b>Schatztruhe</b> ist Scatter: 3 Stück irgendwo zahlen 4×, 4 zahlen 17×, 5 zahlen 100× — auf den Gesamteinsatz.',
-      'Der Einsatz verteilt sich gleichmäßig auf die 5 Linien.'
+      'Der Einsatz verteilt sich gleichmäßig auf die 5 Linien.',
+      '<b>3, 4 oder 5 Truhen</b> bringen zusätzlich <b>8, 12 oder 20 Freispiele</b> — sie kosten nichts und jeder Gewinn zählt <b>' + FREE_MULT + '×</b>.',
+      'Drei Truhen im Freispiel <b>verlängern</b> die Serie.'
     ],
     mount: function (root) {
       var stopped = false, spinning = false, autoLeft = 0, endless = false;
+      var freeLeft = 0, freeStake = 0;
       /* Der gewünschte Einsatz wird getrennt gemerkt: bet.value() kappt auf das
          Guthaben, sonst würde der Automat im Endlos-Modus einfach mit immer
          kleineren Beträgen weitertauchen statt zu stoppen. */
@@ -130,6 +137,11 @@
       }
 
       var lineOverlay = el('div', { class: 'line-overlay' });
+      var fsBanner = el('div', { class: 'fs-banner' }, [
+        '🐚 FREISPIELE', el('b', { text: '0' }), '· ' + FREE_MULT + '× auf alles'
+      ]);
+      fsBanner.hidden = true;
+
       var machine = el('div', { class: 'ocean-machine' }, [
         el('div', { class: 'oc-bubbles' }),
         el('div', { class: 'reels oc-reels' }, reels.concat([lineOverlay]))
@@ -173,7 +185,7 @@
       var autoRow = el('div', { class: 'auto-row' }, [autoBtn, loopBtn]);
 
       var stage = el('div', { class: 'stage split' }, [
-        el('div', {}, [machine, el('div', { style: 'height:10px' }), lineLegend, el('div', { style: 'height:10px' }), payTable]),
+        el('div', {}, [fsBanner, machine, el('div', { style: 'height:10px' }), lineLegend, el('div', { style: 'height:10px' }), payTable]),
         GK.panel([
           bet.el,
           el('div', { style: 'height:12px' }),
@@ -188,37 +200,98 @@
       ]);
       root.appendChild(stage);
 
+      /** Die Zelle einer Walze/Reihe im sichtbaren Fenster. */
+      function cellAt(reel, row) {
+        var cells = strips[reel].children;
+        return cells[cells.length - ROWS + row] || null;
+      }
+
+      /* Wisch statt Strich: ueber jede getroffene Zelle faehrt ein Lichtstreifen,
+         und das Symbol darin federt hoch. Fuenf duenne Linien uebereinander
+         waren kaum auseinanderzuhalten — der Wisch zeigt, welche Felder
+         gemeint sind, statt nur wo die Linie laeuft. */
       function highlight(wins) {
         lineOverlay.innerHTML = '';
+        var reelBox = reels[0].getBoundingClientRect();
+        var overBox = lineOverlay.getBoundingClientRect();
+        var gap = reels[1].getBoundingClientRect().left - reelBox.right;
+        var cw = reelBox.width, chh = reelBox.height / ROWS;
+
         wins.forEach(function (w, i) {
-          if (w.scatter) return;
-          var line = LINES[w.line];
-          var seg = el('div', { class: 'win-line', style: 'background:' + line.color + ';animation-delay:' + (i * 120) + 'ms' });
-          // Linie mittig über die getroffenen Walzen legen
-          var avgRow = line.rows.slice(0, w.count).reduce(function (a, b) { return a + b; }, 0) / w.count;
-          seg.style.top = ((avgRow + 0.5) / ROWS * 100) + '%';
-          seg.style.width = (w.count / REELS * 100) + '%';
-          lineOverlay.appendChild(seg);
+          var farbe = w.scatter ? '#ffd12e' : LINES[w.line].color;
+          var zellen = w.scatter
+            ? w.cells
+            : LINES[w.line].rows.slice(0, w.count).map(function (row, reel) { return [reel, row]; });
+
+          zellen.forEach(function (rc, n) {
+            var reel = rc[0], row = rc[1];
+            var wipe = el('div', {
+              class: 'win-wipe',
+              style: 'color:' + farbe +
+                     ';left:' + (reel * (cw + gap) + reelBox.left - overBox.left) + 'px' +
+                     ';top:' + (row * chh) + 'px' +
+                     ';width:' + cw + 'px;height:' + chh + 'px' +
+                     ';animation-delay:' + (i * 160 + n * 70) + 'ms'
+            });
+            lineOverlay.appendChild(wipe);
+
+            var cell = cellAt(reel, row);
+            if (cell) setTimeout(function () {
+              if (stopped) return;
+              cell.classList.remove('spring');
+              void cell.offsetWidth;
+              cell.classList.add('spring');
+              setTimeout(function () { cell.classList.remove('spring'); }, 900);
+            }, i * 160 + n * 70);
+          });
         });
+      }
+
+      function syncFree() {
+        fsBanner.hidden = freeLeft <= 0;
+        fsBanner.querySelector('b').textContent = freeLeft;
+        spinBtn.textContent = freeLeft > 0 ? '🐚 FREISPIEL (' + freeLeft + ')' : '🌊 ABTAUCHEN';
+        bet.disable(freeLeft > 0 || spinning);
+      }
+
+      function awardFree(n, retrigger) {
+        freeLeft += n;
+        freeStake = freeStake || bet.value();
+        syncFree();
+        fsBanner.classList.remove('pop');
+        void fsBanner.offsetWidth;
+        fsBanner.classList.add('pop');
+        GK.sfx('freespin');
+        GK.confetti(120);
+        GK.emojiRain(['🐚', '💰', '🔱'], 24);
+        GK.toast(retrigger
+          ? '+' + n + ' Freispiele — die Serie geht weiter!'
+          : n + ' Freispiele! Jeder Gewinn zählt ' + FREE_MULT + '×',
+          'gold', '🐚');
       }
 
       function spin() {
         if (spinning || stopped) return;
         var stake = bet.value();
         if (stake < 5) { GK.toast('Mindestens 5 Chips (5 Linien)', 'bad', '🎰'); return; }
-        if (!GK.wager(stake, 'Tiefsee-Schatz')) { stopAuto(); return; }
+        var free = freeLeft > 0;
+        if (free) stake = freeStake;
+        if (!free && !GK.wager(stake, 'Tiefsee-Schatz')) { stopAuto(); return; }
+        if (free) { freeLeft--; syncFree(); GK.sfx('freespin2'); }
 
         spinning = true;
         spinBtn.disabled = true;
         bet.disable(true);
         lineOverlay.innerHTML = '';
-        GK.setResult(resultBox, 'Die Walzen tauchen ab…', '');
-        GK.sfx('spin');
+        GK.setResult(resultBox, free ? 'Freispiel taucht ab…' : 'Die Walzen tauchen ab…', '');
+        if (!free) GK.sfx('spin');
 
         var lineBet = Math.floor(stake / LINES.length);
         var newGrid = drawGrid();
-        /* Das Walzenbild steht fest — die Drehung zeigt es nur noch. */
-        GK.commitResult(evaluate(newGrid, lineBet, stake).total, stake);
+        /* Das Walzenbild steht fest — die Drehung zeigt es nur noch.
+           Freispiele kosten nichts, deshalb dort Einsatz 0. */
+        var vorab = evaluate(newGrid, lineBet, stake).total * (free ? FREE_MULT : 1);
+        GK.commitResult(Math.floor(vorab), free ? 0 : stake);
 
         var lens = [16, 20, 24, 28, 32];
         strips.forEach(function (strip, i) {
@@ -240,6 +313,17 @@
           setTimeout(function () {
             if (stopped) return;
             GK.sfx('reel');
+            /* Liegen zwei Truhen und es fehlt noch mindestens eine Walze,
+               haengt der Bonus daran — das darf man hoeren und sehen. */
+            var bisher = 0;
+            for (var r = 0; r <= i; r++) for (var c = 0; c < ROWS; c++) {
+              if (newGrid[r][c].scatter) bisher++;
+            }
+            if (bisher === 2 && i < REELS - 1) {
+              machine.classList.add('tense');
+              reels[i + 1].classList.add('tense');
+              GK.sfx('tension');
+            }
             reels[i].classList.add('hit');
             setTimeout(function () { reels[i].classList.remove('hit'); }, 300);
           }, (1.5 + i * 0.32) * 1000);
@@ -248,16 +332,25 @@
         setTimeout(function () {
           if (stopped) return;
           grid = newGrid;
-          finish(stake, lineBet);
+          machine.classList.remove('tense');
+          reels.forEach(function (r) { r.classList.remove('tense'); });
+          finish(stake, lineBet, free);
         }, (1.5 + (REELS - 1) * 0.32) * 1000 + 240);
       }
 
-      function finish(stake, lineBet) {
+      function finish(stake, lineBet, inFree) {
         var res = evaluate(grid, lineBet, stake);
-        GK.payout(res.total, { stake: stake });
-        GK.logPlay('Tiefsee-Schatz', stake, res.total);
+        var total = Math.floor(res.total * (inFree ? FREE_MULT : 1));
+        /* Im Freispiel wurde nichts gesetzt — als Einsatz 0 buchen, damit die
+           Statistik den geschenkten Dreh nicht als Verlust zaehlt. */
+        GK.payout(total, { stake: inFree ? 0 : stake });
+        GK.logPlay('Tiefsee-Schatz', inFree ? 0 : stake, total);
         highlight(res.wins);
 
+        var truhen = res.wins.filter(function (w) { return w.scatter; })[0];
+        if (truhen && FREE_SPINS[truhen.count]) awardFree(FREE_SPINS[truhen.count], inFree);
+
+        res.total = total;
         if (res.total > stake) {
           var best = res.wins.slice().sort(function (a, b) { return b.amount - a.amount; })[0];
           var label = best.scatter
@@ -276,7 +369,11 @@
 
         spinning = false;
         spinBtn.disabled = false;
-        bet.disable(false);
+        syncFree();
+        if (freeLeft <= 0) { freeStake = 0; bet.disable(false); }
+
+        /* Freispiele laufen von selbst weiter. */
+        if (freeLeft > 0) { setTimeout(spin, 1000); return; }
 
         if (endless) {
           // taucht weiter, bis gestoppt wird oder die Chips nicht mehr reichen
