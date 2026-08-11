@@ -666,19 +666,27 @@
   content:"";position:absolute;inset:-20px;z-index:-1;border-radius:28px;filter:blur(12px);
   background:radial-gradient(ellipse at 50% 45%,rgba(139,59,255,.45),transparent 70%)
 }
-.mys-candles{position:relative;display:flex;justify-content:center;gap:34px;height:36px;margin-bottom:6px}
-.mys-candle{position:relative;display:block;width:12px;height:36px}
-.mc-stick{position:absolute;bottom:0;left:1px;width:10px;height:22px;border-radius:3px;background:linear-gradient(180deg,#f6e6c8,#b99a6c)}
+/* Kerze und Flamme sind getrennte Bilder: nur so laesst sich die Flamme
+   flackern und beim Verloeschen wegnehmen, waehrend die Kerze stehen bleibt.
+   Die Masse folgen dem Seitenverhaeltnis der Vorlagen (134x220 und 117x128) —
+   sonst zerrt background-size die Grafik. */
+.mys-candles{position:relative;display:flex;justify-content:center;gap:30px;height:56px;margin-bottom:6px}
+.mys-candle{position:relative;display:block;width:24px;height:56px}
+.mc-stick{
+  position:absolute;bottom:0;left:0;width:24px;height:39px;
+  background:url('../assets/mystery/candle.webp') center/contain no-repeat;
+  transition:filter .35s
+}
 .mc-flame{
-  position:absolute;top:0;left:3px;width:7px;height:14px;
-  border-radius:50% 50% 45% 45%/62% 62% 38% 38%;
-  background:radial-gradient(circle at 50% 72%,#fff6b0,#ff8a00 58%,#ff3b6b);
-  box-shadow:0 0 15px rgba(255,180,60,.95);
+  position:absolute;top:0;left:5.5px;width:13px;height:14px;
+  background:url('../assets/mystery/flame.webp') center/contain no-repeat;
+  transform-origin:50% 100%;
+  filter:drop-shadow(0 0 7px rgba(255,180,60,.9));
   animation:flicker .45s ease-in-out infinite alternate
 }
 @keyframes flicker{
-  from{transform:scaleY(1) translateX(0);opacity:1}
-  to{transform:scaleY(1.28) translateX(1px);opacity:.82}
+  from{transform:scaleY(1) scaleX(1) translateX(0);opacity:1}
+  to{transform:scaleY(1.22) scaleX(.94) translateX(.6px);opacity:.86}
 }
 .mys-candle.out .mc-flame{opacity:0;animation:none}
 .mys-candle.out .mc-stick{filter:grayscale(.7) brightness(.55)}
@@ -840,10 +848,15 @@
   .mys-moon{width:46px;height:46px;top:12px;right:18px}
   .mys-grid{max-width:190px;gap:5px}
   .mys-slab{max-width:240px;padding:8px;border-radius:15px}
-  .mys-candles{gap:26px;height:30px}
-  .mys-candle{height:30px}
+  .mys-candles{gap:22px;height:48px}
+  .mys-candle{width:20px;height:48px}
+  .mc-stick{width:20px;height:33px}
+  .mc-flame{left:4.5px;width:11px;height:12px}
   .mc-val{font-size:.5rem}
-  .mys-candles{gap:22px;height:24px;margin-bottom:6px}
+  .mys-candles{gap:18px;height:42px;margin-bottom:6px}
+  .mys-candle{width:17px;height:42px}
+  .mc-stick{width:17px;height:28px}
+  .mc-flame{left:4px;width:9px;height:10px}
 }
 @media(max-width:400px){
   .mys-scene{height:312px}

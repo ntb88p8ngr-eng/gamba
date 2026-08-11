@@ -133,7 +133,7 @@
     id: 'mystery',
     name: 'Mitternachts-Mysterium',
     emoji: '🕯️',
-    icon: 'mask',
+    icon: 'candles',
     blurb: 'Ruf Seelen auf den Altar. Solange neue kommen, brennen die Kerzen weiter — und der Einsatz wächst.',
     badge: '16 SEELEN',
     color: '#8b3bff',
