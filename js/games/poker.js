@@ -183,7 +183,7 @@
       'Vom gewonnenen Pot behält das Haus <b>8 % Rake</b> — aber nur, wenn es überhaupt zum Flop kam.',
       'Passen kostet nichts außer dem, was schon im Pot liegt. <b>Wer gut passt, gewinnt.</b>'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false;
       var timers = [];
       function wait(ms, fn) {
@@ -199,6 +199,9 @@
       var button = Math.floor(Math.random() * 4);
       var running = false, showdown = false;
       var toCall = 0, raises = 0, onHumanAction = null;
+      /* Wer als naechstes dran ist und wie es nach der Setzrunde weitergeht —
+         beides braucht der Wiederaufbau, um die Runde fortzusetzen. */
+      var pendingIdx = 0, roundDone = null;
 
       /* Vorne sitzt du — auf Wunsch mit zwei Haenden gleichzeitig —, danach
          im Uhrzeigersinn die drei Gegner. N ist die Zahl der Sitze und ersetzt
@@ -448,10 +451,18 @@
          Betrag im Pot liegen haben. Wer erhöht, schickt alle anderen noch mal
          an den Zug. */
 
-      function bettingRound(firstIdx, done) {
-        raises = 0;
-        seats.forEach(function (p) { p.acted = false; });
+      function bettingRound(firstIdx, done, resuming) {
+        /* Beim Wiederaufnehmen darf der Fortschritt innerhalb der Runde nicht
+           verlorengehen — wer schon gehandelt hat, hat schon gehandelt. */
+        if (!resuming) {
+          raises = 0;
+          seats.forEach(function (p) { p.acted = false; });
+        }
         var idx = firstIdx;
+        roundDone = done;
+
+        pendingIdx = firstIdx;
+        snapshot();
 
         function needsAction(p) { return !p.folded && (!p.acted || p.bet < toCall); }
 
@@ -522,6 +533,8 @@
           p.turn = false;
           idx = (p.idx + 1) % N;
           render();
+          pendingIdx = idx;
+          snapshot();
           wait(420, next);
         }
 
@@ -595,6 +608,7 @@
 
       function abort() {
         running = false;
+        GK.clearGameState('poker');
         dealBtn.disabled = false;
         bet.disable(false);
         bet2.disable(false);
@@ -705,10 +719,76 @@
         }
 
         running = false;
+        GK.clearGameState('poker');
         setActions(false);
         dealBtn.disabled = false;
         bet.disable(false);
         bet2.disable(false);
+      }
+
+      /* ── Unterbrochene Hand ──
+         Eine Hand steht nur an einer Stelle wirklich still: wenn jemand am
+         Zug ist. Genau dort wird gesichert — samt Deck, Brett, Pot und dem
+         Zustand jedes Sitzes. Ohne Deck waeren die naechsten Karten neu
+         gewuerfelt, ohne die Sitzdaten wuesste niemand mehr, wer schon
+         gehandelt hat. */
+      function snapshot() {
+        if (!running) { GK.clearGameState('poker'); return; }
+        GK.saveGameState('poker', {
+          handCount: handCount, deck: deck, board: board, pot: pot,
+          stake: stake, street: street, button: button, toCall: toCall,
+          raises: raises, showdown: showdown, pendingIdx: pendingIdx,
+          seats: seats.map(function (p) {
+            return {
+              cards: p.cards, bet: p.bet, total: p.total,
+              folded: p.folded, acted: p.acted, tag: p.tag
+            };
+          })
+        });
+      }
+
+      /** Wie es nach der Setzrunde dieser Strasse weitergeht. */
+      function doneFor(st) {
+        if (st <= 0) return afterPreflop;
+        if (st === 1) return afterFlop;
+        if (st === 2) return afterTurn;
+        return settle;
+      }
+
+      function restore(st) {
+        if (!st || !st.seats || !st.seats.length) return false;
+
+        handCount = st.handCount || 1;
+        bet2Box.hidden = handCount < 2;
+        buildSeats();
+        buildTable();
+        handBtns.forEach(function (x, i) { x.classList.toggle('sel', i + 1 === handCount); });
+
+        deck = st.deck || []; board = st.board || []; pot = st.pot || 0;
+        stake = st.stake; street = st.street || 0; button = st.button || 0;
+        toCall = st.toCall || 0; raises = st.raises || 0; showdown = !!st.showdown;
+        pendingIdx = st.pendingIdx || 0;
+
+        st.seats.forEach(function (sv, i) {
+          var p = seats[i];
+          if (!p) return;
+          p.cards = sv.cards || []; p.bet = sv.bet || 0; p.total = sv.total || 0;
+          p.folded = !!sv.folded; p.acted = !!sv.acted; p.tag = sv.tag || '';
+          p.win = false; p.turn = false;
+        });
+
+        running = true;
+        dealBtn.disabled = true;
+        bet.disable(true);
+        bet2.disable(true);
+        boardEl._key = null;
+        render();
+        say('Weiter geht’s — die Hand von vorhin.');
+        GK.toast('Unterbrochene Hand fortgesetzt · ' + GK.fmt(pot) + ' im Pot', 'gold', '♠️');
+
+        /* Da weitermachen, wo die Setzrunde stehengeblieben ist. */
+        wait(600, function () { bettingRound(pendingIdx, doneFor(street), true); });
+        return true;
       }
 
       /* ── Bedienung ── */
@@ -727,8 +807,11 @@
       render();
       GK.on('cardtheme', function () { if (boardEl.isConnected) render(); });
 
+      restore(resume);
+
       return function () {
         stopped = true;
+        snapshot();
         timers.forEach(clearTimeout);
       };
     }
