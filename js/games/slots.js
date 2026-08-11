@@ -52,7 +52,7 @@
 
   GK.registerGame({
     id: 'slots',
-    name: 'Fantasy Reels',
+    name: 'Fantasy Slots',
     emoji: '🎰',
     icon: 'slotmachine',
     blurb: 'Drei Walzen voller Drachen, Kronen und Kirschen. Drei Gleiche = Regen aus Chips.',
@@ -196,7 +196,7 @@
 
         var win = Math.floor(stake * mult);
         GK.payout(win, { stake: stake });
-        GK.logPlay('Fantasy Reels', stake, win);
+        GK.logPlay('Fantasy Slots', stake, win);
 
         if (win > stake) {
           GK.setResult(resultBox, label + '  →  +' + GK.fmt(win - stake), 'win');

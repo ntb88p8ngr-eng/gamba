@@ -95,7 +95,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
-| 1 | **Fantasy Reels** | 3 Walzen, gestaffelter Stopp, Auto-Spin und Endlos-Modus | 100× | 81 % |
+| 1 | **Fantasy Slots** | 3 Walzen, gestaffelter Stopp, Auto-Spin und Endlos-Modus | 100× | 81 % |
 | 2 | **Neon Roulette** | Europäisches Rad (0–36), mehrere Felder gleichzeitig belegbar | 32× | 86,5–97,3 % |
 | 3 | **Royal Blackjack** | 6 Decks, Hit/Stand/Doppeln, Dealer zieht bis 17, BJ zahlt 6:5 | 6:5 | ~97 % |
 | 4 | **Drachenmünze** | Krone oder Drache, 3D-Flip, feste Bonus-Chips für Siegesserien | 2× + Bonus | ~100 % + Serien-Bonus |
