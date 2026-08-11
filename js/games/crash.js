@@ -242,6 +242,10 @@
         running = true;
         cashedAt = 0;
         crashAt = rollCrash();
+        /* Wer mitten im Flug rausgeht, ist eben nicht ausgestiegen — dann
+           crasht die Rakete und der Einsatz ist weg. Ohne das koennte man
+           jeden drohenden Crash durch Schliessen abwenden. */
+        GK.commitResult(0, stake);
         mult = 1;
         zigSeed = Math.random();
         zigRate = 2.4 + Math.random() * 1.5;

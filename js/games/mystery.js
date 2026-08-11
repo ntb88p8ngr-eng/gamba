@@ -293,6 +293,8 @@
         stepInfo.textContent = 'Die Kerzen brennen.';
 
         var res = playRitual(mode);
+        /* Das Ritual ist ausgewuerfelt, bevor die erste Kerze flackert. */
+        GK.commitResult(Math.floor(stake * res.total), stake);
         playEvent(res, 0, 380);
       }
 

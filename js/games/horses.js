@@ -122,6 +122,8 @@
         GK.sfx('startbell');
 
         var winner = chooseWinner();
+        /* Der Sieger steht beim Startschuss fest. */
+        GK.commitResult(winner.nr === pick.nr ? Math.floor(stake * pick.odds) : 0, stake);
         // Der Sieger ist nach gut 4 Sekunden im Ziel, die anderen deutlich
         // spaeter — dadurch stehen sie beim Zieleinlauf klar auseinander.
         var times = HORSES.map(function (h) {

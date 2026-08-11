@@ -155,6 +155,8 @@
         }
 
         var mineSum = mine[0] + mine[1], theirSum = theirs[0] + theirs[1];
+        /* Beide Wuerfe stehen fest, bevor sie gezeigt werden. */
+        GK.commitResult(diceWin(stake, mineSum, theirSum), stake);
         myTotal.textContent = '–';
         dealerTotal.textContent = '–';
 
@@ -173,21 +175,35 @@
         });
       }
 
+      /* Was der Wurf zahlt. Steht schon fest, sobald gewuerfelt ist — deshalb
+         getrennt von der Anzeige, damit auch commitResult darauf zugreifen
+         kann, bevor die Wuerfel ausgerollt sind. */
+      function diceWin(stake, mineSum, theirSum) {
+        if (mode.id === 'duel') {
+          if (mineSum > theirSum) return Math.floor(stake * mode.mult);
+          if (mineSum === theirSum) return stake;          // Push
+          return 0;
+        }
+        if (mode.id === 'over')  return mineSum > 7 ? Math.floor(stake * mode.mult) : 0;
+        if (mode.id === 'under') return mineSum < 7 ? Math.floor(stake * mode.mult) : 0;
+        return mineSum === 7 ? Math.floor(stake * mode.mult) : 0;
+      }
+
       function finish(stake, mineSum, theirSum) {
-        var win = 0, msg = '', kind = 'lose';
+        var win = diceWin(stake, mineSum, theirSum), msg = '', kind = 'lose';
 
         if (mode.id === 'duel') {
-          if (mineSum > theirSum) { win = Math.floor(stake * mode.mult); msg = mineSum + ' schlägt ' + theirSum + ' 🏆'; kind = 'win'; }
-          else if (mineSum === theirSum) { win = stake; msg = 'Gleichstand bei ' + mineSum + ' — Einsatz zurück'; kind = 'push'; }
+          if (mineSum > theirSum) { msg = mineSum + ' schlägt ' + theirSum + ' 🏆'; kind = 'win'; }
+          else if (mineSum === theirSum) { msg = 'Gleichstand bei ' + mineSum + ' — Einsatz zurück'; kind = 'push'; }
           else { msg = theirSum + ' schlägt deine ' + mineSum + ' 😤'; }
         } else if (mode.id === 'over') {
-          if (mineSum > 7) { win = Math.floor(stake * mode.mult); msg = mineSum + ' — über 7! 🎉'; kind = 'win'; }
+          if (mineSum > 7) { msg = mineSum + ' — über 7! 🎉'; kind = 'win'; }
           else msg = mineSum + ' — nicht über 7';
         } else if (mode.id === 'under') {
-          if (mineSum < 7) { win = Math.floor(stake * mode.mult); msg = mineSum + ' — unter 7! 🎉'; kind = 'win'; }
+          if (mineSum < 7) { msg = mineSum + ' — unter 7! 🎉'; kind = 'win'; }
           else msg = mineSum + ' — nicht unter 7';
         } else {
-          if (mineSum === 7) { win = Math.floor(stake * mode.mult); msg = 'EXAKT 7! 🎯 5,5×'; kind = 'win'; }
+          if (mineSum === 7) { msg = 'EXAKT 7! 🎯 5,5×'; kind = 'win'; }
           else msg = mineSum + ' — keine 7';
         }
 

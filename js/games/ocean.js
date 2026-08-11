@@ -217,6 +217,8 @@
 
         var lineBet = Math.floor(stake / LINES.length);
         var newGrid = drawGrid();
+        /* Das Walzenbild steht fest — die Drehung zeigt es nur noch. */
+        GK.commitResult(evaluate(newGrid, lineBet, stake).total, stake);
 
         var lens = [16, 20, 24, 28, 32];
         strips.forEach(function (strip, i) {
