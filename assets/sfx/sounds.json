@@ -12,21 +12,25 @@
       "files": [
         "ui/click.mp3"
       ],
-      "volume": 0.8,
+      "volume": 0.6,
       "rateJitter": 0.06
     },
     "hover": {
       "files": [
         "ui/hover.mp3"
       ],
-      "volume": 0.8,
+      "volume": 0.3,
       "rateJitter": 0.06
     },
     "chip": {
       "files": []
     },
     "spin": {
-      "files": []
+      "files": [
+        "ui/spin.mp3"
+      ],
+      "volume": 0.3,
+      "rateJitter": 0.06
     },
     "tick": {
       "files": []
@@ -44,16 +48,28 @@
       "files": []
     },
     "card": {
-      "files": []
+      "files": [
+        "ui/card.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
     },
     "coin": {
       "files": []
     },
     "cash": {
-      "files": []
+      "files": [
+        "ui/cash.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
     },
     "win": {
-      "files": []
+      "files": [
+        "ui/win.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
     },
     "bigwin": {
       "files": []
@@ -62,10 +78,18 @@
       "files": []
     },
     "lose": {
-      "files": []
+      "files": [
+        "ui/lose.mp3"
+      ],
+      "volume": 0.7,
+      "rateJitter": 0.06
     },
     "error": {
-      "files": []
+      "files": [
+        "ui/error.mp3"
+      ],
+      "volume": 0.8,
+      "rateJitter": 0.06
     },
     "boom": {
       "files": []
