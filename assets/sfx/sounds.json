@@ -51,7 +51,9 @@
     "crash": {},
     "mines": {},
     "wheel": {},
-    "plinko": {},
+    "plinko": {
+      "loss": {"file": "sounds/plinko-loss.mp3",
+               "volume": 0.2}},
     "scratch": {},
     "horses": {},
     "icebear": {},
