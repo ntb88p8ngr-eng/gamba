@@ -26,9 +26,12 @@
       'Du kannst nach jedem Schritt <b>aussteigen</b> und den Multiplikator kassieren.',
       '<b>Todeseis</b> ist 50/50 pro Schritt, zahlt oben aber über 230×.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false, active = false;
       var mode = 'normal', stake = 0, step = 0, cracks = [];
+      /* Welche Scholle je Reihe betreten wurde — nur damit laesst sich eine
+         unterbrochene Kletterei spaeter wieder aufbauen. */
+      var chosen = [];
 
       var bet = GK.betPanel({ start: 25 });
       var rowsBox = el('div', { class: 'ice-rows' });
@@ -139,6 +142,7 @@
 
         active = true;
         step = 0;
+        chosen = [];
         var m = MODES[mode];
         cracks = [];
         for (var s = 0; s < STEPS; s++) cracks.push(GK.rndInt(0, m.tiles - 1));
@@ -153,6 +157,7 @@
         GK.sfx('whoosh');
         syncStats();
         syncRows();
+        snapshot();
       }
 
       function pickTile(s, t) {
@@ -183,11 +188,13 @@
         r.tiles[t].classList.add('stepped');
         r.tiles[t].innerHTML = GK.iconHTML('bear2');
         r.tiles.forEach(function (x, i) { if (i !== t) x.classList.add('safe-dim'); });
+        chosen[s] = t;
         step++;
         GK.sfx('gem');
         cashBtn.disabled = false;
         syncStats();
         syncRows();
+        snapshot();
 
         if (step >= STEPS) {
           GK.toast('Ganz oben angekommen! 🏔️', 'gold', '🐻‍❄️');
@@ -231,6 +238,7 @@
       }
 
       function finishUI() {
+        GK.clearGameState('icebear');
         startBtn.disabled = false;
         cashBtn.disabled = true;
         bet.disable(false);
@@ -238,12 +246,50 @@
         syncStats();
       }
 
+      /* ── Unterbrochene Kletterei ──
+         Die Bruchstellen muessen mit, sonst waere die Route beim Weitermachen
+         neu gewuerfelt. Gesichert wird nach jedem Schritt. */
+      function snapshot() {
+        if (!active) { GK.clearGameState('icebear'); return; }
+        GK.saveGameState('icebear', {
+          mode: mode, stake: stake, step: step, cracks: cracks, chosen: chosen
+        });
+      }
+
+      function restore(st) {
+        if (!st || !st.cracks) return false;
+        mode = st.mode; stake = st.stake; step = st.step || 0;
+        cracks = st.cracks; chosen = st.chosen || [];
+        active = true;
+        bet.set && bet.set(stake);
+        modeBtns.forEach(function (o) { o.b.classList.toggle('sel', o.k === mode); });
+
+        buildRows();
+        for (var s = 0; s < step; s++) {
+          var r = rowEls[s], t = chosen[s];
+          if (!r || t === undefined) continue;
+          r.tiles[t].classList.add('stepped');
+          r.tiles[t].innerHTML = GK.iconHTML('bear2');
+          r.tiles.forEach(function (x, i) { if (i !== t) x.classList.add('safe-dim'); });
+        }
+        startBtn.disabled = true;
+        cashBtn.disabled = step === 0;
+        bet.disable(true);
+        modeBtns.forEach(function (o) { o.b.disabled = true; });
+        syncStats();
+        syncRows();
+        GK.setResult(resultBox, 'Weiter geht’s — ' + step + ' Schollen liegen hinter dir.', '');
+        GK.toast('Unterbrochene Runde fortgesetzt · Einsatz ' + GK.fmt(stake), 'gold', '🐻‍❄️');
+        return true;
+      }
+
       startBtn.addEventListener('click', function () { GK.sfx('click'); start(); });
       cashBtn.addEventListener('click', function () { GK.sfx('click'); cashOut(); });
 
       buildRows();
       syncStats();
-      return function () { stopped = true; };
+      restore(resume);
+      return function () { stopped = true; snapshot(); };
     }
   });
 })(window.GK);

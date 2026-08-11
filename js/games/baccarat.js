@@ -58,7 +58,7 @@
       'Ob eine dritte Karte kommt, entscheidet die Tabelle, nicht du. Zurücklehnen und zuschauen.',
       'Bei Gleichstand bekommst du deinen Einsatz auf Player oder Banker <b>zurück</b>.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false;
       var shoe = newShoe();
       var playerHand = [], bankerHand = [], stake = 0, running = false;
@@ -194,6 +194,7 @@
           steps[i++]();
           render(false);
           GK.sfx('card');
+          snapshot();
           setTimeout(next, 380);
         })();
       }
@@ -208,6 +209,7 @@
         GK.setResult(resultBox, 'Karten laufen…', '');
         setRunning(true);
         GK.sfx('spin');
+        snapshot();
 
         runSteps([
           function () { playerHand.push(drawCard()); },
@@ -272,14 +274,59 @@
         else GK.sfx('coin');
 
         setRunning(false);
+        GK.clearGameState('baccarat');
+      }
+
+      /* ── Unterbrochene Runde ──
+         Hier entscheidet niemand mehr etwas, die Karten laufen von selbst.
+         Gesichert werden die schon liegenden Blaetter und der Schlitten; beim
+         Wiederaufnehmen laeuft die Runde einfach zu Ende. Ohne Schlitten
+         waeren die naechsten Karten neu gewuerfelt. */
+      function snapshot() {
+        if (!running) { GK.clearGameState('baccarat'); return; }
+        GK.saveGameState('baccarat', {
+          stake: stake, mode: mode.id, shoe: shoe,
+          player: playerHand, banker: bankerHand
+        });
+      }
+
+      function restore(st) {
+        if (!st || !st.player) return false;
+        stake = st.stake;
+        shoe = st.shoe && st.shoe.length ? st.shoe : shoe;
+        playerHand = st.player; bankerHand = st.banker || [];
+        for (var i = 0; i < MODES.length; i++) if (MODES[i].id === st.mode) mode = MODES[i];
+        bet.set && bet.set(stake);
+        syncMode();
+        setRunning(true);
+        render(false);
+        GK.setResult(resultBox, 'Weiter geht’s — die Runde von vorhin.', '');
+        GK.toast('Unterbrochene Runde fortgesetzt · Einsatz ' + GK.fmt(stake), 'gold', '🎴');
+
+        /* Erst die ersten zwei Blaetter je Seite auffuellen, dann laeuft der
+           normale Ablauf weiter. */
+        var fehlen = [];
+        while (playerHand.length + fehlen.filter(function (f) { return f === 'p'; }).length < 2) fehlen.push('p');
+        while (bankerHand.length + fehlen.filter(function (f) { return f === 'b'; }).length < 2) fehlen.push('b');
+        var steps = fehlen.map(function (w) {
+          return function () { (w === 'p' ? playerHand : bankerHand).push(drawCard()); };
+        });
+        setTimeout(function () {
+          if (stopped) return;
+          if (steps.length) runSteps(steps, thirdCards);
+          else if (playerHand.length === 2 && bankerHand.length === 2) thirdCards();
+          else settle();
+        }, 700);
+        return true;
       }
 
       dealBtn.addEventListener('click', function () { GK.sfx('click'); deal(); });
 
       syncMode();
       render(false);
+      restore(resume);
       GK.on('cardtheme', function () { if (playerCards.isConnected) render(false); });
-      return function () { stopped = true; };
+      return function () { stopped = true; snapshot(); };
     }
   });
 })(window.GK);

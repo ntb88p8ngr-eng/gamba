@@ -52,7 +52,7 @@
       'Krone 20× · Stern 10× · Juwel 5× · Flamme 3× · Kleeblatt 2× · Münze 1× (Einsatz zurück)',
       'Alles andere ist eine Niete — aber Rubbeln macht trotzdem Spaß.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false, active = false, stake = 0, symbols = ['question', 'question', 'question'], revealedCount = 0;
 
       var bet = GK.betPanel({ start: 20 });
@@ -113,10 +113,12 @@
         requestAnimationFrame(function () {
           tiles.forEach(function (t, i) { t.arm(GK.iconHTML(symbols[i])); });
         });
+        snapshot();
       }
 
       function onRevealed() {
         revealedCount++;
+        snapshot();
         if (revealedCount >= 3) setTimeout(finish, 420);
       }
 
@@ -148,6 +150,7 @@
         buyBtn.disabled = false;
         revealBtn.disabled = true;
         bet.disable(false);
+        GK.clearGameState('scratch');
       }
 
       buyBtn.addEventListener('click', function () { GK.sfx('click'); buy(); });
@@ -156,8 +159,43 @@
         tiles.forEach(function (t) { if (!t.isDone()) t.reveal(); });
       });
 
+      /* ── Unterbrochenes Los ──
+         Die gezogenen Runen muessen mit, sonst wuerde beim Weiterrubbeln neu
+         gewuerfelt — man koennte sich also ein besseres Los erzwingen. */
+      function snapshot() {
+        if (!active) { GK.clearGameState('scratch'); return; }
+        GK.saveGameState('scratch', {
+          stake: stake, symbols: symbols,
+          done: tiles.map(function (t) { return t.isDone(); })
+        });
+      }
+
+      function restore(st) {
+        if (!st || !st.symbols) return false;
+        stake = st.stake; symbols = st.symbols;
+        active = true;
+        revealedCount = 0;
+        bet.set && bet.set(stake);
+        buyBtn.disabled = true;
+        revealBtn.disabled = false;
+        bet.disable(true);
+        requestAnimationFrame(function () {
+          if (stopped) return;
+          tiles.forEach(function (t, i) {
+            t.arm(GK.iconHTML(symbols[i]));
+            /* Schon freigeriebene Felder direkt aufdecken — das zaehlt ueber
+               onRevealed auch den Zaehler wieder hoch. */
+            if (st.done && st.done[i]) t.reveal();
+          });
+        });
+        GK.setResult(resultBox, 'Weiter rubbeln — dein Los von vorhin.', '');
+        GK.toast('Unterbrochenes Los fortgesetzt · Einsatz ' + GK.fmt(stake), 'gold', '🎫');
+        return true;
+      }
+
       tiles.forEach(function (t) { t.reset(); });
-      return function () { stopped = true; };
+      restore(resume);
+      return function () { stopped = true; snapshot(); };
     }
   });
 })(window.GK);

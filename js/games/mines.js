@@ -19,7 +19,7 @@
       'Du kannst <b>jederzeit auszahlen</b>. Der Multiplikator gilt ab dem ersten Fund.',
       'Ein Drache beendet die Runde sofort — Einsatz weg.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false, active = false;
       var mineCount = 3, stake = 0, mines = [], revealed = [], picks = 0;
 
@@ -125,6 +125,7 @@
         GK.setResult(resultBox, 'Such die Edelsteine… 💎', '');
         GK.sfx('whoosh');
         syncStats();
+        snapshot();
       }
 
       function pickCell(i) {
@@ -147,6 +148,7 @@
         GK.sfx('gem');
         cashBtn.disabled = false;
         syncStats();
+        snapshot();
 
         if (picks === SIZE - mineCount) {
           GK.toast('Alle Edelsteine gefunden! Perfekt! 🤯', 'gold', '🏆');
@@ -189,6 +191,7 @@
       }
 
       function finishUI() {
+        GK.clearGameState('mines');
         startBtn.disabled = false;
         cashBtn.disabled = true;
         bet.disable(false);
@@ -196,11 +199,50 @@
         syncStats();
       }
 
+      /* ── Unterbrochene Runde ──
+         Die aufgedeckten Felder und die Lage der Drachen muessen mit, sonst
+         waere die Hoehle beim Weiterspielen neu gewuerfelt. Gesichert wird
+         nach jedem Feld, damit auch ein zugeschlagenes Fenster nichts frisst. */
+      function snapshot() {
+        if (!active) { GK.clearGameState('mines'); return; }
+        GK.saveGameState('mines', {
+          stake: stake, mineCount: mineCount, mines: mines, revealed: revealed, picks: picks
+        });
+      }
+
+      function restore(st) {
+        if (!st || !st.mines) return false;
+        stake = st.stake; mineCount = st.mineCount;
+        mines = st.mines; revealed = st.revealed || []; picks = st.picks || 0;
+        active = true;
+        bet.set && bet.set(stake);
+        mineSelect.value = String(mineCount);
+
+        cells.forEach(function (c, i) {
+          c.className = 'mine-cell';
+          c.innerHTML = GK.iconHTML('question');
+          c.disabled = false;
+          if (revealed.indexOf(i) >= 0) {
+            c.classList.add('gem', 'done');
+            c.innerHTML = GK.iconHTML('gem');
+          }
+        });
+        startBtn.disabled = true;
+        cashBtn.disabled = picks === 0;
+        bet.disable(true);
+        mineSelect.disabled = true;
+        syncStats();
+        GK.setResult(resultBox, 'Weiter geht’s — ' + picks + ' Edelsteine liegen schon.', '');
+        GK.toast('Unterbrochene Runde fortgesetzt · Einsatz ' + GK.fmt(stake), 'gold', '💎');
+        return true;
+      }
+
       startBtn.addEventListener('click', function () { GK.sfx('click'); start(); });
       cashBtn.addEventListener('click', function () { GK.sfx('click'); cashOut(); });
 
       syncStats();
-      return function () { stopped = true; };
+      restore(resume);
+      return function () { stopped = true; snapshot(); };
     }
   });
 })(window.GK);

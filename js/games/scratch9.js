@@ -117,7 +117,7 @@
       'Krone 50× · Stern 12× · Juwel 5× · Flamme 2,5× · Kleeblatt 1,5× · Münze 1×',
       'Unten liegt die <b>Bonus-Rune</b>: meistens leer, manchmal ein Sofortgewinn bis <b>20×</b> — ganz ohne Linie.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false, active = false, stake = 0, ticket = null, revealed = 0;
 
       var bet = GK.betPanel({ start: 20 });
@@ -191,10 +191,12 @@
           tiles.forEach(function (t, i) { t.arm(GK.iconHTML(ticket.grid[i])); });
           bonusTile.arm('<span class="b-val' + (ticket.bonus.m ? ' hit' : '') + '">' + ticket.bonus.label + '</span>');
         });
+        snapshot();
       }
 
       function onRevealed() {
         revealed++;
+        snapshot();
         if (revealed >= 10) setTimeout(finish, 420);
       }
 
@@ -237,6 +239,7 @@
         buyBtn.disabled = false;
         revealBtn.disabled = true;
         bet.disable(false);
+        GK.clearGameState('scratch9');
       }
 
       buyBtn.addEventListener('click', function () { GK.sfx('click'); buy(); });
@@ -246,9 +249,47 @@
         if (!bonusTile.isDone()) bonusTile.reveal();
       });
 
+      /* ── Unterbrochenes Los ──
+         Das gezogene Los muss mit, sonst wuerde beim Weiterrubbeln neu
+         gewuerfelt. Das Bonusfeld zaehlt als zehntes Feld. */
+      function snapshot() {
+        if (!active) { GK.clearGameState('scratch9'); return; }
+        GK.saveGameState('scratch9', {
+          stake: stake, ticket: ticket,
+          done: tiles.map(function (t) { return t.isDone(); }),
+          bonusDone: bonusTile.isDone()
+        });
+      }
+
+      function restore(st) {
+        if (!st || !st.ticket) return false;
+        stake = st.stake; ticket = st.ticket;
+        active = true;
+        revealed = 0;
+        bet.set && bet.set(stake);
+        overlay.innerHTML = '';
+        tiles.forEach(function (t) { t.el.classList.remove('online'); });
+        buyBtn.disabled = true;
+        revealBtn.disabled = false;
+        bet.disable(true);
+        requestAnimationFrame(function () {
+          if (stopped) return;
+          tiles.forEach(function (t, i) {
+            t.arm(GK.iconHTML(ticket.grid[i]));
+            if (st.done && st.done[i]) t.reveal();
+          });
+          bonusTile.arm('<span class="b-val' + (ticket.bonus.m ? ' hit' : '') + '">' + ticket.bonus.label + '</span>');
+          if (st.bonusDone) bonusTile.reveal();
+        });
+        GK.setResult(resultBox, 'Weiter rubbeln — dein Los von vorhin.', '');
+        GK.toast('Unterbrochenes Los fortgesetzt · Einsatz ' + GK.fmt(stake), 'gold', '🎫');
+        return true;
+      }
+
       tiles.forEach(function (t) { t.el.classList.remove('online'); t.reset(); });
       bonusTile.reset('<span class="b-val">?</span>');
-      return function () { stopped = true; };
+      restore(resume);
+      return function () { stopped = true; snapshot(); };
     }
   });
 })(window.GK);

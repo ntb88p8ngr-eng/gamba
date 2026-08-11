@@ -40,7 +40,7 @@
       'Springen geht per Knopf <b>oder mit einem Tipp auf die nächste Scholle</b>.',
       'Kein Sprung ist sicher — auch der erste nicht.'
     ],
-    mount: function (root) {
+    mount: function (root, resume) {
       var stopped = false, running = false, pos = 0, stake = 0, busy = false;
       var timers = [];
       function wait(ms, fn) {
@@ -166,6 +166,7 @@
         GK.setResult(resultBox, 'Das Eis knackt schon… viel Glück!', '');
         GK.sfx('click');
         sync();
+        snapshot();
       }
 
       function hop() {
@@ -199,6 +200,7 @@
           busy = false;
           stepInfo.textContent = 'Scholle ' + pos + ' von ' + MULTS.length + ' — ' + MULTS[pos - 1] + '×';
           sync();
+          snapshot();
         });
       }
 
@@ -216,6 +218,7 @@
         if (auto) GK.emojiRain(['🐧', '🏔️', '🎉'], 24);
         stepInfo.textContent = auto ? 'Am anderen Ufer angekommen.' : 'Rechtzeitig abgesprungen.';
         sync();
+        GK.clearGameState('penguin');
       }
 
       function lose() {
@@ -226,6 +229,7 @@
           'Die Scholle bricht bei Nummer ' + pos + ' — ' + GK.fmt(stake) + ' Chips im Meer', 'lose');
         GK.sfx('lose');
         GK.shake(scene);
+        GK.clearGameState('penguin');
         stepInfo.textContent = 'Platsch. Der Pinguin schwimmt zurück.';
         wait(1400, function () {
           pos = 0;
@@ -243,12 +247,40 @@
       function onResize() { placePenguin(); }
       window.addEventListener('resize', onResize);
 
+      /* ── Unterbrochener Lauf ──
+         Der Pinguin steht wieder auf derselben Scholle. Ob die naechste
+         haelt, wird ohnehin erst beim Sprung gewuerfelt — es reicht also, die
+         erreichte Position zu sichern. Gesichert wird nach jedem Sprung. */
+      function snapshot() {
+        if (!running) { GK.clearGameState('penguin'); return; }
+        GK.saveGameState('penguin', { stake: stake, pos: pos });
+      }
+
+      function restore(st) {
+        if (!st || !st.stake) return false;
+        stake = st.stake; pos = st.pos || 0;
+        running = true; busy = false;
+        bet.set && bet.set(stake);
+        floes.forEach(function (f) { f.classList.remove('broken'); });
+        penguin.classList.remove('splash');
+        stepInfo.textContent = pos > 0
+          ? 'Scholle ' + pos + ' von ' + MULTS.length + ' — ' + MULTS[pos - 1] + '×'
+          : 'Noch am Ufer';
+        sync();
+        requestAnimationFrame(function () { if (!stopped) placePenguin(); });
+        GK.setResult(resultBox, 'Weiter geht’s — ' + pos + ' Schollen liegen hinter dir.', '');
+        GK.toast('Unterbrochener Lauf fortgesetzt · Einsatz ' + GK.fmt(stake), 'gold', '🐧');
+        return true;
+      }
+
       // erst nach dem Einhängen messen, sonst sind alle Breiten 0
       requestAnimationFrame(function () { if (!stopped) placePenguin(); });
       sync();
+      restore(resume);
 
       return function () {
         stopped = true;
+        snapshot();
         timers.forEach(clearTimeout);
         window.removeEventListener('resize', onResize);
       };
