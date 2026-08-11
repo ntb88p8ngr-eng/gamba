@@ -731,6 +731,26 @@
       Sound.noise({ dur: 0.42, freq: 260, filter: 'lowpass', vol: 0.16 });
       Sound.tone({ freq: 140, to: 110, dur: 0.35, type: 'triangle', vol: 0.1, delay: 0.08 });
     },
+    /* Spannung: langsam ansteigender Ton, wenn nur noch eine Walze fehlt und
+       der Bonus zum Greifen nah ist. Bewusst leise und ohne Hoehen — er soll
+       ziehen, nicht stechen. */
+    tension: function () {
+      Sound.tone({ freq: 180, to: 620, dur: 1.1, type: 'triangle', vol: 0.16 });
+      Sound.tone({ freq: 90, to: 310, dur: 1.15, type: 'sine', vol: 0.11, delay: 0.03 });
+      Sound.noise({ dur: 0.9, freq: 1400, filter: 'bandpass', vol: 0.05, delay: 0.1 });
+    },
+    /* Freispiele ausgeloest: heller Aufstieg mit Nachschlag */
+    freespin: function () {
+      [523, 659, 784, 1046, 1318].forEach(function (f, i) {
+        Sound.tone({ freq: f, dur: 0.26, type: 'square', vol: 0.2, delay: i * 0.09 });
+        Sound.tone({ freq: f * 2, dur: 0.2, type: 'triangle', vol: 0.09, delay: i * 0.09 + 0.02 });
+      });
+      Sound.noise({ dur: 0.5, freq: 3000, filter: 'highpass', vol: 0.1, delay: 0.45 });
+    },
+    /* Ein einzelner Freispiel-Dreh startet — kurzer Anstoss statt Fanfare */
+    freespin2: function () {
+      Sound.tone({ freq: 660, to: 990, dur: 0.16, type: 'triangle', vol: 0.14 });
+    },
     /* Landung auf der Scholle: kurzer Bass-Plumps plus Eisknirschen */
     plop:    function () {
       Sound.tone({ freq: 190, to: 78, dur: 0.16, type: 'sine', vol: 0.26 });

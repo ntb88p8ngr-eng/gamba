@@ -1030,3 +1030,62 @@
 @media(max-width:620px){
   .pk-mine.two{grid-template-columns:1fr}
 }
+
+/* ─────────── SLOTS: BONUS, FREISPIELE UND GEWINN-HERVORHEBUNG ───────────
+   Drei Bausteine, die sich beide Automaten teilen. */
+
+/* Wisch statt Linie: ein Lichtstreifen faehrt einmal ueber die Gewinnfelder.
+   Die frueheren duennen Linien lagen als Striche im Bild und waren bei fuenf
+   Linien kaum auseinanderzuhalten. */
+.win-wipe{
+  position:absolute;pointer-events:none;border-radius:10px;opacity:0;
+  background:linear-gradient(100deg,
+    transparent 0%,rgba(255,255,255,.15) 35%,rgba(255,255,255,.85) 50%,
+    rgba(255,255,255,.15) 65%,transparent 100%);
+  mix-blend-mode:screen;
+  animation:winwipe 1.05s cubic-bezier(.3,.7,.3,1) forwards
+}
+.win-wipe::after{
+  content:"";position:absolute;inset:0;border-radius:10px;
+  border:2px solid currentColor;box-shadow:0 0 14px currentColor;opacity:.9
+}
+@keyframes winwipe{
+  0%{opacity:0;transform:translateX(-38%) skewX(-12deg)}
+  18%{opacity:1}
+  82%{opacity:1}
+  100%{opacity:0;transform:translateX(38%) skewX(-12deg)}
+}
+
+/* Sprung: Gewinnsymbole und Freispiel-Anzeigen federn kurz hoch. */
+@keyframes symspring{
+  0%{transform:scale(1) translateY(0)}
+  25%{transform:scale(1.28) translateY(-16%)}
+  45%{transform:scale(.92) translateY(4%)}
+  65%{transform:scale(1.12) translateY(-6%)}
+  100%{transform:scale(1) translateY(0)}
+}
+.sym.spring img,.sym.spring svg{animation:symspring .72s cubic-bezier(.3,1.5,.4,1) both}
+.sym.spring{filter:drop-shadow(0 0 12px rgba(255,209,46,.95))}
+
+/* Freispiel-Zaehler ueber den Walzen */
+.fs-banner{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:8px;padding:8px 14px;border-radius:14px;
+  border:3px solid var(--gold);background:linear-gradient(180deg,rgba(255,209,46,.22),rgba(255,138,0,.14));
+  font-family:'Bungee',sans-serif;font-size:.9rem;color:var(--gold);
+  text-shadow:0 2px 6px rgba(0,0,0,.6);box-shadow:0 0 26px rgba(255,209,46,.45)
+}
+.fs-banner b{font-size:1.25rem;color:#fff}
+.fs-banner.pop{animation:symspring .7s cubic-bezier(.3,1.5,.4,1)}
+.fs-banner[hidden]{display:none}
+
+/* Spannung: solange nur noch eine Walze fehlt, pulsiert der Rahmen */
+.slot-machine.tense,.ocean-machine.tense{
+  animation:tensepulse .6s ease-in-out infinite alternate
+}
+@keyframes tensepulse{
+  from{box-shadow:0 0 0 rgba(255,209,46,0)}
+  to{box-shadow:0 0 34px rgba(255,209,46,.75)}
+}
+/* Die Walze, an der es haengt, wird zusaetzlich eingerahmt */
+.reel.tense{box-shadow:inset 0 0 0 3px rgba(255,209,46,.9),0 0 22px rgba(255,209,46,.6)}

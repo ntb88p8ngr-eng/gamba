@@ -17,6 +17,14 @@
   var TOTAL_W = SYMS.reduce(function (s, x) { return s + x.w; }, 0);
   var ROW = 120;
 
+  /* ── Freispiele ──
+     Der Stern ist zusaetzlich Ausloeser: drei davon bringen Freispiele, in
+     denen jeder Gewinn doppelt zaehlt. Waehrend der Freispiele kostet kein
+     Dreh Chips, und drei Sterne verlaengern die Serie. */
+  var SCATTER = 'star';
+  var FREE_SPINS = 10;
+  var FREE_MULT = 2;
+
   function randSym() {
     var r = Math.random() * TOTAL_W;
     for (var i = 0; i < SYMS.length; i++) { r -= SYMS[i].w; if (r <= 0) return SYMS[i]; }
@@ -62,7 +70,9 @@
       '<b>3 gleiche Symbole</b> auf der Linie zahlen den großen Multiplikator.',
       '<b>2 gleiche Symbole</b> geben nur einen Teil zurück (0,5× bis 3×) — meist weniger als der Einsatz.',
       'Die <b>Krone</b> ist der Jackpot: 100× deinen Einsatz.',
-      'Auszahlung = Einsatz × Multiplikator.'
+      'Auszahlung = Einsatz × Multiplikator.',
+      '<b>3 Sterne</b> lösen <b>' + FREE_SPINS + ' Freispiele</b> aus: sie kosten nichts, und jeder Gewinn zählt <b>' + FREE_MULT + '×</b>.',
+      'Drei Sterne im Freispiel <b>verlängern</b> die Serie um weitere ' + FREE_SPINS + '.'
     ],
     mount: function (root) {
       var stopped = false;
@@ -112,6 +122,11 @@
       var lights = el('div', { class: 'slot-lights' });
       for (var L = 0; L < 9; L++) lights.appendChild(el('i'));
 
+      var fsBanner = el('div', { class: 'fs-banner' }, [
+        '🌟 FREISPIELE', el('b', { text: '0' }), '· ' + FREE_MULT + '× auf alles'
+      ]);
+      fsBanner.hidden = true;
+
       var machine = el('div', { class: 'slot-machine' }, [
         lights,
         el('div', { class: 'reels' }, reels.concat([el('div', { class: 'payline' })]))
@@ -133,7 +148,7 @@
       var autoLeft = 0, endless = false;
 
       var stage = el('div', { class: 'stage split' }, [
-        el('div', {}, [machine, paytable]),
+        el('div', {}, [fsBanner, machine, paytable]),
         GK.panel([
           bet.el,
           el('div', { style: 'height:12px' }),
@@ -149,23 +164,37 @@
       root.appendChild(stage);
 
       var spinning = false;
+      var freeLeft = 0, freeStake = 0;
+
+      /** Wieviel zahlt dieses Bild — im Freispiel mit Aufschlag. */
+      function winFor(out, stake, inFree) {
+        return Math.floor(stake * outcomeMult(out).mult * (inFree ? FREE_MULT : 1));
+      }
+      function scatters(out) {
+        return out.filter(function (x) { return x.id === SCATTER; }).length;
+      }
 
       function spin() {
         if (spinning || stopped) return;
-        var stake = bet.value();
-        if (!GK.wager(stake, 'Slots')) { stopAuto(); return; }
+        var free = freeLeft > 0;
+        /* Im Freispiel bleibt der Einsatz der der Ausloeserunde, es wird aber
+           nichts abgebucht. */
+        var stake = free ? freeStake : bet.value();
+        if (!free && !GK.wager(stake, 'Slots')) { stopAuto(); return; }
+        if (free) { freeLeft--; syncFree(); GK.sfx('freespin2'); }
 
         spinning = true;
         spinBtn.disabled = true;
         bet.disable(true);
-        GK.setResult(resultBox, 'Die Walzen drehen…', '');
-        GK.sfx('spin');
+        GK.setResult(resultBox, free ? 'Freispiel läuft…' : 'Die Walzen drehen…', '');
+        if (!free) GK.sfx('spin');
 
         // Ergebnis vorab würfeln (mit Luck-Bonus vom Admin)
         var out = drawOutcome();
         /* Der Ausgang steht damit fest — die Walzen zeigen ihn nur noch.
-           Anmelden, damit ein Verlassen mitten im Dreh nichts umgeht. */
-        GK.commitResult(Math.floor(stake * outcomeMult(out).mult), stake);
+           Anmelden, damit ein Verlassen mitten im Dreh nichts umgeht.
+           Freispiele kosten nichts, deshalb dort Einsatz 0. */
+        GK.commitResult(winFor(out, stake, free), free ? 0 : stake);
 
         reels.forEach(function (r) { r.classList.remove('hit'); });
 
@@ -189,16 +218,71 @@
             GK.sfx('reel');
             reels[i].classList.add('hit');
             setTimeout(function () { reels[i].classList.remove('hit'); }, 400);
+
+            /* Stehen nach der zweiten Walze zwei Sterne, haengt der Bonus an
+               der letzten — das darf man hoeren und sehen. */
+            if (i === 1 && out[0].id === SCATTER && out[1].id === SCATTER) {
+              machine.classList.add('tense');
+              reels[2].classList.add('tense');
+              GK.sfx('tension');
+            }
           }, (1.7 + i * 0.55) * 1000);
         });
 
         setTimeout(function () {
           if (stopped) return;
-          finish(out, stake);
+          machine.classList.remove('tense');
+          reels[2].classList.remove('tense');
+          finish(out, stake, free);
         }, (1.7 + 2 * 0.55) * 1000 + 260);
       }
 
-      function finish(out, stake) {
+      /** Gewinnsymbole federn kurz hoch, statt nur die Walze aufblitzen zu lassen. */
+      function spring(indexes) {
+        indexes.forEach(function (i, n) {
+          var cell = strips[i].lastChild;
+          if (!cell) return;
+          setTimeout(function () {
+            if (stopped) return;
+            cell.classList.remove('spring');
+            void cell.offsetWidth;                 // Neustart der Animation erzwingen
+            cell.classList.add('spring');
+            setTimeout(function () { cell.classList.remove('spring'); }, 900);
+          }, n * 110);
+        });
+      }
+
+      /** Welche der drei Stellen gehoeren zum Treffer? */
+      function winningCells(out, res) {
+        if (!res.sym) return [];
+        var ids = [0, 1, 2].filter(function (i) { return out[i].id === res.sym.id; });
+        return res.three ? [0, 1, 2] : ids.slice(0, 2);
+      }
+
+      function syncFree() {
+        fsBanner.hidden = freeLeft <= 0;
+        fsBanner.querySelector('b').textContent = freeLeft;
+        spinBtn.textContent = freeLeft > 0 ? '🌟 FREISPIEL (' + freeLeft + ')' : '🎰 SPIN';
+        bet.disable(freeLeft > 0 || spinning);
+      }
+
+      function awardFree(n, retrigger) {
+        freeLeft += n;
+        freeStake = freeStake || bet.value();
+        syncFree();
+        fsBanner.classList.remove('pop');
+        void fsBanner.offsetWidth;
+        fsBanner.classList.add('pop');
+        GK.sfx('freespin');
+        GK.confetti(120);
+        GK.emojiRain(['🌟', '✨'], 22);
+        GK.toast(retrigger
+          ? '+' + n + ' Freispiele — die Serie geht weiter!'
+          : n + ' Freispiele! Jeder Gewinn zählt ' + FREE_MULT + '×',
+          'gold', '🌟');
+      }
+
+      function finish(out, stake, inFree) {
         var res = outcomeMult(out);
         var mult = res.mult, label = '';
         if (res.three) {
@@ -207,19 +291,26 @@
         } else if (res.sym) {
           label = 'Zwei ' + res.sym.name + ' — ' + mult + '×';
         }
+        if (res.sym) spring(winningCells(out, res));
 
-        var win = Math.floor(stake * mult);
-        GK.payout(win, { stake: stake });
-        GK.logPlay('Fantasy Slots', stake, win);
+        var win = winFor(out, stake, inFree);
+        /* Im Freispiel wurde nichts gesetzt — als Einsatz 0 buchen, damit die
+           Statistik den geschenkten Dreh nicht als Verlust zaehlt. */
+        GK.payout(win, { stake: inFree ? 0 : stake });
+        GK.logPlay('Fantasy Slots', inFree ? 0 : stake, win);
 
+        var frei = scatters(out) === 3;
+        if (frei) awardFree(FREE_SPINS, inFree);
+
+        var zusatz = inFree ? ' (Freispiel ' + FREE_MULT + '×)' : '';
         if (win > stake) {
-          GK.setResult(resultBox, label + '  →  +' + GK.fmt(win - stake), 'win');
+          GK.setResult(resultBox, label + zusatz + '  →  +' + GK.fmt(win - stake), 'win');
           GK.celebrate(win - stake, mult);
           if (mult >= 100) GK.emojiRain(['👑', '💎', '🤑'], 40);
         } else if (win > 0) {
-          GK.setResult(resultBox, label + '  →  ' + GK.fmt(win) + ' zurück', 'push');
+          GK.setResult(resultBox, label + zusatz + '  →  ' + GK.fmt(win) + ' zurück', 'push');
           GK.sfx('coin');
-        } else {
+        } else if (!frei) {
           GK.setResult(resultBox, out.map(function (s) { return s.name; }).join(' · ') + '  —  daneben!', 'lose');
           GK.sfx('lose');
           GK.shake(machine);
@@ -227,7 +318,11 @@
 
         spinning = false;
         spinBtn.disabled = false;
-        bet.disable(false);
+        syncFree();
+        if (freeLeft <= 0) { freeStake = 0; bet.disable(false); }
+
+        /* Freispiele laufen von selbst weiter — dafuer muss man nicht klicken. */
+        if (freeLeft > 0) { setTimeout(spin, 900); return; }
 
         if (endless) {
           // läuft weiter, bis gestoppt wird oder die Chips nicht mehr reichen
