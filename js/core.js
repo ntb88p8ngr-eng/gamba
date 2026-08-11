@@ -196,29 +196,62 @@
   }
 
   /**
+   * Ergebnis vormerken, das schon feststeht.
+   *
+   * Bei Rad, Walze, Kugel und Muenze faellt die Entscheidung in dem Moment,
+   * in dem gesetzt wird — die Animation zeigt sie nur noch. Wer dazwischen
+   * rausgeht, soll damit nichts umgehen koennen. Das Spiel meldet den
+   * Ausgang deshalb sofort hier an; bleibt die Runde liegen, wird genau
+   * dieser Betrag ausgezahlt statt der Einsatz erstattet.
+   *
+   * @param {number} win   Auszahlung, 0 bei Verlust
+   * @param {number} stake Einsatz der Runde, fuer die Statistik
+   */
+  GK.commitResult = function (win, stake) {
+    var cur = openStakeGet();
+    if (!cur) return;
+    cur.win = Math.floor(win) || 0;
+    cur.resultStake = Math.floor(stake) || cur.amount;
+    openStakeSet(cur);
+  };
+
+  /**
    * Eine liegengebliebene Runde aufloesen.
    *
-   * Hat das Spiel einen Stand gesichert, bleibt der Einsatz stehen — er
-   * gehoert zur Runde, die spaeter weitergeht. Sonst kommen die Chips
-   * zurueck, denn dann kann sie niemand mehr gewinnen.
+   * Drei Faelle, in dieser Reihenfolge:
+   *   1. Das Spiel hat einen Stand gesichert — dann laeuft die Runde spaeter
+   *      weiter und der Einsatz bleibt stehen.
+   *   2. Der Ausgang stand schon fest — dann wird er ausgezahlt, gewonnen wie
+   *      verloren. Rausgehen bringt also keinen Vorteil.
+   *   3. Weder noch — Einsatz zurueck, denn dann kann ihn niemand mehr
+   *      gewinnen.
    *
    * @param {string} [gameId] nur diese Runde pruefen; ohne Angabe die offene
-   * @returns {number} zurueckgegebene Chips
+   * @returns {{chips:number, settled:boolean, stake:number}|null}
+   *   settled=true heisst: zu Ende gespielt. settled=false: erstattet.
    */
   GK.resolveOpenStake = function (gameId) {
     var cur = openStakeGet();
-    if (!cur || !cur.amount) return 0;
-    if (gameId && cur.game !== gameId) return 0;
-    if (GK.hasGameState(cur.game)) return 0;      // wird fortgesetzt
+    if (!cur || !cur.amount) return null;
+    if (gameId && cur.game !== gameId) return null;
+    if (GK.hasGameState(cur.game)) return null;   // wird fortgesetzt
 
     var p = GK.player();
-    if (!p) return 0;
+    if (!p) return null;
+
+    if (cur.win !== undefined) {                  // Ausgang stand schon fest
+      var win = cur.win, st = cur.resultStake;
+      openStakeSet(null);
+      GK.payout(win, { stake: st });
+      return { chips: win, settled: true, stake: st };
+    }
+
     var back = Math.floor(cur.amount);
     p.balance += back;
     openStakeSet(null);
     GK.commit('payout', { id: p.id, amount: back, stake: back });
     GK.updateHUD(back);
-    return back;
+    return { chips: back, settled: false, stake: back };
   };
 
   /** Wieviel steht gerade in einer unbeendeten Runde? */

@@ -298,6 +298,10 @@
           if (candidates.length) idx = GK.pick(candidates);
         }
         var num = WHEEL[idx];
+        /* Die Zahl steht fest, bevor sich das Rad ueberhaupt dreht. */
+        var vorab = 0;
+        chips.forEach(function (c) { if (chipWins(c, num)) vorab += Math.floor(c.amount * c.mult); });
+        GK.commitResult(vorab, stake);
 
         var center = idx * SEG + SEG / 2;
         var base = rot - (rot % 360);

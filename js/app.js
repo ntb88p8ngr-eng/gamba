@@ -55,12 +55,22 @@
     $('#game-stage').innerHTML = '';
   }
 
+  /* Beim Verlassen und beim Start: liegengebliebene Runde aufloesen. Stand
+     der Ausgang schon fest, wird zu Ende gespielt statt erstattet — sonst
+     koennte man einen sich abzeichnenden Verlust durch Rausgehen umgehen. */
   function refundOpenStake() {
-    var back = GK.resolveOpenStake();
-    if (back > 0) {
-      GK.toast('Runde abgebrochen — ' + GK.fmt(back) + ' Chips zurück', 'gold', '↩️');
-      renderAll();
+    var r = GK.resolveOpenStake();
+    if (!r) return;
+    if (r.settled) {
+      var netto = r.chips - r.stake;
+      GK.toast(netto >= 0
+        ? 'Runde zu Ende gespielt — ' + GK.fmtSigned(netto) + ' Chips'
+        : 'Runde zu Ende gespielt — ' + GK.fmt(r.stake) + ' Chips verloren',
+        netto > 0 ? 'gold' : 'bad', netto > 0 ? '🎉' : '🎲');
+    } else {
+      GK.toast('Runde abgebrochen — ' + GK.fmt(r.chips) + ' Chips zurück', 'gold', '↩️');
     }
+    renderAll();
   }
 
   function showRules(g) {

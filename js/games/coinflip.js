@@ -107,6 +107,8 @@
 
         var win = GK.luckRoll(0.5);
         var landed = win ? side : (side === 'crown' ? 'dragon' : 'crown');
+        /* Seite und Serienbonus stehen fest, sobald die Muenze fliegt. */
+        GK.commitResult(win ? Math.floor(stake * MULT) + bonusFor(streak + 1) : 0, stake);
 
         var base = rot - (rot % 360);
         rot = base + 360 * 5 + (landed === 'dragon' ? 180 : 0);

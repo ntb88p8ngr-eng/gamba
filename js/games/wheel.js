@@ -129,6 +129,9 @@
           if (good.length) idx = GK.pick(good);
         }
 
+        /* Das Segment steht fest, bevor sich das Rad dreht. */
+        GK.commitResult(Math.floor(stake * SEGS[idx]), stake);
+
         var center = idx * STEP + STEP / 2;
         var base = rot - (rot % 360);
         rot = base + 360 * 7 + (360 - center);

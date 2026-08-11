@@ -163,6 +163,9 @@
 
         // Ergebnis vorab würfeln (mit Luck-Bonus vom Admin)
         var out = drawOutcome();
+        /* Der Ausgang steht damit fest — die Walzen zeigen ihn nur noch.
+           Anmelden, damit ein Verlassen mitten im Dreh nichts umgeht. */
+        GK.commitResult(Math.floor(stake * outcomeMult(out).mult), stake);
 
         reels.forEach(function (r) { r.classList.remove('hit'); });
 
