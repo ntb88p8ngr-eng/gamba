@@ -112,6 +112,118 @@
 
   GK.save = function () { saveDevice(); saveLocal(); };
 
+  /* ───────────────── UNTERBROCHENE RUNDEN ─────────────────
+     Zwei Dinge halten hier fest, was passiert, wenn jemand mitten in einer
+     Runde in die Lobby geht oder das Fenster zumacht:
+
+     1. Der Spielstand — was ein Spiel selbst wegschreibt, um beim naechsten
+        Oeffnen genau dort weiterzumachen.
+     2. Der offene Einsatz — was wager() abgezogen und payout() noch nicht
+        verrechnet hat. Bleibt eine Runde ohne Spielstand liegen, kommen die
+        Chips zurueck. Verlieren kann man sie durchs Schliessen also nicht.
+
+     Beides haengt an der Spieler-id, damit sich zwei Konten auf demselben
+     Geraet nicht in die Quere kommen. */
+  var RESUME_KEY = 'gambaking:resume';
+
+  function resumeAll() {
+    try { return JSON.parse(localStorage.getItem(RESUME_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+  function resumeWrite(all) {
+    try { localStorage.setItem(RESUME_KEY, JSON.stringify(all)); } catch (e) {}
+  }
+  function resumeSlot() {
+    var p = GK.player();
+    return p ? p.id : null;
+  }
+
+  /** Spielstand einer laufenden Runde sichern. */
+  GK.saveGameState = function (gameId, data) {
+    var slot = resumeSlot();
+    if (!slot || !gameId) return;
+    var all = resumeAll();
+    if (!all[slot]) all[slot] = { games: {}, stake: null };
+    all[slot].games[gameId] = { at: Date.now(), data: data };
+    resumeWrite(all);
+  };
+
+  /** Gesicherten Spielstand holen — oder null. */
+  GK.loadGameState = function (gameId) {
+    var slot = resumeSlot();
+    if (!slot || !gameId) return null;
+    var e = resumeAll()[slot];
+    var s = e && e.games && e.games[gameId];
+    return s ? s.data : null;
+  };
+
+  GK.hasGameState = function (gameId) { return GK.loadGameState(gameId) !== null; };
+
+  /** Runde ist abgeschlossen — Spielstand wegwerfen. */
+  GK.clearGameState = function (gameId) {
+    var slot = resumeSlot();
+    if (!slot || !gameId) return;
+    var all = resumeAll();
+    if (all[slot] && all[slot].games) {
+      delete all[slot].games[gameId];
+      resumeWrite(all);
+    }
+  };
+
+  /* Offener Einsatz. Mehrere wager()-Aufrufe in derselben Runde — Doppeln
+     beim Blackjack, jede Setzrunde beim Poker — summieren sich auf. */
+  function openStakeGet() {
+    var slot = resumeSlot();
+    if (!slot) return null;
+    var e = resumeAll()[slot];
+    return (e && e.stake) || null;
+  }
+  function openStakeSet(v) {
+    var slot = resumeSlot();
+    if (!slot) return;
+    var all = resumeAll();
+    if (!all[slot]) all[slot] = { games: {}, stake: null };
+    all[slot].stake = v;
+    resumeWrite(all);
+  }
+
+  function openStakeAdd(gameId, amount) {
+    if (!gameId) return;
+    var cur = openStakeGet();
+    if (cur && cur.game === gameId) cur.amount += amount;
+    else cur = { game: gameId, amount: amount };
+    openStakeSet(cur);
+  }
+
+  /**
+   * Eine liegengebliebene Runde aufloesen.
+   *
+   * Hat das Spiel einen Stand gesichert, bleibt der Einsatz stehen — er
+   * gehoert zur Runde, die spaeter weitergeht. Sonst kommen die Chips
+   * zurueck, denn dann kann sie niemand mehr gewinnen.
+   *
+   * @param {string} [gameId] nur diese Runde pruefen; ohne Angabe die offene
+   * @returns {number} zurueckgegebene Chips
+   */
+  GK.resolveOpenStake = function (gameId) {
+    var cur = openStakeGet();
+    if (!cur || !cur.amount) return 0;
+    if (gameId && cur.game !== gameId) return 0;
+    if (GK.hasGameState(cur.game)) return 0;      // wird fortgesetzt
+
+    var p = GK.player();
+    if (!p) return 0;
+    var back = Math.floor(cur.amount);
+    p.balance += back;
+    openStakeSet(null);
+    GK.commit('payout', { id: p.id, amount: back, stake: back });
+    GK.updateHUD(back);
+    return back;
+  };
+
+  /** Wieviel steht gerade in einer unbeendeten Runde? */
+  GK.openStake = function () { return openStakeGet(); };
+
   /** Serverstand übernehmen. Gibt zurück, ob sich etwas geändert hat. */
   GK.adoptState = function (s) {
     if (!s || !s.players) return false;
@@ -334,6 +446,10 @@
     p.balance -= amount;
     p.wagered += amount;
     p.plays++;
+    /* Ab hier gilt der Einsatz als offen, bis payout() ihn verrechnet.
+       Gebucht wird auf die Spiel-id, nicht auf den Anzeigenamen im zweiten
+       Parameter — nur die id passt zum gesicherten Spielstand. */
+    openStakeAdd(GK.currentGame, amount);
     GK.commit('wager', { id: p.id, amount: amount });
     // XP fürs Mitspielen — gedeckelt, damit ein einzelner Riesen-Einsatz
     // nicht sofort alles freischaltet (der Server deckelt identisch).
@@ -347,6 +463,8 @@
     var p = GK.player();
     amount = Math.floor(amount);
     if (!p) return;
+    /* Runde ist verrechnet — der Einsatz ist damit nicht mehr offen. */
+    openStakeSet(null);
     if (amount > 0) {
       p.balance += amount;
       p.returned += amount;

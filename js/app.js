@@ -30,7 +30,9 @@
     var stageEl = $('#game-stage');
     stageEl.innerHTML = '';
     document.documentElement.style.setProperty('--game-color', g.color);
-    currentCleanup = g.mount(stageEl) || null;
+    /* Lag hier eine unterbrochene Runde, bekommt sie das Spiel mit und macht
+       dort weiter, wo es aufgehoert hat. */
+    currentCleanup = g.mount(stageEl, GK.loadGameState(g.id)) || null;
     /* Auf dem Handy klebt die Bedienung am unteren Rand. Spiele mit einer
        Zwischenaktion (Hit/Stand, Weiter/Aussteigen) brauchen dort eine Zeile
        mehr — das Einsatzfeld muss entsprechend höher sitzen. Welche das sind,
@@ -45,8 +47,20 @@
   function closeGame() {
     if (currentCleanup) { try { currentCleanup(); } catch (e) {} }
     currentCleanup = null;
+    /* Die Aufraeumfunktion des Spiels hatte gerade Gelegenheit, ihren Stand
+       zu sichern. Ist keiner da, war die Runde nicht fortsetzbar — dann
+       kommt der Einsatz zurueck, statt im Nichts zu verschwinden. */
+    refundOpenStake();
     GK.currentGame = null;
     $('#game-stage').innerHTML = '';
+  }
+
+  function refundOpenStake() {
+    var back = GK.resolveOpenStake();
+    if (back > 0) {
+      GK.toast('Runde abgebrochen — ' + GK.fmt(back) + ' Chips zurück', 'gold', '↩️');
+      renderAll();
+    }
   }
 
   function showRules(g) {
@@ -924,6 +938,10 @@
         GK.toast('Kein Server gefunden — Leaderboard bleibt lokal', 'bad', '📡');
       }
       renderAll();
+      /* Fenster mitten in einer Runde zugemacht? Dann steht der Einsatz noch
+         offen und niemand kann ihn mehr gewinnen — zurueck damit. Runden mit
+         gesichertem Stand bleiben unangetastet und lassen sich fortsetzen. */
+      refundOpenStake();
       afterLoad();
     });
 
