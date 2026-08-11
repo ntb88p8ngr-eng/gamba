@@ -190,6 +190,7 @@ In der Browser-Konsole:
 GK.sfxPack.debug('click')          // welche Datei gilt gerade?
 GK.sfxPack.debug('boom', 'crash')  // und im Spiel Crash?
 GK.sfxPack.problems                // Liste der Ladefehler
+GK.sfxPack.broken                  // Einträge, die nicht gelesen werden konnten
 GK.sfxPack.reload()                // sounds.json neu einlesen
 ```
 
@@ -203,7 +204,11 @@ Häufige Ursachen:
 * **Erster Ton kommt noch eingebaut.** Dateien werden beim ersten Bedarf
   geladen; ab dem zweiten Mal liegen sie bereit. Mit `"preload": true` ist
   schon der erste Ton die Datei.
-* **JSON kaputt.** Ein Komma zu viel, und die ganze Datei wird verworfen —
-  dann bleibt alles eingebaut. `GK.sfxPack.problems` sagt es.
+* **Tippfehler in sounds.json.** Die Datei wird in drei Stufen gelesen:
+  normal, dann nach dem Übergehen von Kommentaren und einem Komma zu viel vor
+  der schließenden Klammer, und zuletzt Eintrag für Eintrag. In der letzten
+  Stufe fällt nur der kaputte Eintrag weg — alle anderen Klänge spielen
+  weiter. Welcher es war, steht mit Zeilennummer in `GK.sfxPack.broken` und
+  kurz nach dem Laden auch als Meldung auf der Seite.
 * **Nach dem Deploy unverändert.** Die Dateien werden beim Bauen ins Image
   gelegt, ein Neustart allein reicht nicht: `docker compose up -d --build`.

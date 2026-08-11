@@ -21,7 +21,9 @@
     loaded: false,
     /* Fehlermeldungen sammeln, statt die Konsole vollzuschreiben — jede
        kaputte Datei genau einmal melden. */
-    problems: []
+    problems: [],
+    /* Eintraege aus sounds.json, die sich nicht lesen liessen. */
+    broken: []
   };
 
   var buffers = {};        // pfad -> AudioBuffer
@@ -210,6 +212,157 @@
     return true;
   };
 
+  /* ── Kaputte JSON ueberleben ───────────────────────────────────────── */
+
+  /* Ein einziger Tippfehler in sounds.json machte bisher saemtliche eigenen
+     Klaenge aus — JSON.parse bricht beim ersten Fehler ab und wirft das ganze
+     Dokument weg. Deshalb wird die Datei in drei Stufen gelesen:
+       1. normal,
+       2. nach dem Entfernen der ueblichen Kleinigkeiten (Kommentare,
+          Komma vor der schliessenden Klammer),
+       3. Eintrag fuer Eintrag — dann faellt nur der kaputte Eintrag weg und
+          der Rest der Datei klingt weiter. */
+
+  /** Zeile und Spalte zu einer Zeichenposition, plus die betroffene Zeile. */
+  function where(text, pos) {
+    if (!(pos >= 0)) return null;
+    var upto = text.slice(0, pos);
+    var line = upto.split('\n').length;
+    var col = pos - (upto.lastIndexOf('\n') + 1) + 1;
+    var src = text.split('\n')[line - 1] || '';
+    return { line: line, col: col, text: src.trim().slice(0, 60) };
+  }
+
+  /* Waehrend des Rettens gemerkt, damit Fehler mit Zeilennummer statt mit
+     Zeichenposition gemeldet werden — danach sucht man in einem Texteditor. */
+  var srcText = '';
+
+  function lenient(text) {
+    return text
+      .replace(/\/\*[\s\S]*?\*\//g, '')     // /* Kommentar */
+      .replace(/^[ \t]*\/\/.*$/gm, '')      // // Kommentar
+      .replace(/,(\s*[}\]])/g, '$1');       // Komma vor der Klammer
+  }
+
+  /** Ende des Werts, der bei i beginnt — Strings und Verschachtelung zaehlen. */
+  function valueEnd(text, i) {
+    var c = text.charAt(i);
+    var inStr = false, esc = false, ch;
+    if (c === '{' || c === '[') {
+      var depth = 0;
+      for (; i < text.length; i++) {
+        ch = text.charAt(i);
+        if (inStr) {
+          if (esc) esc = false;
+          else if (ch === '\\') esc = true;
+          else if (ch === '"') inStr = false;
+          continue;
+        }
+        if (ch === '"') inStr = true;
+        else if (ch === '{' || ch === '[') depth++;
+        else if (ch === '}' || ch === ']') { depth--; if (depth <= 0) return i + 1; }
+      }
+      return -1;
+    }
+    /* Zahl, Text, true/false/null: bis zum naechsten Trenner. */
+    for (; i < text.length; i++) {
+      ch = text.charAt(i);
+      if (inStr) {
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') inStr = true;
+      else if (ch === ',' || ch === '}' || ch === ']') return i;
+    }
+    return text.length;
+  }
+
+  /**
+   * Objekt Eintrag fuer Eintrag lesen. Jeder Wert wird einzeln geparst; was
+   * sich nicht lesen laesst, landet in bad und wird uebersprungen. Objekte
+   * werden bei Bedarf noch eine Ebene tiefer gerettet, damit ein Fehler in
+   * sounds.click nicht gleich ganz sounds kostet.
+   */
+  function salvage(text, path, bad, base) {
+    var open = text.indexOf('{');
+    var close = text.lastIndexOf('}');
+    if (open < 0 || close < open) return null;
+    var body = text.slice(open + 1, close);
+    var bodyAt = (base || 0) + open + 1;   // Lage von body im Gesamttext
+    var out = {};
+    var i = 0;
+
+    function melde(key, at) {
+      var spot = where(srcText, bodyAt + at);
+      bad.push(path + key + (spot ? ' (Zeile ' + spot.line + ')' : ''));
+    }
+
+    while (i < body.length) {
+      var q = body.indexOf('"', i);
+      if (q < 0) break;
+
+      var e = q + 1, esc = false, c;
+      while (e < body.length) {
+        c = body.charAt(e);
+        if (esc) esc = false;
+        else if (c === '\\') esc = true;
+        else if (c === '"') break;
+        e++;
+      }
+      var key = body.slice(q + 1, e);
+
+      var colon = e + 1;
+      while (colon < body.length && /\s/.test(body.charAt(colon))) colon++;
+      if (body.charAt(colon) !== ':') { i = e + 1; continue; }
+
+      var v = colon + 1;
+      while (v < body.length && /\s/.test(body.charAt(v))) v++;
+      var end = valueEnd(body, v);
+      if (end < 0) { melde(key, q); break; }
+
+      var raw = body.slice(v, end);
+      try {
+        out[key] = JSON.parse(raw);
+      } catch (err) {
+        var deep = raw.charAt(0) === '{'
+          ? salvage(raw, path + key + '.', bad, bodyAt + v)
+          : null;
+        if (deep) out[key] = deep;
+        else melde(key, q);
+      }
+      i = end;
+    }
+    return out;
+  }
+
+  /** Liefert { data, bad, hint } — data ist null, wenn gar nichts zu holen war. */
+  function parseManifest(text) {
+    var bad = [];
+    try {
+      return { data: JSON.parse(text), bad: bad, hint: null };
+    } catch (e) { /* weiter */ }
+
+    try {
+      return {
+        data: JSON.parse(lenient(text)), bad: bad,
+        hint: 'Kleinigkeiten (Kommentar oder Komma zu viel) automatisch uebergangen'
+      };
+    } catch (e) { /* weiter zur Rettung */ }
+
+    srcText = text;
+    var data = salvage(text, '', bad, 0);
+    srcText = '';
+    return {
+      data: data,
+      bad: bad,
+      hint: bad.length
+        ? 'fehlerhafte Eintraege uebersprungen, der Rest gilt weiter'
+        : 'nicht lesbar'
+    };
+  }
+
   /* ── Laden und Nachladen ───────────────────────────────────────────── */
 
   /* Schluessel, die mit _ beginnen, sind Anmerkungen in der Datei und kein
@@ -247,22 +400,32 @@
     return fetch(MANIFEST + '?t=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
+        return r.text();
       })
-      .then(function (json) {
-        pack.manifest = json;
+      .then(function (text) {
+        var res = parseManifest(text);
+        pack.manifest = res.data;
         pack.loaded = true;
-        preloadAll();
-        return json;
+        pack.broken = res.bad;
+
+        /* Ohne Hinweis sucht man den Fehler bei den Audiodateien statt in der
+           Datei — ein Komma zu viel oder eine falsche Klammer reicht. */
+        if (res.hint) {
+          note('sounds.json: ' + res.hint);
+          if (res.bad.length) note('uebersprungen: ' + res.bad.join(', '));
+          if (GK.toast) {
+            GK.toast(res.bad.length
+              ? 'sounds.json: ' + res.bad.join(', ') + ' übersprungen — ' + res.hint
+              : 'sounds.json: ' + res.hint, 'bad', '🔇');
+          }
+        }
+        if (res.data) preloadAll();
+        return res.data;
       })
       .catch(function (e) {
         pack.loaded = true;          // nicht bei jedem Ton erneut versuchen
         pack.manifest = null;
         note('sounds.json nicht gelesen (' + e.message + ') — es bleibt bei den eingebauten Klaengen');
-        /* Eine kaputte sounds.json legt saemtliche eigenen Klaenge still, und
-           zwar lautlos: alles klingt einfach weiter wie eingebaut. Ohne
-           Hinweis sucht man den Fehler bei den Dateien statt in der Datei.
-           Ein Komma zu viel oder ein fehlendes Anfuehrungszeichen reicht. */
         if (GK.toast) {
           GK.toast('sounds.json ist fehlerhaft — eigene Klänge sind aus. ' +
                    String(e.message).slice(0, 90), 'bad', '🔇');

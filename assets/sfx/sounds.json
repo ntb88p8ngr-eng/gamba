@@ -36,9 +36,8 @@
     "snuff":     { "files": [] },
     "growl":     { "files": [] },
     "plop":      { "files": [] },
-	"reel":      { "files": [} },
     "tension":   { "files": [] },
-	"feespin":   { "files": [] },
+    "freespin":  { "files": [] },
     "freespin2": { "files": [] }
   },
   
