@@ -16,7 +16,9 @@
 	               "volume": 0.8,
                    "rateJitter": 0.06},
 				   
-    "hover":     { "files": [] },
+    "hover":     { "files": [ui/hover.mp3] 	               
+	               "volume": 0.8,
+                   "rateJitter": 0.06},
     "chip":      { "files": [] },
     "spin":      { "files": [] },
     "tick":      { "files": [] },
