@@ -13,7 +13,6 @@
 
     "click":     { "files": ["ui/click.mp3"], "volume": 0.6, "rateJitter": 0.06 },
     "hover":     { "files": ["ui/hover.mp3"], "volume": 0.3, "rateJitter": 0.06 },
-
     "chip":      { "files": [] },
     "spin":      { "files": ["ui/spin.mp3"], "volume": 0.3, "rateJitter": 0.06 },
     "tick":      { "files": [] },
@@ -40,7 +39,7 @@
 	"reel":      { "files": [} },
     "tension":   { "files": [] },
 	"feespin":   { "files": [] },
-    "freespin2": { "files": [] },
+    "freespin2": { "files": [] }
   },
   
   "games": {
