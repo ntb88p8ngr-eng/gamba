@@ -430,11 +430,11 @@
   content:"";position:absolute;inset:0;pointer-events:none;
   background:url("../assets/pinguin/eis.webp") center/cover no-repeat
 }
-/* Die Schollen sind selbst hell — ohne diesen Schleier von unten gehen sie
-   und die Zahlen darueber im Bild unter. */
+/* Ein leichter Schleier von unten setzt die Schollen vom Wasser ab. Er bleibt
+   zurueckhaltend: die Zahlen darueber sind schwarz und brauchen es hell. */
 .peng-scene::after{
-  content:"";position:absolute;left:0;right:0;bottom:0;height:58%;pointer-events:none;
-  background:linear-gradient(180deg,transparent,rgba(4,32,63,.34) 45%,rgba(4,32,63,.72))
+  content:"";position:absolute;left:0;right:0;bottom:0;height:46%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(4,32,63,.28))
 }
 /* Glitzern auf dem Wasser: laeuft ueber dem Foto, deckt es aber nicht zu */
 .peng-sea{
@@ -461,22 +461,18 @@
    über die schmale Flex-Box hinausragen, sonst wirkt es gestaucht. */
 .peng-floe .fl-img{position:absolute;inset:-14px -14px -4px -14px;display:block;pointer-events:none}
 .peng-floe .fl-img img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}
-/* Vor der hellen Kulisse ging Weiss auf Weiss unter. Die Zahl sitzt deshalb
-   auf einem eigenen dunklen Feld statt nur auf einem Schatten — das traegt
-   auch dann, wenn hinter ihr gerade Sonne auf dem Wasser steht.
-   width:max-content mit left/right 0 und margin auto haelt sie mittig, ohne
-   dass das Feld ueber die ganze Scholle laeuft. */
+/* Schwarz auf dem hellen Eis. Der weisse Saum ist die Rueckversicherung fuer
+   die dunkleren Stellen der Kulisse — ohne ihn verschwindet die Zahl dort. */
 .peng-floe .fl-mult{
-  position:absolute;left:0;right:0;top:-30px;z-index:1;
-  width:max-content;max-width:100%;margin:0 auto;padding:1px 6px;
-  border-radius:8px;background:rgba(4,22,45,.62);
-  font-family:'Bungee',sans-serif;font-size:.62rem;color:#fff;
-  text-shadow:0 1px 2px rgba(0,0,0,.9)
+  position:absolute;left:0;right:0;top:-30px;text-align:center;z-index:1;
+  font-family:'Bungee',sans-serif;font-size:.76rem;color:#000;
+  text-shadow:0 0 3px rgba(255,255,255,.9),0 1px 2px rgba(255,255,255,.75)
 }
 .peng-floe.start{flex-basis:92px}
 .peng-floe.done{opacity:.5}
-/* hoeher setzen, sonst steht der Pinguin auf seiner eigenen Zahl */
-.peng-floe.here .fl-mult{color:var(--gold);font-size:.74rem;top:-62px}
+/* Nur die Scholle, auf der der Pinguin steht, hebt ihre Zahl an — sonst
+   verdeckt er sie. Alle anderen bleiben unten. */
+.peng-floe.here .fl-mult{font-size:.86rem;top:-104px}
 /* Die nächste Scholle ist das Klickziel: sie hört auf zu wippen und pulsiert
    stattdessen — ein wackelndes Ziel trifft sich schlecht, besonders am Handy. */
 .peng-floe.next{cursor:pointer;animation:nextGlow 1.3s ease-in-out infinite}
@@ -486,7 +482,6 @@
 }
 .peng-floe.next:hover{transform:translateY(-6px);box-shadow:0 0 30px var(--gold)}
 .peng-floe.next:active{transform:translateY(-2px)}
-.peng-floe.next .fl-mult{color:var(--gold)}
 .peng-floe.broken{animation:floeBreak .5s forwards}
 @keyframes floeBreak{
   0%{transform:none;opacity:1}
