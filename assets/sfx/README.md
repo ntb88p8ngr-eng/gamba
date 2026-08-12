@@ -210,6 +210,16 @@ Häufige Ursachen:
 * **Erster Ton kommt noch eingebaut.** Dateien werden beim ersten Bedarf
   geladen; ab dem zweiten Mal liegen sie bereit. Mit `"preload": true` ist
   schon der erste Ton die Datei.
+* **Ton kommt nach dem Bild.** Meist steht Stille am Anfang der Datei — beim
+  Schneiden bleibt vorne gern eine halbe Sekunde stehen, und die zählt beim
+  Abspielen voll mit. Sie wird automatisch übersprungen; wie viel, zeigt
+  `GK.sfxPack.debug('cash').vorlauf` in Millisekunden. Soll die Datei doch von
+  ganz vorn laufen: `"trim": false`. Ein eigenes `"offset"` hat immer Vorrang.
+* **Langer Klang bei einem schnellen Ereignis.** Manche Spiele wiederholen
+  einen Ton im Takt — das Hufgetrappel etwa alle 150 ms. Der eingebaute Klang
+  ist dort ein einzelner Schlag. Legst du eine ganze Galopp-Aufnahme darüber,
+  merkt das Spiel das und spielt sie **einmal**, statt zwanzig Kopien
+  übereinanderzulegen.
 * **Tippfehler in sounds.json.** Die Datei wird in drei Stufen gelesen:
   normal, dann nach dem Übergehen von Kommentaren und einem Komma zu viel vor
   der schließenden Klammer, und zuletzt Eintrag für Eintrag. In der letzten

@@ -9,20 +9,6 @@
   var HOP_OK = 0.75;
   var MULTS = [1.15, 1.55, 2.05, 2.75, 3.7, 4.9, 6.5, 8.75, 11.7, 15.5, 20.5, 27.5];
 
-  /* Hintergrund: ferne Eisberge als ein einziges SVG, damit nichts nachgeladen wird */
-  function mountains() {
-    return '<svg viewBox="0 0 400 90" preserveAspectRatio="none" width="100%" height="100%">' +
-      '<polygon points="0,90 38,34 66,58 96,22 132,90" fill="#3d5f96" opacity=".55"/>' +
-      '<polygon points="90,90 138,40 168,62 206,26 250,90" fill="#4a72ad" opacity=".5"/>' +
-      '<polygon points="210,90 252,44 286,66 322,30 372,90" fill="#3d5f96" opacity=".55"/>' +
-      '<polygon points="330,90 366,48 400,70 400,90" fill="#4a72ad" opacity=".5"/>' +
-      '<polygon points="38,34 50,52 26,52" fill="#dff1ff" opacity=".75"/>' +
-      '<polygon points="96,22 110,44 82,44" fill="#dff1ff" opacity=".8"/>' +
-      '<polygon points="206,26 220,48 192,48" fill="#dff1ff" opacity=".8"/>' +
-      '<polygon points="322,30 336,50 308,50" fill="#dff1ff" opacity=".75"/>' +
-      '</svg>';
-  }
-
   GK.registerGame({
     id: 'penguin',
     name: 'Pinguin-Sprung',
@@ -81,10 +67,11 @@
       var penguin = el('div', { class: 'peng', html: GK.iconHTML('penguin') });
       track.appendChild(penguin);
 
+      /* Die Kulisse ist ein Foto (siehe .peng-scene). Frueher standen hier
+         gemalte Eisberge, Polarlicht und Sternenhimmel — eine Nachtszene, die
+         zu der hellen Aufnahme nicht passt. Geblieben ist nur das Glitzern auf
+         dem Wasser, damit die Flaeche nicht ganz still steht. */
       var scene = el('div', { class: 'peng-scene' }, [
-        el('div', { class: 'peng-aurora' }),
-        el('div', { class: 'peng-stars' }),
-        el('div', { class: 'peng-berge', html: mountains() }),
         el('div', { class: 'peng-sea' }),
         track
       ]);

@@ -143,6 +143,14 @@
         var t0 = performance.now();
         var lastLeader = null, lastHoof = 0, hoofGap = 165;
 
+        /* Der eingebaute Huf ist ein einzelner Schlag — das Getrappel entsteht
+           erst durch die Wiederholung alle rund 150 ms. Eine eigene Datei ist
+           dagegen meist schon die ganze Galopp-Aufnahme; sie im selben Takt neu
+           zu starten legt zwanzig Kopien uebereinander und klingt matschig.
+           Liegt eine Datei vor, laeuft sie einmal und traegt das Rennen. */
+        var trappeln = !GK.sfxFromFile('hoof');
+        if (!trappeln) GK.sfx('hoof');
+
         function frame(now) {
           if (stopped) return;
           var e = now - t0;
@@ -159,7 +167,7 @@
 
           // Hufgetrappel: leicht schwankender Abstand, damit es nach Feld
           // klingt und nicht nach Metronom
-          if (e - lastHoof > hoofGap) {
+          if (trappeln && e - lastHoof > hoofGap) {
             lastHoof = e;
             hoofGap = 120 + Math.random() * 60;
             GK.sfx('hoof');

@@ -618,7 +618,12 @@
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       try {
-        this.ctx = new AC();
+        /* 'interactive' bittet um den kleinsten Ausgabepuffer. Ohne den Wunsch
+           waehlt vor allem iOS einen grossen Puffer und der Ton kommt hoerbar
+           nach dem Bild. Aeltere Browser kennen die Angabe nicht — dann greift
+           der Aufruf ohne Argument. */
+        try { this.ctx = new AC({ latencyHint: 'interactive' }); }
+        catch (e) { this.ctx = new AC(); }
         this.master = this.ctx.createGain();
         this.master.connect(this.ctx.destination);
         this.ready = true;
@@ -776,6 +781,11 @@
    * @param {string} name  Klangname, siehe GK.SFX_NAMES
    * @param {string} [gameId]  Spiel-Kontext; ohne Angabe gilt GK.currentGame
    */
+  /** Liegt fuer diesen Ton eine eigene Datei bereit? Siehe pack.isFile. */
+  GK.sfxFromFile = function (name, gameId) {
+    return !!(GK.sfxPack && GK.sfxPack.isFile && GK.sfxPack.isFile(name, gameId));
+  };
+
   GK.sfx = function (name, gameId) {
     Sound.init();
     Sound.resume();

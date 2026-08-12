@@ -29,6 +29,7 @@
   };
 
   var buffers = {};        // pfad -> AudioBuffer
+  var leads = {};          // pfad -> Sekunden Stille am Dateianfang
   var pending = {};        // pfad -> true, solange dekodiert wird
   var failed = {};         // pfad -> true, nie wieder versuchen
   var lastVariant = {};    // schluessel -> zuletzt gespielter Index
@@ -102,6 +103,26 @@
   }
 
   /**
+   * Stille am Anfang einer Datei messen.
+   *
+   * Beim Schneiden bleibt vorne fast immer etwas Ruhe stehen — bei einer
+   * Aufnahme aus einer Bibliothek gern eine halbe Sekunde. Die zaehlt beim
+   * Abspielen voll mit: der Ton setzt erst danach ein und wirkt wie eine
+   * Verzoegerung zum Bild. Gemessen wird der erste Ausschlag ueber der
+   * Schwelle; davor bleiben 8 ms stehen, damit der Anschlag nicht abgehackt
+   * klingt. Gesucht wird nur in der ersten Sekunde — was danach kommt, ist
+   * eine Pause im Klang und keine Vorlaufstille.
+   */
+  function leadSilence(buf) {
+    var ch = buf.getChannelData(0);
+    var grenze = Math.min(ch.length, Math.floor(buf.sampleRate));
+    var i = 0;
+    while (i < grenze && Math.abs(ch[i]) < 0.02) i++;
+    if (i >= grenze) return 0;                       // durchgehend leise: nichts kuerzen
+    return Math.max(0, i / buf.sampleRate - 0.008);
+  }
+
+  /**
    * Datei laden und dekodieren. Laeuft im Hintergrund: der erste Aufruf
    * eines Tons faellt noch auf den eingebauten Klang zurueck, ab dem zweiten
    * liegt die Datei im Cache. Wer das nicht will, setzt preload.
@@ -130,6 +151,7 @@
       });
     }).then(function (decoded) {
       buffers[u] = decoded;
+      leads[u] = leadSilence(decoded);
       delete pending[u];
     }).catch(function (e) {
       failed[u] = true;
@@ -208,7 +230,10 @@
     g.connect(snd.master);
 
     var t0 = ctx.currentTime + (cfg.delay || 0);
-    var off = cfg.offset || 0;
+    /* Stille am Dateianfang ueberspringen, damit der Klang zum Bild passt.
+       Ein selbst gesetztes offset hat Vorrang, "trim": false schaltet es ab. */
+    var off = cfg.offset;
+    if (off === undefined) off = cfg.trim === false ? 0 : (leads[u] || 0);
     if (cfg.duration) src.start(t0, off, cfg.duration);
     else src.start(t0, off);
     return true;
@@ -425,7 +450,7 @@
    * GK.sfxPack.reload() aufrufen, anhoeren.
    */
   pack.reload = function () {
-    buffers = {}; pending = {}; failed = {}; pack.problems = [];
+    buffers = {}; leads = {}; pending = {}; failed = {}; pack.problems = [];
     return fetch(MANIFEST + '?t=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -485,8 +510,21 @@
       quelle: 'datei',
       dateien: cfg.files.map(url),
       geladen: cfg.files.map(function (f) { return !!buffers[url(f)]; }),
+      /* Uebersprungene Stille am Dateianfang in Millisekunden. */
+      vorlauf: cfg.files.map(function (f) { return Math.round((leads[url(f)] || 0) * 1000); }),
       konfiguration: cfg
     };
+  };
+
+  /**
+   * Kommt dieser Ton aus einer eigenen Datei? Spiele, die einen Klang im
+   * schnellen Takt wiederholen, fragen damit nach: der eingebaute Huf ist ein
+   * einzelner Schlag und ergibt erst durch die Wiederholung ein Getrappel,
+   * eine eigene Datei ist dagegen meist schon die ganze Aufnahme.
+   */
+  pack.isFile = function (name, gameId) {
+    var cfg = resolve(name, gameId);
+    return !!(cfg && !cfg.muted && cfg.files && cfg.files.length);
   };
 
   /** Alle Tonnamen, die das Spiel ueberhaupt kennt. */
