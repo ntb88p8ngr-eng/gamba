@@ -428,13 +428,13 @@
 }
 .peng-scene::before{
   content:"";position:absolute;inset:0;pointer-events:none;
-  background:url("../assets/penguin/eis.webp") center/cover no-repeat
+  background:url("../assets/pinguin/eis.webp") center/cover no-repeat
 }
 /* Die Schollen sind selbst hell — ohne diesen Schleier von unten gehen sie
    und die Zahlen darueber im Bild unter. */
 .peng-scene::after{
-  content:"";position:absolute;left:0;right:0;bottom:0;height:52%;pointer-events:none;
-  background:linear-gradient(180deg,transparent,rgba(4,32,63,.55))
+  content:"";position:absolute;left:0;right:0;bottom:0;height:58%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(4,32,63,.34) 45%,rgba(4,32,63,.72))
 }
 /* Glitzern auf dem Wasser: laeuft ueber dem Foto, deckt es aber nicht zu */
 .peng-sea{
@@ -461,12 +461,17 @@
    über die schmale Flex-Box hinausragen, sonst wirkt es gestaucht. */
 .peng-floe .fl-img{position:absolute;inset:-14px -14px -4px -14px;display:block;pointer-events:none}
 .peng-floe .fl-img img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}
+/* Vor der hellen Kulisse ging Weiss auf Weiss unter. Die Zahl sitzt deshalb
+   auf einem eigenen dunklen Feld statt nur auf einem Schatten — das traegt
+   auch dann, wenn hinter ihr gerade Sonne auf dem Wasser steht.
+   width:max-content mit left/right 0 und margin auto haelt sie mittig, ohne
+   dass das Feld ueber die ganze Scholle laeuft. */
 .peng-floe .fl-mult{
-  position:absolute;left:0;right:0;top:-30px;text-align:center;z-index:1;
+  position:absolute;left:0;right:0;top:-30px;z-index:1;
+  width:max-content;max-width:100%;margin:0 auto;padding:1px 6px;
+  border-radius:8px;background:rgba(4,22,45,.62);
   font-family:'Bungee',sans-serif;font-size:.62rem;color:#fff;
-  /* Vor der hellen Kulisse braucht die Zahl einen dunklen Saum, sonst
-     verschwindet Weiss auf Weiss. */
-  text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.85)
+  text-shadow:0 1px 2px rgba(0,0,0,.9)
 }
 .peng-floe.start{flex-basis:92px}
 .peng-floe.done{opacity:.5}
