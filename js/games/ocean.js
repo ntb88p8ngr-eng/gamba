@@ -154,7 +154,10 @@
         var cells = strip.children;
         while (cells.length < len) strip.appendChild(el('div', { class: 'sym oc-sym' }));
         while (cells.length > len) strip.removeChild(strip.lastChild);
-        for (var i = 0; i < len - ROWS; i++) cells[i].innerHTML = GK.iconHTML(randSym().ic);
+        /* Die ersten drei Zellen bleiben, wie sie sind: dort steht seit
+           settle() das Bild des letzten Drehs, und genau das ist am Anfang zu
+           sehen. Neu gewuerfelt wuerde es im Moment des Startens umspringen. */
+        for (var i = ROWS; i < len - ROWS; i++) cells[i].innerHTML = GK.iconHTML(randSym().ic);
         finals.forEach(function (s, j) { cells[len - ROWS + j].innerHTML = GK.iconHTML(s.ic); });
       }
 
@@ -202,8 +205,28 @@
 
       /** Die Zelle einer Walze/Reihe im sichtbaren Fenster. */
       function cellAt(reel, row) {
-        var cells = strips[reel].children;
-        return cells[cells.length - ROWS + row] || null;
+        return strips[reel].children[row] || null;
+      }
+
+      /**
+       * Walze aufraeumen, sobald sie steht.
+       *
+       * Waehrend des Drehs haengt die Stellung an einem Transform. Der stimmt
+       * im Moment des Haltens, aber er bleibt danach stehen: aendert sich
+       * spaeter die Zellhoehe — Geraet drehen, zoomen, Adressleiste ein- und
+       * ausblenden — passt er nicht mehr, und im Fenster steht die
+       * Nachbarreihe halb mit drin oder die Walze bleibt leer.
+       *
+       * Deshalb wird nach dem Halten umgeraeumt: die drei Endsymbole wandern
+       * nach ganz oben, der Streifen steht wieder auf 0. Danach gibt es nichts
+       * mehr zu verschieben — im Fenster koennen gar keine anderen Reihen
+       * stehen, bei jeder Groesse.
+       */
+      function settle(i, finals) {
+        var strip = strips[i];
+        strip.style.transition = 'none';
+        strip.style.transform = 'translateY(0)';
+        finals.forEach(function (s, j) { strip.children[j].innerHTML = GK.iconHTML(s.ic); });
       }
 
       /* Wisch statt Strich: ueber jede getroffene Zelle faehrt ein Lichtstreifen,
@@ -312,6 +335,7 @@
         strips.forEach(function (strip, i) {
           setTimeout(function () {
             if (stopped) return;
+            settle(i, newGrid[i]);
             GK.sfx('reel');
             /* Liegen zwei Truhen und es fehlt noch mindestens eine Walze,
                haengt der Bonus daran — das darf man hoeren und sehen. */

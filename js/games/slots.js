@@ -90,14 +90,30 @@
 
       function symIcon(s) { return GK.iconHTML(s.icon || s.id); }
 
-      /* Wie weit der Streifen hochfaehrt, damit unten das Endsymbol steht.
-         In Prozent der eigenen Hoehe, nicht in Pixeln: die Zellhoehe steht im
-         CSS und schrumpft auf schmalen Schirmen (120 → 92 → 78). Ein einmal
-         gesetzter Pixelwert passt danach nicht mehr — nach dem Drehen des
-         Geraets oder beim Zoomen stand die Walze leer da oder zeigte das
-         Nachbarsymbol halb mit. Der Prozentwert bezieht sich auf den Streifen
-         selbst und geht jede Groessenaenderung von allein mit. */
+      /* Wie weit der Streifen hochfaehrt, damit unten das Endsymbol steht —
+         in Prozent der eigenen Hoehe, nicht in Pixeln. */
       function stopAt(len) { return ((len - 1) / len) * 100; }
+
+      /**
+       * Walze aufraeumen, sobald sie steht.
+       *
+       * Waehrend des Drehs haengt die Stellung an einem Transform. Der stimmt
+       * im Moment des Haltens, aber er bleibt danach stehen: aendert sich
+       * spaeter die Zellhoehe — Geraet drehen, zoomen, Adressleiste ein- und
+       * ausblenden — passt er nicht mehr, und im Fenster steht das
+       * Nachbarsymbol halb mit drin oder die Walze bleibt leer.
+       *
+       * Deshalb wird nach dem Halten umgeraeumt: das Endsymbol wandert in die
+       * erste Zelle, der Streifen steht wieder auf 0. Danach gibt es nichts
+       * mehr zu verschieben — im Fenster kann gar nichts anderes stehen als
+       * dieses eine Symbol, bei jeder Groesse.
+       */
+      function settle(i, sym) {
+        var strip = strips[i];
+        strip.style.transition = 'none';
+        strip.style.transform = 'translateY(0)';
+        strip.firstChild.innerHTML = symIcon(sym);
+      }
 
       /* Die Walzensymbole sind jetzt Bilder statt Inline-SVG. Auf iOS Safari
          verliert der Compositor nach ein paar Spins das Bild komplett, wenn
@@ -110,7 +126,11 @@
         var cells = strip.children;
         while (cells.length < len) strip.appendChild(el('div', { class: 'sym' }));
         while (cells.length > len) strip.removeChild(strip.lastChild);
-        for (var i = 0; i < len - 1; i++) cells[i].innerHTML = symIcon(randSym());
+        /* Die erste Zelle bleibt, wie sie ist: dort steht seit settle() das
+           Ergebnis des letzten Drehs, und genau das ist am Anfang zu sehen.
+           Wuerde sie hier neu gewuerfelt, springt das Bild im Moment des
+           Startens um. */
+        for (var i = 1; i < len - 1; i++) cells[i].innerHTML = symIcon(randSym());
         cells[len - 1].innerHTML = symIcon(finalSym);
       }
 
@@ -212,6 +232,7 @@
         [0, 1, 2].forEach(function (i) {
           setTimeout(function () {
             if (stopped) return;
+            settle(i, out[i]);
             GK.sfx('reel');
             reels[i].classList.add('hit');
             setTimeout(function () { reels[i].classList.remove('hit'); }, 400);
@@ -237,7 +258,8 @@
       /** Gewinnsymbole federn kurz hoch, statt nur die Walze aufblitzen zu lassen. */
       function spring(indexes) {
         indexes.forEach(function (i, n) {
-          var cell = strips[i].lastChild;
+          /* Nach settle() steht das Endsymbol in der ersten Zelle. */
+          var cell = strips[i].firstChild;
           if (!cell) return;
           setTimeout(function () {
             if (stopped) return;

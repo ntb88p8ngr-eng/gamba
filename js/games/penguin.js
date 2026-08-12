@@ -64,7 +64,12 @@
         })(i);
       }
 
-      var penguin = el('div', { class: 'peng', html: GK.iconHTML('penguin') });
+      /* Der Pinguin steht auf einer wippenden Scholle und muss mitwippen. Das
+         Wippen sitzt in einer eigenen Huelle: aussen laufen der Wechsel der
+         Position und der Sprung, innen nur das Auf und Ab. Beides auf demselben
+         Element wuerde sich um transform streiten. */
+      var bob = el('div', { class: 'peng-bob', html: GK.iconHTML('penguin') });
+      var penguin = el('div', { class: 'peng' }, [bob]);
       track.appendChild(penguin);
 
       /* Die Kulisse ist ein Foto (siehe .peng-scene). Frueher standen hier
@@ -114,9 +119,35 @@
         track.style.transform = 'translateX(' + Math.min(0, mid - x) + 'px)';
       }
 
+      /**
+       * Pinguin und Scholle im Gleichtakt wippen lassen.
+       *
+       * Die Verzoegerung mitzusetzen reicht nicht: aendert man
+       * animation-delay an einer schon laufenden Animation, springt sie nicht
+       * auf die neue Phase — nach einem Sprung hob sich die Scholle, waehrend
+       * der Pinguin gerade sank. Deshalb wird die Laufzeit der Animation
+       * direkt uebernommen. Der delay bleibt als Rueckfall fuer Browser ohne
+       * getAnimations.
+       */
+      function bobFor(elm) {
+        if (!elm || !elm.getAnimations) return null;
+        var as = elm.getAnimations();
+        for (var i = 0; i < as.length; i++) if (as[i].animationName === 'bob') return as[i];
+        return as[0] || null;
+      }
+
+      function syncBob(f) {
+        bob.style.setProperty('--d', f.style.getPropertyValue('--d') || '0s');
+        var vonScholle = bobFor(f), amPinguin = bobFor(bob);
+        if (vonScholle && amPinguin && vonScholle.currentTime !== null) {
+          try { amPinguin.currentTime = vonScholle.currentTime; } catch (e) {}
+        }
+      }
+
       function placePenguin() {
         var f = floes[pos];
         penguin.style.left = (f.offsetLeft + f.offsetWidth / 2) + 'px';
+        syncBob(f);
         follow();
       }
 

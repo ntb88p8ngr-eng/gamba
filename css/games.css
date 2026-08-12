@@ -500,6 +500,12 @@
   position:absolute;bottom:30px;width:72px;height:72px;margin-left:-36px;
   transition:left .42s cubic-bezier(.3,-0.4,.5,1.4);filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))
 }
+/* Wippt mit der Scholle, auf der er steht — die Verzögerung setzt
+   placePenguin() bei jedem Sprung auf die der Scholle. */
+.peng-bob{
+  width:100%;height:100%;
+  animation:bob 3.2s ease-in-out infinite;animation-delay:var(--d,0s)
+}
 /* Der Pinguin ist jetzt ein Bild statt Inline-SVG — ohne diese Regel greift
    nur noch die globale 1em-Größe aus img.gk-ic, und er wirkt winzig. Das
    Artwork schaut nach links, gespiegelt schaut er in Sprungrichtung (rechts). */
