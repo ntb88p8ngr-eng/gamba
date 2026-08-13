@@ -1196,7 +1196,16 @@
 }
 .mp-karten{display:flex;gap:4px;min-height:56px;align-items:center}
 .mp-stack{font-size:.74rem;color:var(--lime)}
-.mp-bet{font-size:.72rem;color:var(--gold)}
+/* Einsatz dieser Setzrunde, gross und mit Chip; darunter klein, was der
+   Spieler in der ganzen Hand schon drin hat. */
+.mp-bet{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
+  background:rgba(255,209,46,.16);border:1px solid rgba(255,209,46,.45);
+  font-family:'Bungee',sans-serif;font-size:.76rem;color:var(--gold);line-height:1.25
+}
+.mp-bet-ic{width:14px;height:14px;display:block}
+.mp-bet-ic img,.mp-bet-ic svg{width:100%;height:100%;object-fit:contain}
+.mp-bet small{font-family:'Outfit',sans-serif;font-size:.6rem;color:#cbb98a;font-weight:500}
 .mp-tag{font-size:.66rem;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.14);color:#fff}
 .mp-tag.raus{background:rgba(255,60,90,.25)}
 .mp-tag.win{background:rgba(124,255,59,.25);color:var(--lime)}
@@ -1244,8 +1253,64 @@
 .mp-wahl{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .mp-wahl .rot{color:#ff6b8a}
 .mp-hand{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-.mp-hand .mp-handkarte{transition:transform .15s}
 .mp-hand.dran .mp-handkarte{cursor:pointer}
-.mp-hand.dran .mp-handkarte:hover{transform:translateY(-10px)}
 .mp-knoepfe.zwei{grid-template-columns:repeat(2,minmax(0,1fr))}
 .mp-knoepfe.eins{grid-template-columns:1fr}
+
+/* ── Karten am Mehrspieler-Tisch ──
+   Groesser als in den Einzelspielen: hier schaut man auf mehrere Blaetter
+   gleichzeitig, und die kleinen Bilder waren aus normalem Sitzabstand kaum
+   zu lesen. */
+.mp-board .card{width:96px}
+.mp-karten .card.mini{width:64px}
+.mp-hand .card{width:92px}
+.mp-legekarte .card{width:88px}
+
+/* Beim Zeigen kommt die Karte nach vorn. Nur wo es echtes Hover gibt — auf
+   dem Handy wuerde die Vergroesserung sonst am ersten Tippen kleben
+   bleiben. transform-origin haelt die Karte dabei im Kasten. */
+/* Die Karten erben aus .card ein "animation: dealin … both". Das both haelt
+   den Endwert der Animation fest — und eine laufende oder nachwirkende
+   Animation schlaegt jedes normale transform. Deshalb greift Hover dort
+   nicht. Am Mehrspieler-Tisch laeuft dieselbe Animation ohne Nachwirkung:
+   der Einwurf bleibt, danach gilt wieder das normale CSS. */
+.mp-board .card,.mp-karten .card,.mp-hand .card,.mp-legekarte .card{
+  animation-fill-mode:none
+}
+@media(hover:hover){
+  .mp-board .card,.mp-karten .card,.mp-hand .card,.mp-legekarte .card{
+    position:relative;transition:transform .16s ease-out,filter .16s ease-out
+  }
+  .mp-board .card:hover,.mp-legekarte .card:hover{
+    transform:scale(1.45);z-index:6;
+    filter:drop-shadow(0 12px 22px rgba(0,0,0,.75))
+  }
+  .mp-karten .card:hover{
+    transform:scale(1.6);z-index:6;
+    filter:drop-shadow(0 10px 18px rgba(0,0,0,.75))
+  }
+  .mp-hand .card:hover{
+    transform:scale(1.35) translateY(-14px);z-index:6;
+    filter:drop-shadow(0 14px 24px rgba(0,0,0,.75))
+  }
+  .mp-hand.dran .card:hover{transform:scale(1.4) translateY(-18px)}
+}
+
+/* Deck-Auswahl am Tisch */
+.mp-deck{
+  padding:10px;border-radius:14px;background:rgba(0,0,0,.28);
+  border:1px solid rgba(255,255,255,.08)
+}
+
+@media(max-width:620px){
+  .mp-board .card{width:60px}
+  .mp-legekarte .card{width:58px}
+  .mp-karten .card.mini{width:46px}
+  .mp-hand .card{width:64px}
+}
+@media(max-width:400px){
+  .mp-board .card{width:52px}
+  .mp-legekarte .card{width:50px}
+  .mp-karten .card.mini{width:40px}
+  .mp-hand .card{width:56px}
+}

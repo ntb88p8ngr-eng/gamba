@@ -593,7 +593,7 @@ function createMP(deps) {
       log(t, s.name + ' passt');
     } else if (was === 'check') {
       if (fehlt > 0) return { error: 'Da steht noch ein Einsatz', code: 400 };
-      log(t, s.name + ' schiebt');
+      log(t, s.name + ' klopft');
     } else if (was === 'call') {
       var b = Math.min(fehlt, s.stack);
       zahl(t, i, b);
@@ -647,7 +647,7 @@ function createMP(deps) {
     var s = t.seats[h.turn];
     if (!s || !s.h) return;
     var fehlt = h.toCall - s.h.bet;
-    if (fehlt <= 0) { s.h.dran = true; log(t, s.name + ' schiebt (Zeit)'); }
+    if (fehlt <= 0) { s.h.dran = true; log(t, s.name + ' klopft (Zeit)'); }
     else { s.h.folded = true; log(t, s.name + ' passt (Zeit)'); }
     weiter(t);
   }
@@ -1308,6 +1308,7 @@ function createMP(deps) {
           stack: s.stack, buyIn: s.buyIn,
           online: isOnline(s.id),
           bet: s.h ? s.h.bet : 0,
+          gesamt: s.h ? s.h.gesamt || 0 : 0,
           folded: s.h ? !!s.h.folded : false,
           allIn: s.h ? !!s.h.allIn : false,
           cards: karten,

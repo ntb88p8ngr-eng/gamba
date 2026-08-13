@@ -25,6 +25,13 @@
 
   var stage = null;
   var abbruch = null;   // laufende Langabfrage abbrechen
+  /* Einmal gebaut und wiederverwendet: cardThemePicker haengt sich bei jedem
+     Aufruf neu an das cardtheme-Ereignis, und zeichne() laeuft bei jeder
+     Serverantwort — das waeren nach einer Runde hunderte Zuhoerer, die alle
+     an einem laengst weggeworfenen Baum haengen. */
+  var deckWahl = null;
+  /* Stand, der zuletzt gezeichnet wurde — siehe die Begruendung in schleife(). */
+  var gezeichnetV = '';
 
   /* ── Server ───────────────────────────────────────────────────────── */
 
@@ -72,7 +79,19 @@
          unten. Eine Antwort ohne Tisch heisst hier nur "nichts Neues"; wer
          daraus auf "aufgeloest" schliesst, wirft einen Spieler bei jeder
          ueberholten Antwort aus seiner Runde. */
-      zeichne();
+      /* Nur neu zeichnen, wenn sich wirklich etwas geaendert hat. Die
+         Langabfrage kommt auch nach Zeitablauf zurueck; jedes Mal den ganzen
+         Baum neu zu bauen kostet nichts an Rechenzeit, wohl aber den
+         Mauszeiger: eine gerade vergroesserte Karte verliert ihr :hover, wenn
+         das Element unter dem Zeiger ausgetauscht wird. */
+      /* Tisch und Lobby zaehlen denselben Server-Zaehler hoch. Nur die Zahl
+         zu vergleichen reicht deshalb nicht: der erste Tisch-Stand traegt oft
+         genau die Nummer, die zuletzt fuer die Lobby gezeichnet wurde — dann
+         bliebe die Uebersicht stehen, obwohl man schon am Tisch sitzt. */
+      var jetztV = MP.tisch
+        ? 't' + MP.tisch.id + ':' + (MP.tisch.v || 0)
+        : 'l:' + ((MP.lobby && MP.lobby.v) || 0);
+      if (jetztV !== gezeichnetV || !stage.firstChild) { gezeichnetV = jetztV; zeichne(); }
       schleife();
     }).catch(function (e) {
       if (!MP.an) return;
@@ -102,6 +121,7 @@
     stage = root;
     MP.an = true;
     MP.seit = 0;
+    gezeichnetV = '';
     stage.innerHTML = '';
     stage.appendChild(el('p', { class: 'mp-laden', text: 'Verbinde mit dem Casino…' }));
     schleife();
@@ -359,7 +379,15 @@
       ].filter(Boolean)),
       karten,
       el('div', { class: 'mp-stack', text: GK.fmt(s.stack) + ' Chips' }),
-      s.bet ? el('div', { class: 'mp-bet', text: GK.fmt(s.bet) }) : null,
+      /* Was steht von diesem Spieler gerade im Pot? Der grosse Wert ist der
+         Einsatz dieser Setzrunde — danach richtet sich, wer wieviel
+         nachlegen muss. Darunter steht, was er in der ganzen Hand schon
+         drin hat. */
+      s.bet ? el('div', { class: 'mp-bet' }, [
+        el('span', { class: 'mp-bet-ic', html: GK.iconHTML('chip') }),
+        el('b', { text: GK.fmt(s.bet) }),
+        h && s.gesamt > s.bet ? el('small', { text: 'ges. ' + GK.fmt(s.gesamt) }) : null
+      ].filter(Boolean)) : null,
       s.allIn ? el('div', { class: 'mp-tag', text: 'ALL-IN' }) : null,
       s.folded ? el('div', { class: 'mp-tag raus', text: 'passt' }) : null,
       gewinn ? el('div', { class: 'mp-tag win', text: '+' + GK.fmt(gewinn) }) : null,
@@ -392,7 +420,8 @@
 
     var mitte = fehlt > 0
       ? el('button', { class: 'btn btn-gold', text: '✅ MITGEHEN ' + GK.fmt(Math.min(fehlt, ich.stack)) })
-      : el('button', { class: 'btn btn-gold', text: '👉 SCHIEBEN' });
+      : el('button', { class: 'btn btn-gold', text: '✊ KLOPFEN',
+                       title: 'Nichts setzen und weitergeben — geht nur, solange kein Einsatz offensteht' });
     mitte.addEventListener('click', function () { zug(fehlt > 0 ? 'call' : 'check'); });
 
     var ziel = Math.min(ich.bet + ich.stack, h.toCall + Math.max(h.minRaise, t.bb));
@@ -641,6 +670,14 @@
       wrap.appendChild(el('div', { class: 'mp-uhr', text: rest + ' s' }));
     }
 
+    /* Kartenspiele bekommen dieselbe Deck-Auswahl wie die Einzelspiele. Die
+       Wahl gilt geraeteweit und nur fuer die eigene Ansicht — die anderen am
+       Tisch sehen weiter ihr eigenes Deck. */
+    if (t.game === 'poker' || t.game === 'watten') {
+      if (!deckWahl) deckWahl = GK.cardThemePicker().el;
+      wrap.appendChild(el('div', { class: 'mp-deck' }, [deckWahl]));
+    }
+
     wrap.appendChild(el('div', { class: 'mp-log' }, (t.log || []).map(function (z) {
       return el('div', { class: 'mp-log-zeile', text: z.text });
     })));
@@ -688,6 +725,7 @@
     ];
     var poker = [
       '<b>Texas Hold\'em</b> gegen echte Leute: zwei eigene Karten, fünf offene in der Mitte.',
+      '<b>Klopfen</b> heißt: nichts setzen und an den Nächsten weitergeben. Das geht nur, solange kein Einsatz offensteht — sonst musst du mitgehen, erhöhen oder passen. Am echten Tisch klopft man dafür kurz auf die Platte.',
       'Die Blinds wechseln reihum. Der Knopf <b>D</b> zeigt, wer gerade Dealer ist.',
       'Du hast <b>30 Sekunden</b> pro Zug. Läuft die Zeit ab, wird geschoben oder gepasst.',
       'Wer mehr setzt, als ein anderer decken kann, spielt um einen <b>Seitentopf</b> — man gewinnt nie mehr, als man selbst riskiert hat.',
