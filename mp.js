@@ -245,6 +245,33 @@ function createMP(deps) {
                    'Ottokar', 'Rosalind', 'Falk', 'Wilma'];
   var BOT_AVATARE = ['🤖', '🐙', '👻', '🦊', '🐼', '🦁', '🧙', '🐝', '🦖', '🍄'];
 
+  /* Drei Spielweisen. Die Zahlen sind keine Kosmetik — sie aendern, wann ein
+     Bot aussteigt und wann er erhoeht:
+
+       laune        Zufall auf die eingeschaetzte Handstaerke. Viel Laune
+                    heisst: er spielt auch mal Unsinn und ist schwer zu lesen,
+                    verschenkt dabei aber Chips.
+       foldAb       Um wieviel seine Hand ueber oder unter den Pot Odds liegen
+                    darf, bevor er passt. Negativ = er geht auch mit, wenn es
+                    sich rechnerisch nicht lohnt.
+       raiseAb      Ab welcher Handstaerke er ueberhaupt an Erhoehen denkt.
+       raiseWie     Wie oft er es dann wirklich tut.
+       potAnteil    Wie gross er setzt, gemessen am Pot.
+       bluff        Wie oft er ohne Hand Druck macht.
+
+     Der Anfaenger geht fast immer mit und erhoeht kaum — die klassische
+     Mitgeh-Maschine. Der Hai passt, sobald sich das Mitgehen nicht rechnet,
+     setzt gross und blufft. */
+  var BOT_STUFEN = {
+    leicht: { name: 'Anfänger', laune: 0.30, foldAb: -0.18, raiseAb: 0.88,
+              raiseWie: 0.20, potAnteil: 0.35, bluff: 0, denk: [900, 1700] },
+    mittel: { name: 'Solide',   laune: 0.16, foldAb: -0.06, raiseAb: 0.80,
+              raiseWie: 0.45, potAnteil: 0.60, bluff: 0.05, denk: [650, 1500] },
+    schwer: { name: 'Hai',      laune: 0.07, foldAb: 0.02,  raiseAb: 0.66,
+              raiseWie: 0.70, potAnteil: 0.85, bluff: 0.14, denk: [500, 1100] }
+  };
+  function stufeVon(s) { return BOT_STUFEN[s && s.level] || BOT_STUFEN.mittel; }
+
   function addBot(t, opts) {
     var frei = t.seats.indexOf(null);
     if (frei < 0) return { error: 'Der Tisch ist voll', code: 409 };
@@ -256,13 +283,14 @@ function createMP(deps) {
 
     var einkauf = clamp(int(opts && opts.buyIn) || t.minBuy * 2, t.minBuy, t.maxBuy);
     var nr = BOT_NAMEN.indexOf(name);
+    var stufe = BOT_STUFEN[opts && opts.level] ? opts.level : 'mittel';
     t.seats[frei] = {
       id: 'bot:' + newId(''), name: name,
       avatar: BOT_AVATARE[nr >= 0 ? nr : 0],
       stack: einkauf, buyIn: einkauf,
-      at: now(), bot: true, weg: 0, denktBis: 0
+      at: now(), bot: true, level: stufe, weg: 0, denktBis: 0
     };
-    log(t, name + ' setzt sich dazu (Bot)');
+    log(t, name + ' setzt sich dazu (Bot, ' + BOT_STUFEN[stufe].name + ')');
     starteWennMoeglich(t);
     bump(t);
     return { ok: true };
@@ -315,29 +343,42 @@ function createMP(deps) {
     var s = t.seats[h.turn];
     if (!s || !s.bot) return false;
 
+    var L = stufeVon(s);
+
     /* Kurz "nachdenken", sonst knallen die Zuege im selben Takt durch und
-       man sieht am Tisch gar nicht, was passiert ist. */
-    if (!s.denktBis) { s.denktBis = jetzt + 900 + Math.random() * 1600; return false; }
+       man sieht am Tisch gar nicht, was passiert ist. Der Anfaenger braucht
+       laenger, der Hai entscheidet schnell. Kurz gehalten, weil an einem
+       vollen Tisch fuenf Bots nacheinander dran sind — mit zwei Sekunden je
+       Zug wartet der Mensch eine halbe Minute pro Setzrunde. */
+    if (!s.denktBis) {
+      s.denktBis = jetzt + L.denk[0] + Math.random() * (L.denk[1] - L.denk[0]);
+      return false;
+    }
     if (jetzt < s.denktBis) return false;
     s.denktBis = 0;
 
     var staerke = botStaerke(s, h.board);
     var fehlt = h.toCall - s.h.bet;
     var potOdds = fehlt > 0 ? fehlt / (h.pot + fehlt) : 0;
-    var laune = (Math.random() - 0.5) * 0.16;      // nicht ganz berechenbar
+    var laune = (Math.random() - 0.5) * L.laune;      // nicht ganz berechenbar
     var wert = staerke + laune;
+    var einsatz = Math.max(h.minRaise, Math.floor((h.pot || t.bb) * L.potAnteil));
 
     if (fehlt <= 0) {
-      // nichts zu zahlen: mit starker Hand setzen, sonst schieben
-      if (wert > 0.72 && Math.random() < 0.6) {
-        return !botAction(t, s, 'raise', h.toCall + Math.max(h.minRaise, t.bb));
+      // nichts zu zahlen: mit starker Hand setzen, sonst klopfen
+      if (wert > L.raiseAb - 0.08 && Math.random() < L.raiseWie) {
+        return !botAction(t, s, 'raise', h.toCall + einsatz);
+      }
+      /* Bluff ohne Hand: nur wenn schon Karten liegen — vor dem Flop weiss
+         er zu wenig, um Druck zu machen. */
+      if (L.bluff && h.board.length >= 3 && wert < 0.4 && Math.random() < L.bluff) {
+        return !botAction(t, s, 'raise', h.toCall + einsatz);
       }
       return !botAction(t, s, 'check');
     }
-    if (wert < potOdds - 0.06) return !botAction(t, s, 'fold');
-    if (wert > 0.8 && Math.random() < 0.45) {
-      var ziel = h.toCall + Math.max(h.minRaise, Math.floor(h.pot * 0.6));
-      return !botAction(t, s, 'raise', ziel);
+    if (wert < potOdds + L.foldAb) return !botAction(t, s, 'fold');
+    if (wert > L.raiseAb && Math.random() < L.raiseWie) {
+      return !botAction(t, s, 'raise', h.toCall + einsatz);
     }
     return !botAction(t, s, 'call');
   }
@@ -1305,6 +1346,7 @@ function createMP(deps) {
         return {
           platz: i, id: s.id, name: s.name, avatar: s.avatar,
           bot: !!s.bot,
+          stufe: s.bot ? stufeVon(s).name : null,
           stack: s.stack, buyIn: s.buyIn,
           online: isOnline(s.id),
           bet: s.h ? s.h.bet : 0,

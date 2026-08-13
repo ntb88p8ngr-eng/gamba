@@ -32,6 +32,12 @@
   var deckWahl = null;
   /* Stand, der zuletzt gezeichnet wurde — siehe die Begruendung in schleife(). */
   var gezeichnetV = '';
+  /* Welche Karten schon einmal auf dem Tisch lagen. Der Tisch wird bei jeder
+     Aenderung komplett neu gebaut; ohne dieses Gedaechtnis waeren alle Karten
+     jedes Mal "neu" und die Einwurf-Animation liefe bei jedem Zug auf allen
+     Karten gleichzeitig los. Gemerkt wird Hand, Platz und Karte — beim
+     naechsten Geben sind die Schluessel andere, dann fliegt wieder alles ein. */
+  var gesehen = {};
 
   /* ── Server ───────────────────────────────────────────────────────── */
 
@@ -122,6 +128,7 @@
     MP.an = true;
     MP.seit = 0;
     gezeichnetV = '';
+    gesehen = {};
     stage.innerHTML = '';
     stage.appendChild(el('p', { class: 'mp-laden', text: 'Verbinde mit dem Casino…' }));
     schleife();
@@ -196,6 +203,43 @@
         knopf
       ])
     ]);
+  }
+
+  /* Wie stark soll der Gegner sein? Die Beschreibungen sagen, was der Bot
+     tatsaechlich anders macht — "leicht/mittel/schwer" allein hilft nicht
+     beim Aussuchen. */
+  var BOT_STUFEN = [
+    { id: 'leicht', name: 'Anfänger', ic: '🙂',
+      was: 'Geht fast alles mit, erhöht kaum und blufft nie. Wer solide spielt, nimmt ihm die Chips ab.' },
+    { id: 'mittel', name: 'Solide', ic: '😐',
+      was: 'Passt bei schwachen Blättern, erhöht mit guten und blufft selten. Ein normaler Gegner.' },
+    { id: 'schwer', name: 'Hai', ic: '🦈',
+      was: 'Rechnet die Pot Odds mit, steigt früh aus, setzt groß und blufft regelmäßig.' }
+  ];
+
+  function botFragen(t) {
+    GK.sfx('click');
+    var knoepfe = BOT_STUFEN.map(function (st) {
+      var b = el('button', { class: 'mp-stufe' }, [
+        el('span', { class: 'mp-stufe-ic', text: st.ic }),
+        el('span', {}, [
+          el('b', { text: st.name }),
+          el('span', { class: 'mp-stufe-was', text: st.was })
+        ])
+      ]);
+      b.addEventListener('click', function () {
+        GK.closeModal();
+        GK.sfx('chip');
+        tue('action', { action: 'addbot', level: st.id });
+      });
+      return b;
+    });
+    GK.modal({
+      title: 'Bot dazusetzen',
+      text: 'Wie stark soll der Gegner spielen? Die Chips des Bots kommen aus der ' +
+            'Bank — gegen ihn spielst du gegen das Haus, nicht gegen jemanden am Tisch.',
+      nodes: [el('div', { class: 'mp-stufen' }, knoepfe)]
+    });
   }
 
   function einkaufFragen(t) {
@@ -311,9 +355,18 @@
 
   /* ── Tisch ────────────────────────────────────────────────────────── */
 
-  /* Dieselben Kartenbilder wie in den Einzelspielen — samt gewaehltem Deck. */
-  function karte(c, klein) {
-    return GK.cardEl(c || { r: 'A', s: '♠' }, !c, klein ? 'mini' : '');
+  /* Dieselben Kartenbilder wie in den Einzelspielen — samt gewaehltem Deck.
+     schluessel sagt, ob diese Karte an dieser Stelle neu ist; nur dann
+     bekommt sie die Einwurf-Animation. */
+  function karte(c, klein, schluessel) {
+    var neu = false;
+    if (schluessel) {
+      var k = schluessel + '|' + (c ? c.r + c.s : 'back');
+      neu = !gesehen[k];
+      gesehen[k] = true;
+    }
+    return GK.cardEl(c || { r: 'A', s: '♠' }, !c,
+      (klein ? 'mini' : '') + (neu ? ' frisch' : ''));
   }
 
   function meinPlatz() {
@@ -338,19 +391,25 @@
         el('span', { class: 'mp-plus', text: '+' }),
         el('span', { class: 'mp-frei-text', text: 'BOT DAZU' })
       ]);
-      plus.addEventListener('click', function () {
-        GK.sfx('click');
-        tue('action', { action: 'addbot' });
-      });
+      plus.addEventListener('click', function () { botFragen(t); });
       return plus;
     }
     var h = t.hand;
     var dran = h && h.turn === s.platz;
     var karten = el('div', { class: 'mp-karten' });
-    if (s.cards) s.cards.forEach(function (c) { karten.appendChild(karte(c, true)); });
-    else if (t.game === 'watten') {
-      for (var n = 0; n < (s.anzahl || 0); n++) karten.appendChild(karte(null, true));
-    } else if (s.verdeckt) { karten.appendChild(karte(null, true)); karten.appendChild(karte(null, true)); }
+    var handNr = h ? h.nr : 0;
+    if (s.cards) {
+      s.cards.forEach(function (c, n) {
+        karten.appendChild(karte(c, true, 's' + handNr + ':' + s.platz + ':' + n));
+      });
+    } else if (t.game === 'watten') {
+      for (var n = 0; n < (s.anzahl || 0); n++) {
+        karten.appendChild(karte(null, true, 's' + handNr + ':' + s.platz + ':' + n));
+      }
+    } else if (s.verdeckt) {
+      karten.appendChild(karte(null, true, 's' + handNr + ':' + s.platz + ':0'));
+      karten.appendChild(karte(null, true, 's' + handNr + ':' + s.platz + ':1'));
+    }
 
     var gewinn = h && h.ergebnis && h.ergebnis.gewinne[s.platz];
     var handName = h && h.ergebnis && h.ergebnis.haende && h.ergebnis.haende[s.platz];
@@ -372,7 +431,8 @@
       el('div', { class: 'mp-sitz-kopf' }, [
         el('span', { class: 'mp-av', text: s.avatar || '👤' }),
         el('span', { class: 'mp-sitz-name', text: s.name }),
-        s.bot ? el('span', { class: 'mp-bot-tag', text: 'BOT' }) : null,
+        s.bot ? el('span', { class: 'mp-bot-tag', text: s.stufe || 'BOT',
+                             title: 'Bot — Spielstärke ' + (s.stufe || '?') }) : null,
         t.game === 'watten' ? el('span', { class: 'mp-team t' + s.team, text: (s.team + 1) }) : null,
         t.dealer === s.platz ? el('span', { class: 'mp-knopf', text: 'D' }) : null,
         weg
@@ -504,7 +564,7 @@
     var alt = !h.stich.length && h.letzterStich;
     var reihe = el('div', { class: 'mp-board' + (alt ? ' alt' : '') });
     zeige.forEach(function (x) {
-      var k = karte(x.card);
+      var k = karte(x.card, false, 'w' + h.nr + ':' + h.stichNr + ':' + x.platz);
       if (alt && h.letzterStich.sieger === x.platz) k.classList.add('sticht');
       var wer = t.seats[x.platz];
       reihe.appendChild(el('div', { class: 'mp-legekarte' }, [
@@ -596,7 +656,7 @@
     // eigene Karten
     var hand = el('div', { class: 'mp-hand' + (dran ? ' dran' : '') });
     (h.meineKarten || []).forEach(function (c, k) {
-      var kk = karte(c);
+      var kk = karte(c, false, 'e' + h.nr + ':' + c.r + c.s);
       kk.classList.add('mp-handkarte');
       if (dran) {
         kk.addEventListener('click', function () { GK.sfx('card'); tue('action', { action: 'karte', karte: k }); });
@@ -643,8 +703,12 @@
     } else if (t.game === 'poker') {
       var board = el('div', { class: 'mp-board' });
       var karten = (h && h.board) || [];
-      for (var i = 0; i < 5; i++) board.appendChild(karten[i] ? karte(karten[i]) : el('div', { class: 'card slot' }));
-      wrap.appendChild(el('div', { class: 'mp-mitte' }, [
+      for (var i = 0; i < 5; i++) {
+        board.appendChild(karten[i]
+          ? karte(karten[i], false, 'b' + (h ? h.nr : 0) + ':' + i)
+          : el('div', { class: 'card slot' }));
+      }
+      wrap.appendChild(el('div', { class: 'mp-mitte oval' }, [
         board,
         el('div', { class: 'mp-pot', text: h ? 'Pot ' + GK.fmt(h.pot) : (t.wartetAb ? 'gleich geht es los…' : 'wartet auf Spieler') })
       ]));

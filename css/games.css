@@ -1151,6 +1151,22 @@
   background:radial-gradient(ellipse at center,rgba(20,120,70,.45),rgba(6,30,20,.85));
   border:3px solid rgba(255,209,46,.35)
 }
+/* Pokertisch: ovales Filz mit Bande. Der Rand ist eine Ellipse, deshalb
+   braucht es links und rechts reichlich Platz — sonst schneidet die Rundung
+   die aeusseren Karten an. Die zweite, innere Linie ist die Bande. */
+.mp-mitte.oval{
+  border-radius:50% / 34%;
+  padding:34px 8%;
+  background:
+    radial-gradient(ellipse 62% 78% at 50% 42%,rgba(38,168,102,.55),transparent 72%),
+    radial-gradient(ellipse at center,rgba(20,120,70,.5),rgba(5,26,17,.95));
+  border-width:10px;
+  border-color:rgba(120,72,30,.9);
+  box-shadow:
+    inset 0 0 0 3px rgba(255,209,46,.35),
+    inset 0 14px 40px rgba(0,0,0,.55),
+    0 10px 30px rgba(0,0,0,.5)
+}
 .mp-board{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
 .mp-board .card.slot{opacity:.3}
 .mp-pot{margin-top:10px;font-family:'Bungee',sans-serif;color:var(--gold);font-size:.9rem}
@@ -1269,13 +1285,23 @@
 /* Beim Zeigen kommt die Karte nach vorn. Nur wo es echtes Hover gibt — auf
    dem Handy wuerde die Vergroesserung sonst am ersten Tippen kleben
    bleiben. transform-origin haelt die Karte dabei im Kasten. */
-/* Die Karten erben aus .card ein "animation: dealin … both". Das both haelt
-   den Endwert der Animation fest — und eine laufende oder nachwirkende
-   Animation schlaegt jedes normale transform. Deshalb greift Hover dort
-   nicht. Am Mehrspieler-Tisch laeuft dieselbe Animation ohne Nachwirkung:
-   der Einwurf bleibt, danach gilt wieder das normale CSS. */
+/* Zwei Dinge auf einmal:
+
+   1. .card bringt "animation: dealin … both" mit. Das both haelt den Endwert
+      der Animation fest, und eine nachwirkende Animation schlaegt jedes
+      normale transform — der Hover-Zoom liefe sonst ins Leere.
+   2. Der Tisch wird bei jeder Aenderung neu gebaut. Liefe die Animation
+      weiter aus .card, floegen bei jedem Zug saemtliche Karten neu ein.
+
+   Deshalb hier grundsaetzlich keine Animation; nur Karten, die wirklich neu
+   auf dem Tisch liegen, bekommen von mp.js die Klasse .frisch — und die
+   fliegt einmal ein, ohne Nachwirkung. */
 .mp-board .card,.mp-karten .card,.mp-hand .card,.mp-legekarte .card{
-  animation-fill-mode:none
+  animation:none
+}
+.mp-board .card.frisch,.mp-karten .card.frisch,
+.mp-hand .card.frisch,.mp-legekarte .card.frisch{
+  animation:dealin .42s cubic-bezier(.2,1.4,.4,1) 0s 1 normal none
 }
 /* Vergroessert wird nur, was auch eine Karte ist. Die leeren Kartenplaetze
    (.card.slot) tragen dieselbe Klasse, sind aber nur Platzhalter fuer die
@@ -1308,6 +1334,9 @@
 }
 
 @media(max-width:620px){
+  /* Auf schmalen Schirmen wuerde die Ellipse die Karten anschneiden — hier
+     bleibt die Form, wird aber flacher und gibt den Rand frei. */
+  .mp-mitte.oval{border-radius:26% / 24%;padding:18px 14px;border-width:6px}
   .mp-board .card{width:60px}
   .mp-legekarte .card{width:58px}
   .mp-karten .card.mini{width:46px}
@@ -1319,3 +1348,17 @@
   .mp-karten .card.mini{width:40px}
   .mp-hand .card{width:56px}
 }
+
+/* Auswahl der Bot-Spielstärke */
+.mp-stufen{display:grid;gap:8px}
+.mp-stufe{
+  display:flex;align-items:center;gap:12px;text-align:left;padding:11px 13px;
+  border-radius:14px;cursor:pointer;color:#e8e0f6;
+  border:2px solid rgba(255,255,255,.14);
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+  transition:border-color .15s,transform .12s
+}
+.mp-stufe:hover{border-color:var(--gold);transform:translateY(-2px)}
+.mp-stufe-ic{font-size:1.7rem;line-height:1;flex:0 0 auto}
+.mp-stufe b{display:block;font-family:'Bungee',sans-serif;font-size:.84rem;color:var(--gold)}
+.mp-stufe-was{display:block;font-size:.76rem;color:#cfc2ea;line-height:1.35;margin-top:2px}
