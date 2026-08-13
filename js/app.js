@@ -44,6 +44,25 @@
     GK.sfx('whoosh');
   }
 
+  /* Mehrspieler braucht den Server und ein angemeldetes Konto — ohne beides
+     gibt es niemanden, gegen den man spielen koennte. */
+  function openMP() {
+    if (!GK.net || !GK.net.online) {
+      GK.toast('Multiplayer braucht den Casino-Server — offline geht nur allein', 'bad', '📡');
+      GK.sfx('error');
+      return;
+    }
+    if (!GK.player()) {
+      GK.toast('Dafür brauchst du ein Konto', 'bad', '👤');
+      GK.sfx('error');
+      return;
+    }
+    closeGame();
+    GK.mp.open($('#mp-stage'));
+    showView('view-mp');
+    GK.sfx('whoosh');
+  }
+
   function closeGame() {
     if (currentCleanup) { try { currentCleanup(); } catch (e) {} }
     currentCleanup = null;
@@ -1021,6 +1040,14 @@
       GK.sfx('click');
       openGame(GK.pick(GK.unlockedGames()).id);
     });
+    $('#btn-multiplayer').addEventListener('click', function () { GK.sfx('click'); openMP(); });
+    $('#btn-mp-back').addEventListener('click', function () {
+      GK.sfx('click');
+      GK.mp.close();
+      showView('view-lobby');
+      renderAll();
+    });
+    $('#btn-mp-rules').addEventListener('click', function () { GK.sfx('click'); GK.mp.rules(); });
     $('#btn-goto-board').addEventListener('click', function () {
       GK.sfx('click');
       showView('view-lobby');

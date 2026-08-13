@@ -317,6 +317,16 @@ function findByName(name) {
   return k ? db.players[k] : null;
 }
 
+/* ─────────────── Mehrspieler ───────────────
+   Die Tische liegen nur im Speicher: ein Neustart raeumt sie ab. Die Chips
+   sind trotzdem sicher — sie stehen erst wieder auf dem Konto, sobald jemand
+   aufsteht, und beim Herunterfahren wird jeder Stapel zurueckgebucht. */
+var mp = require('./mp.js')({
+  players: function () { return db.players; },
+  save: saveDB,
+  feed: pushFeed
+});
+
 /* ─────────────── Operationen ─────────────── */
 
 var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, wipe: 1, resetPassword: 1 };
@@ -698,6 +708,48 @@ function handleRequest(req, res) {
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 
+  /* ── Mehrspieler ──
+     Alles laeuft ueber die Sitzung: ohne Anmeldung sitzt niemand am Tisch.
+     Der Zustand kommt aus mp.js, hier steht nur die Zustellung. */
+  if (url.indexOf('/api/mp/') === 0 && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      var me = sessionPlayer(body.session);
+      if (!me) return sendJSON(res, 401, { error: 'Nicht angemeldet' });
+      mp.touch(me);
+
+      var teil = url.slice('/api/mp/'.length);
+
+      if (teil === 'lobby') {
+        var seit = Number(body.since) || 0;
+        return mp.wait(seit, function () {
+          sendJSON(res, 200, {
+            lobby: mp.lobby(me),
+            tisch: body.table ? mp.view(body.table, me) : null
+          });
+        });
+      }
+
+      if (teil === 'table') {
+        var seit2 = Number(body.since) || 0;
+        return mp.wait(seit2, function () {
+          var t = mp.view(body.table, me);
+          if (!t) return sendJSON(res, 404, { error: 'Diesen Tisch gibt es nicht mehr' });
+          sendJSON(res, 200, { tisch: t, v: mp.seq() });
+        });
+      }
+
+      var out;
+      if (teil === 'create') out = mp.create(me, body);
+      else if (teil === 'join') out = mp.join(me, body);
+      else if (teil === 'leave') out = mp.leave(me);
+      else if (teil === 'action') out = mp.action(me, body);
+      else return sendJSON(res, 404, { error: 'Unbekannter Endpunkt' });
+
+      if (out.error) return sendJSON(res, out.code || 400, { error: out.error, state: publicState() });
+      sendJSON(res, 200, Object.assign({ state: publicState() }, out));
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
   if (url.indexOf('/api/') === 0) return sendJSON(res, 404, { error: 'Unbekannter Endpunkt' });
 
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
@@ -773,6 +825,11 @@ server.listen(PORT, HOST, function () {
 ['SIGTERM', 'SIGINT'].forEach(function (sig) {
   process.on(sig, function () {
     console.log('[gambaking] ' + sig + ' — Daten sichern und beenden.');
+    /* Chips, die gerade als Stapel auf einem Tisch liegen, gehoeren dem
+       Spieler. Die Tische leben nur im Speicher — ohne Rueckbuchung waeren
+       sie nach dem Neustart weg. */
+    var zurueck = mp.shutdown();
+    if (zurueck) console.log('[gambaking] ' + zurueck + ' Chips von Tischen zurückgebucht.');
     flushDB();
     server.close(function () { process.exit(0); });
     setTimeout(function () { process.exit(0); }, 3000).unref();

@@ -82,6 +82,7 @@
       <div id="level-card" class="level-card"></div>
       <div class="hero-actions">
         <button class="btn btn-mega" id="btn-play-random"><span class="btn-ic" data-icon="dice"></span>ZUFALLSSPIEL</button>
+        <button class="btn btn-mp" id="btn-multiplayer"><span class="btn-ic" data-icon="poker"></span>MULTIPLAYER</button>
         <button class="btn btn-ghost" id="btn-goto-board"><span class="btn-ic" data-icon="trophy"></span>LEADERBOARD</button>
         <button class="btn btn-ghost" id="btn-daily"><span class="btn-ic" data-icon="gift"></span>TAGESBONUS</button>
       </div>
@@ -110,6 +111,18 @@
 
     <h2 class="section-title"><span>📜 LETZTE AKTIONEN</span></h2>
     <div class="feed" id="feed"></div>
+  </section>
+
+  <!-- ══════════ MULTIPLAYER ══════════ -->
+  <section id="view-mp" class="view">
+    <div class="game-header">
+      <h2 class="game-title" id="mp-title">Multiplayer</h2>
+      <div class="game-actions">
+        <button class="btn btn-ghost btn-small" id="btn-mp-back">← LOBBY</button>
+        <button class="btn btn-ghost btn-small" id="btn-mp-rules">❔ REGELN</button>
+      </div>
+    </div>
+    <div id="mp-stage"></div>
   </section>
 
   <!-- ══════════ GAME VIEW ══════════ -->
@@ -144,6 +157,7 @@
 
 <script src="js/core.js"></script>
 <script src="js/icons.js"></script>
+<script src="js/holdem.js"></script>
 <script src="js/sfx.js"></script>
 <script src="js/net.js"></script>
 <script src="js/music.js"></script>
@@ -166,6 +180,7 @@
 <script src="js/games/scratch9.js"></script>
 <script src="js/games/mystery.js"></script>
 <script src="js/games/smaugcave.js"></script>
+<script src="js/mp.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
