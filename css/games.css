@@ -1222,3 +1222,30 @@
   .mp-knoepfe{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
   .mp-tische{grid-template-columns:1fr}
 }
+
+/* ── Watten ── */
+.mp-legekarte{display:flex;flex-direction:column;align-items:center;gap:3px}
+.mp-legename{font-size:.62rem;color:#a99cc9;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-board.alt{opacity:.7}
+.mp-board .card.sticht{outline:3px solid var(--lime);outline-offset:2px;border-radius:10px}
+.mp-watt-stand{
+  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+  margin-top:8px;font-size:.78rem;color:#cfc2ea
+}
+.mp-watt-stand .team1{color:var(--lime);font-family:'Bungee',sans-serif}
+.mp-watt-stand .team2{color:#ff6b8a;font-family:'Bungee',sans-serif}
+.mp-watt-punkte{width:100%;text-align:center;color:var(--gold);font-size:.74rem}
+.mp-team{
+  font-size:.54rem;width:15px;height:15px;flex:0 0 15px;border-radius:50%;
+  display:grid;place-items:center;font-weight:900
+}
+.mp-team.t0{background:rgba(124,255,59,.3);color:var(--lime)}
+.mp-team.t1{background:rgba(255,60,90,.3);color:#ff9db0}
+.mp-wahl{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.mp-wahl .rot{color:#ff6b8a}
+.mp-hand{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.mp-hand .mp-handkarte{transition:transform .15s}
+.mp-hand.dran .mp-handkarte{cursor:pointer}
+.mp-hand.dran .mp-handkarte:hover{transform:translateY(-10px)}
+.mp-knoepfe.zwei{grid-template-columns:repeat(2,minmax(0,1fr))}
+.mp-knoepfe.eins{grid-template-columns:1fr}

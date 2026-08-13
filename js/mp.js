@@ -68,11 +68,10 @@
       if (!MP.an) return;
       if (b.lobby) { MP.lobby = b.lobby; MP.seit = b.lobby.v; }
       if (b.tisch) { MP.tisch = b.tisch; MP.seit = Math.max(MP.seit, b.v || b.tisch.v || 0); }
-      else if (wo === 'table') {
-        /* Der Tisch ist weg — zurueck in die Uebersicht. */
-        MP.tisch = null; MP.seit = 0;
-        GK.toast('Der Tisch wurde aufgelöst', 'bad', '🃏');
-      }
+      /* Ob der Tisch noch steht, sagt allein der Server ueber 404 — siehe
+         unten. Eine Antwort ohne Tisch heisst hier nur "nichts Neues"; wer
+         daraus auf "aufgeloest" schliesst, wirft einen Spieler bei jeder
+         ueberholten Antwort aus seiner Runde. */
       zeichne();
       schleife();
     }).catch(function (e) {
@@ -81,7 +80,13 @@
          abgefragt werden soll. Ohne diesen Neustart bliebe die Schleife
          stehen und die Ansicht fror nach dem ersten eigenen Zug ein. */
       if (e && e.name === 'AbortError') { schleife(); return; }
-      if (e && e.status === 404 && MP.tisch) { MP.tisch = null; MP.seit = 0; zeichne(); }
+      if (e && e.status === 404 && MP.tisch) {
+        MP.tisch = null; MP.seit = 0;
+        GK.toast('Der Tisch wurde aufgelöst', 'bad', '🃏');
+        zeichne();
+        schleife();
+        return;
+      }
       // nicht sofort weiterhaemmern, wenn der Server gerade nicht mag
       setTimeout(function () { if (MP.an) schleife(); }, 2500);
     });
@@ -161,6 +166,7 @@
         el('span', { class: 'mp-tisch-name', text: t.name }),
         el('span', { class: 'mp-tisch-blinds', text: t.game === 'poker'
           ? 'Blinds ' + t.sb + '/' + t.bb
+          : t.game === 'watten' ? t.bb + ' pro Punkt'
           : 'Einsatz ' + t.bb })
       ]),
       el('div', { class: 'mp-leute' }, leute),
@@ -306,7 +312,8 @@
    */
   function sitzKachel(s, t, platz) {
     if (!s) {
-      if (!meinPlatz() || t.game !== 'poker') return null;
+      /* Beim Muenzduell spielt man gegen echte Leute — dort kein Bot. */
+      if (!meinPlatz() || t.game === 'coinflip') return null;
       var plus = el('button', { class: 'mp-sitz frei', title: 'Bot auf diesen Platz setzen' }, [
         el('span', { class: 'mp-plus', text: '+' }),
         el('span', { class: 'mp-frei-text', text: 'BOT DAZU' })
@@ -321,7 +328,9 @@
     var dran = h && h.turn === s.platz;
     var karten = el('div', { class: 'mp-karten' });
     if (s.cards) s.cards.forEach(function (c) { karten.appendChild(karte(c, true)); });
-    else if (s.verdeckt) { karten.appendChild(karte(null, true)); karten.appendChild(karte(null, true)); }
+    else if (t.game === 'watten') {
+      for (var n = 0; n < (s.anzahl || 0); n++) karten.appendChild(karte(null, true));
+    } else if (s.verdeckt) { karten.appendChild(karte(null, true)); karten.appendChild(karte(null, true)); }
 
     var gewinn = h && h.ergebnis && h.ergebnis.gewinne[s.platz];
     var handName = h && h.ergebnis && h.ergebnis.haende && h.ergebnis.haende[s.platz];
@@ -344,6 +353,7 @@
         el('span', { class: 'mp-av', text: s.avatar || '👤' }),
         el('span', { class: 'mp-sitz-name', text: s.name }),
         s.bot ? el('span', { class: 'mp-bot-tag', text: 'BOT' }) : null,
+        t.game === 'watten' ? el('span', { class: 'mp-team t' + s.team, text: (s.team + 1) }) : null,
         t.dealer === s.platz ? el('span', { class: 'mp-knopf', text: 'D' }) : null,
         weg
       ].filter(Boolean)),
@@ -435,6 +445,150 @@
     return box;
   }
 
+  /* ── Watten ───────────────────────────────────────────────────────── */
+
+  var W_FARBEN = [
+    { s: '♣', name: 'Eichel' }, { s: '♠', name: 'Gras' },
+    { s: '♥', name: 'Herz' }, { s: '♦', name: 'Schellen' }
+  ];
+  var W_RANG = [
+    { r: '7', name: 'Sieben' }, { r: '8', name: 'Acht' }, { r: '9', name: 'Neun' },
+    { r: '10', name: 'Zehn' }, { r: 'J', name: 'Unter' }, { r: 'Q', name: 'Ober' },
+    { r: 'K', name: 'König' }, { r: 'A', name: 'Sau' }
+  ];
+  function wName(liste, wert, feld) {
+    var x = liste.filter(function (e) { return e[feld] === wert; })[0];
+    return x ? x.name : wert;
+  }
+
+  function wattenMitte(t) {
+    var h = t.hand;
+    var mitte = el('div', { class: 'mp-mitte' });
+    if (!h) {
+      mitte.appendChild(el('div', { class: 'mp-pot', text: 'wartet auf vier Spieler' }));
+      return mitte;
+    }
+
+    /* Der laufende Stich, sonst der letzte — sonst sieht man nie, womit der
+       vorige Stich geholt wurde. */
+    var zeige = h.stich.length ? h.stich : (h.letzterStich ? h.letzterStich.karten : []);
+    var alt = !h.stich.length && h.letzterStich;
+    var reihe = el('div', { class: 'mp-board' + (alt ? ' alt' : '') });
+    zeige.forEach(function (x) {
+      var k = karte(x.card);
+      if (alt && h.letzterStich.sieger === x.platz) k.classList.add('sticht');
+      var wer = t.seats[x.platz];
+      reihe.appendChild(el('div', { class: 'mp-legekarte' }, [
+        k, el('span', { class: 'mp-legename', text: wer ? wer.name : '' })
+      ]));
+    });
+    if (!zeige.length) reihe.appendChild(el('span', { class: 'mp-warte', text: 'Es wird angesagt…' }));
+    mitte.appendChild(reihe);
+
+    var ansage = h.schlag
+      ? 'Schlag ' + wName(W_RANG, h.schlag, 'r') +
+        (h.trumpf ? '  ·  Trumpf ' + wName(W_FARBEN, h.trumpf, 's') + ' ' + h.trumpf : '')
+      : 'Schlag und Trumpf werden noch angesagt';
+    mitte.appendChild(el('div', { class: 'mp-pot', text: ansage }));
+    mitte.appendChild(el('div', { class: 'mp-watt-stand' }, [
+      el('span', { class: 'team1', text: 'Wir ' + h.gewonnen[h.meinTeam] }),
+      el('span', { text: 'Stiche' }),
+      el('span', { class: 'team2', text: h.gewonnen[1 - h.meinTeam] + ' Sie' }),
+      el('span', { class: 'mp-watt-punkte', text: 'Es geht um ' + h.punkte +
+        '  ·  Partie ' + h.stand[h.meinTeam] + ':' + h.stand[1 - h.meinTeam] })
+    ]));
+    return mitte;
+  }
+
+  function wattenAktionen(t) {
+    var h = t.hand;
+    var ich = meinPlatz();
+    var box = el('div', { class: 'mp-aktionen' });
+    if (!ich) return box;
+    if (ich.stack <= 0) {
+      var nach = el('button', { class: 'btn btn-gold btn-full', text: '🔁 NACHKAUFEN' });
+      nach.addEventListener('click', function () { GK.sfx('click'); tue('action', { action: 'rebuy', buyIn: t.minBuy }); });
+      box.appendChild(nach);
+      return box;
+    }
+    if (!h) {
+      box.appendChild(el('p', { class: 'mp-warte', text: 'Warte auf vier Spieler…' }));
+      return box;
+    }
+    if (h.ergebnis) {
+      box.appendChild(el('p', { class: 'mp-warte', text:
+        (h.ergebnis.team === h.meinTeam ? 'Gewonnen' : 'Verloren') + ' — ' +
+        h.ergebnis.punkte + (h.ergebnis.punkte === 1 ? ' Punkt' : ' Punkte') +
+        (h.ergebnis.aufgegeben ? ' (aufgegeben)' : '') }));
+      return box;
+    }
+
+    // Erhoehung beantworten
+    if (h.antwortVon !== null && h.antwortVon === ich.platz) {
+      var dabei = el('button', { class: 'btn btn-lime', text: '✋ DABEI (' + h.geboten + ')' });
+      var aus = el('button', { class: 'btn btn-danger', text: '🏳️ AUS (' + h.punkte + ')' });
+      dabei.addEventListener('click', function () { GK.sfx('chip'); tue('action', { action: 'dabei' }); });
+      aus.addEventListener('click', function () { GK.sfx('card'); tue('action', { action: 'aus' }); });
+      box.appendChild(el('p', { class: 'mp-warte', text:
+        'Die Gegenseite geht auf ' + h.geboten + '. Mitgehen oder aussteigen?' }));
+      box.appendChild(el('div', { class: 'mp-knoepfe zwei' }, [aus, dabei]));
+      return box;
+    }
+    if (h.antwortVon !== null) {
+      box.appendChild(el('p', { class: 'mp-warte', text: 'Erhöhung auf ' + h.geboten + ' — es wird geantwortet…' }));
+      return box;
+    }
+
+    var dran = h.turn === ich.platz;
+
+    if (h.phase === 'schlag') {
+      if (!dran) { box.appendChild(el('p', { class: 'mp-warte', text: t.seats[h.turn].name + ' sagt den Schlag an…' })); return box; }
+      box.appendChild(el('p', { class: 'mp-warte', text: 'Welchen Schlag sagst du an?' }));
+      box.appendChild(el('div', { class: 'mp-wahl' }, W_RANG.map(function (r) {
+        var b = el('button', { class: 'btn btn-ghost btn-small', text: r.name });
+        b.addEventListener('click', function () { GK.sfx('chip'); tue('action', { action: 'schlag', schlag: r.r }); });
+        return b;
+      })));
+      return box;
+    }
+
+    if (h.phase === 'trumpf') {
+      if (!dran) { box.appendChild(el('p', { class: 'mp-warte', text: t.seats[h.turn].name + ' sagt den Trumpf an…' })); return box; }
+      box.appendChild(el('p', { class: 'mp-warte', text: 'Welche Farbe wird Trumpf?' }));
+      box.appendChild(el('div', { class: 'mp-wahl' }, W_FARBEN.map(function (f) {
+        var b = el('button', { class: 'btn btn-ghost btn-small' + (f.s === '♥' || f.s === '♦' ? ' rot' : ''),
+                               text: f.name + ' ' + f.s });
+        b.addEventListener('click', function () { GK.sfx('chip'); tue('action', { action: 'trumpf', trumpf: f.s }); });
+        return b;
+      })));
+      return box;
+    }
+
+    // eigene Karten
+    var hand = el('div', { class: 'mp-hand' + (dran ? ' dran' : '') });
+    (h.meineKarten || []).forEach(function (c, k) {
+      var kk = karte(c);
+      kk.classList.add('mp-handkarte');
+      if (dran) {
+        kk.addEventListener('click', function () { GK.sfx('card'); tue('action', { action: 'karte', karte: k }); });
+      }
+      hand.appendChild(kk);
+    });
+    box.appendChild(el('p', { class: 'mp-warte', text: dran
+      ? 'Du bist dran — leg eine Karte'
+      : (t.seats[h.turn] ? t.seats[h.turn].name + ' ist dran…' : 'Warte…') }));
+    box.appendChild(hand);
+
+    /* Gehen darf man auch, wenn man nicht am Zug ist — solange die eigene
+       Seite nicht zuletzt erhoeht hat. */
+    if (h.gehenVon !== h.meinTeam) {
+      var gehen = el('button', { class: 'btn btn-gold btn-small', text: '⬆️ GEHEN (auf ' + (h.punkte + 1) + ')' });
+      gehen.addEventListener('click', function () { GK.sfx('chip'); tue('action', { action: 'gehen' }); });
+      box.appendChild(el('div', { class: 'mp-knoepfe eins' }, [gehen]));
+    }
+    return box;
+  }
+
   function zeichneTisch() {
     var t = MP.tisch;
     var h = t.hand;
@@ -448,12 +602,16 @@
         el('h3', { text: t.name }),
         el('span', { class: 'mp-tisch-blinds', text: t.game === 'poker'
           ? 'Blinds ' + t.sb + '/' + t.bb + (h ? '  ·  Hand ' + h.nr : '')
+          : t.game === 'watten'
+          ? t.bb + ' pro Punkt' + (h ? '  ·  Hand ' + h.nr : '')
           : 'Einsatz ' + t.bb + (h ? '  ·  Runde ' + h.nr : '') })
       ]),
       auf
     ]));
 
-    if (t.game === 'poker') {
+    if (t.game === 'watten') {
+      wrap.appendChild(wattenMitte(t));
+    } else if (t.game === 'poker') {
       var board = el('div', { class: 'mp-board' });
       var karten = (h && h.board) || [];
       for (var i = 0; i < 5; i++) board.appendChild(karten[i] ? karte(karten[i]) : el('div', { class: 'card slot' }));
@@ -474,7 +632,9 @@
       .filter(Boolean);
     wrap.appendChild(el('div', { class: 'mp-sitze n' + t.seats.length }, kacheln));
 
-    wrap.appendChild(t.game === 'poker' ? pokerAktionen(t) : flipAktionen(t));
+    wrap.appendChild(t.game === 'poker' ? pokerAktionen(t)
+                   : t.game === 'watten' ? wattenAktionen(t)
+                   : flipAktionen(t));
 
     if (h && h.deadline) {
       var rest = Math.max(0, Math.round((h.deadline - Date.now()) / 1000));
@@ -515,6 +675,17 @@
 
   /** Regeln fuer die Ansicht — je nachdem, wo man gerade ist. */
   MP.rules = function () {
+    var watten = [
+      '<b>Bayerisch Watten</b> zu viert: Platz 1 und 3 gegen Platz 2 und 4.',
+      'Jeder bekommt fünf Karten. Die <b>Vorhand</b> sagt den <b>Schlag</b> (den Rang) an, der <b>Geber</b> die <b>Trumpffarbe</b>.',
+      'Von oben: <b>Max</b> (Herz-König), <b>Belli</b> (Schellen-Sieben), <b>Spitz</b> (Eichel-Sieben) — dann der <b>Rechte</b> (Schlag in der Trumpffarbe), dann die übrigen <b>Schläge</b>, dann der Rest vom Trumpf.',
+      'Alle anderen Schläge sind gleich stark: die <b>zuerst gelegte</b> schlägt die späteren.',
+      '<b>Kein Farbzwang</b> — du darfst immer legen, was du willst.',
+      'Wer <b>drei von fünf</b> Stichen holt, gewinnt die Hand.',
+      'Eine Hand ist <b>2 Punkte</b> wert. Mit <b>Gehen</b> erhöhst du; die Gegenseite geht <b>mit</b> oder <b>aus</b> und zahlt dann den bisherigen Wert.',
+      'Jeder Punkt kostet die Verlierer den Tischeinsatz — das Geld geht direkt an die andere Mannschaft.',
+      'Die deutschen Farben liegen auf dem gewohnten Blatt: <b>Eichel ♣ · Gras ♠ · Herz ♥ · Schellen ♦</b>, und <b>Unter = Bube, Ober = Dame, Sau = Ass</b>.'
+    ];
     var poker = [
       '<b>Texas Hold\'em</b> gegen echte Leute: zwei eigene Karten, fünf offene in der Mitte.',
       'Die Blinds wechseln reihum. Der Knopf <b>D</b> zeigt, wer gerade Dealer ist.',
@@ -529,11 +700,17 @@
       'Wählst du nicht rechtzeitig, bekommst du die freie Seite zugeteilt.'
     ];
     var t = MP.tisch;
+    var welche = !t ? poker.concat(watten, flip)
+      : t.game === 'coinflip' ? flip
+      : t.game === 'watten' ? watten
+      : poker;
+    var titel = !t ? 'Multiplayer'
+      : t.game === 'coinflip' ? 'Münzduell'
+      : t.game === 'watten' ? 'Watten'
+      : 'Königs-Poker';
     GK.modal({
-      title: t && t.game === 'coinflip' ? 'Münzduell' : (t ? 'Königs-Poker' : 'Multiplayer'),
-      nodes: [el('ul', { class: 'rules' },
-        (t && t.game === 'coinflip' ? flip : t ? poker : poker.concat(flip))
-          .map(function (r) { return el('li', { html: r }); }))]
+      title: titel,
+      nodes: [el('ul', { class: 'rules' }, welche.map(function (r) { return el('li', { html: r }); }))]
     });
   };
 })(window.GK);

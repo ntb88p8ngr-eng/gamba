@@ -37,6 +37,14 @@ var GAMES = {
     seats: 6,
     minSeats: 2
   },
+  watten: {
+    name: 'Watten',
+    kurz: 'Bayerisch Watten zu viert, zwei gegen zwei. Schlag und Trumpf werden angesagt, ' +
+          'wer drei von fünf Stichen holt, gewinnt die Hand.',
+    icon: 'cards',
+    seats: 4,
+    minSeats: 4
+  },
   coinflip: {
     name: 'Münzduell',
     kurz: 'Einer gegen einen. Beide setzen gleich viel, die Münze entscheidet.',
@@ -45,6 +53,41 @@ var GAMES = {
     minSeats: 2
   }
 };
+
+/* ─────────────── Watten ───────────────
+   Bayerische Regeln. Gespielt wird mit 32 Blatt; die deutschen Farben liegen
+   auf den vorhandenen franzoesischen Kartenbildern, damit kein neues Deck
+   noetig ist:
+       Eichel = ♣    Gras = ♠    Herz = ♥    Schellen = ♦
+       Unter  = J    Ober = Q    Koenig = K   Sau = A
+
+   Die Rangfolge, von oben:
+     1. Die drei "Kritischen" (Rechten): Max = Herz-Koenig, Belli =
+        Schellen-Sieben, Spitz = Eichel-Sieben. Immer Trumpf, immer hoechste.
+     2. Der "Rechte": die Karte, die zugleich den angesagten Schlag und die
+        angesagte Trumpffarbe hat.
+     3. Die uebrigen Karten des Schlags ("Blinde") — untereinander gleich
+        stark, die zuerst gelegte schlaegt die spaeteren.
+     4. Die uebrigen Karten der Trumpffarbe, in normaler Ordnung.
+     5. Alles andere, aber nur in der angespielten Farbe.
+   Farbzwang gibt es nicht: man darf immer alles legen. */
+var W_FARBEN = [
+  { s: '♣', name: 'Eichel' }, { s: '♠', name: 'Gras' },
+  { s: '♥', name: 'Herz' }, { s: '♦', name: 'Schellen' }
+];
+var W_RANG = [
+  { r: '7', name: 'Sieben', v: 1 }, { r: '8', name: 'Acht', v: 2 },
+  { r: '9', name: 'Neun', v: 3 }, { r: '10', name: 'Zehn', v: 4 },
+  { r: 'J', name: 'Unter', v: 5 }, { r: 'Q', name: 'Ober', v: 6 },
+  { r: 'K', name: 'König', v: 7 }, { r: 'A', name: 'Sau', v: 8 }
+];
+var W_KRITISCH = [
+  { r: 'K', s: '♥', name: 'Max' },
+  { r: '7', s: '♦', name: 'Belli' },
+  { r: '7', s: '♣', name: 'Spitz' }
+];
+/* Bis hierhin zaehlt eine Mannschaft, dann ist die Partie vorbei. */
+var W_ZIEL = 11;
 
 function createMP(deps) {
   /* deps: players() -> db.players, save(), feed(text, kind) */
@@ -171,9 +214,7 @@ function createMP(deps) {
     var frei = t.seats.indexOf(null);
     if (frei < 0) return { error: 'Der Tisch ist voll', code: 409 };
 
-    var einkauf = t.game === 'coinflip'
-      ? clamp(int(opts.buyIn) || t.bb * 10, t.minBuy, t.maxBuy)
-      : clamp(int(opts.buyIn) || t.minBuy, t.minBuy, t.maxBuy);
+    var einkauf = clamp(int(opts.buyIn) || t.minBuy * 2, t.minBuy, t.maxBuy);
     if (einkauf > p.balance) {
       return { error: 'Dafür reichen deine Chips nicht — mindestens ' + t.minBuy, code: 400 };
     }
@@ -207,7 +248,7 @@ function createMP(deps) {
   function addBot(t, opts) {
     var frei = t.seats.indexOf(null);
     if (frei < 0) return { error: 'Der Tisch ist voll', code: 409 };
-    if (t.game !== 'poker') return { error: 'Bots gibt es nur beim Poker', code: 400 };
+    if (t.game === 'coinflip') return { error: 'Beim Münzduell spielst du gegen echte Leute', code: 400 };
 
     var genutzt = t.seats.filter(Boolean).map(function (s) { return s.name; });
     var frei2 = BOT_NAMEN.filter(function (n) { return genutzt.indexOf(n) < 0; });
@@ -267,6 +308,7 @@ function createMP(deps) {
   }
 
   function botZug(t, jetzt) {
+    if (t.game === 'watten') return wattenBotZug(t, jetzt);
     if (t.game !== 'poker') return false;
     var h = t.hand;
     if (!h || h.ende || h.turn < 0) return false;
@@ -407,6 +449,7 @@ function createMP(deps) {
 
   function starteHand(t) {
     if (t.game === 'coinflip') return starteFlip(t);
+    if (t.game === 'watten') return starteWatten(t);
     return startePoker(t);
   }
 
@@ -531,6 +574,7 @@ function createMP(deps) {
     if (op.action === 'addbot') return addBot(t, op);
     if (op.action === 'kickbot') return removeBot(t, int(op.seat));
     if (t.game === 'coinflip') return flipAction(t, id, op);
+    if (t.game === 'watten') return wattenAction(t, id, op);
     return handleAction(t, seatOf(t, id), op);
   }
 
@@ -597,6 +641,7 @@ function createMP(deps) {
 
   function zeitAbgelaufen(t) {
     if (t.game === 'coinflip') { flipTimeout(t); return; }
+    if (t.game === 'watten') { wattenTimeout(t); return; }
     var h = t.hand;
     if (!h || h.turn < 0) return;
     var s = t.seats[h.turn];
@@ -787,6 +832,370 @@ function createMP(deps) {
     deps.save();
   }
 
+  /* ═══════════════ WATTEN ═══════════════ */
+
+  function wDeck() {
+    var d = [];
+    W_FARBEN.forEach(function (f) {
+      W_RANG.forEach(function (r) {
+        d.push({ r: r.r, v: r.v, s: f.s, red: f.s === '♥' || f.s === '♦' });
+      });
+    });
+    for (var i = d.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = d[i]; d[i] = d[j]; d[j] = t;
+    }
+    return d;
+  }
+
+  function kritisch(c) {
+    for (var i = 0; i < W_KRITISCH.length; i++) {
+      if (W_KRITISCH[i].r === c.r && W_KRITISCH[i].s === c.s) return i;   // 0 = Max
+    }
+    return -1;
+  }
+
+  /** Wie stark ist die Karte? 0 heisst: zaehlt nur in der angespielten Farbe. */
+  function wWert(c, h) {
+    var k = kritisch(c);
+    if (k >= 0) return 1000 - k;                       // Max 1000, Belli 999, Spitz 998
+    if (c.r === h.schlag && c.s === h.trumpf) return 900;   // der Rechte
+    if (c.r === h.schlag) return 800;                      // Blinde, alle gleich
+    if (c.s === h.trumpf) return 700 + c.v;
+    return 0;
+  }
+
+  /** Wer holt den Stich? Gibt den Platz zurueck. */
+  function wStich(karten, h) {
+    var farbe = karten[0].card.s;
+    var besterWert = -1, bester = karten[0].platz;
+    karten.forEach(function (x) {
+      var w = wWert(x.card, h);
+      if (w === 0) w = x.card.s === farbe ? x.card.v : -1;
+      /* Strikt groesser: bei den gleichwertigen Blinden bleibt damit die
+         zuerst gelegte Karte vorn — genau so wird gewattet. */
+      if (w > besterWert) { besterWert = w; bester = x.platz; }
+    });
+    return bester;
+  }
+
+  function team(platz) { return platz % 2; }
+
+  function starteWatten(t) {
+    var dabei = t.seats.filter(Boolean);
+    if (dabei.length < 4) return;
+
+    var deck = wDeck();
+    t.dealer = naechsterPlatz(t, t.dealer, function (s) { return !!s; });
+    var vorhand = naechsterPlatz(t, t.dealer, function (s) { return !!s; });
+
+    t.seats.forEach(function (s) {
+      if (!s) return;
+      s.h = { cards: deck.splice(0, 5), gelegt: null };
+    });
+
+    t.hand = {
+      nr: (t.handNr = (t.handNr || 0) + 1),
+      phase: 'schlag',                 // schlag → trumpf → spiel → ende
+      schlag: null, trumpf: null,
+      vorhand: vorhand,
+      stich: [],                        // die Karten des laufenden Stichs
+      stichNr: 1,
+      gewonnen: [0, 0],                 // Stiche je Mannschaft
+      anspiel: vorhand,
+      turn: vorhand,                    // Vorhand sagt den Schlag an
+      punkte: 2,
+      gehenVon: null,                   // Mannschaft, die erhoeht hat
+      deadline: now() + TURN_MS,
+      ende: 0,
+      ergebnis: null
+    };
+    log(t, 'Hand ' + t.hand.nr + ' — ' + t.seats[vorhand].name + ' sagt den Schlag an');
+    bump(t);
+  }
+
+  function wattenAction(t, id, op) {
+    var h = t.hand;
+    if (!h || h.ende) return { error: 'Gerade läuft keine Hand', code: 409 };
+    var i = seatOf(t, id);
+    var was = String(op.action || '');
+
+    /* Erhoehen und Antworten laufen quer zur Reihenfolge — deshalb zuerst. */
+    if (was === 'gehen') return wGehen(t, i);
+    if (was === 'dabei' || was === 'aus') return wAntwort(t, i, was);
+    if (h.antwortVon !== undefined && h.antwortVon !== null) {
+      return { error: 'Erst muss die Erhöhung beantwortet werden', code: 409 };
+    }
+    if (h.turn !== i) return { error: 'Du bist nicht dran', code: 409 };
+
+    if (h.phase === 'schlag') {
+      var r = W_RANG.filter(function (x) { return x.r === String(op.schlag); })[0];
+      if (!r) return { error: 'Diesen Schlag gibt es nicht', code: 400 };
+      h.schlag = r.r;
+      h.phase = 'trumpf';
+      h.turn = t.dealer;                // der Geber sagt die Farbe an
+      h.deadline = now() + TURN_MS;
+      log(t, t.seats[i].name + ' sagt Schlag ' + r.name);
+      bump(t);
+      return { ok: true };
+    }
+
+    if (h.phase === 'trumpf') {
+      var f = W_FARBEN.filter(function (x) { return x.s === String(op.trumpf); })[0];
+      if (!f) return { error: 'Diese Farbe gibt es nicht', code: 400 };
+      h.trumpf = f.s;
+      h.phase = 'spiel';
+      h.turn = h.vorhand;
+      h.anspiel = h.vorhand;
+      h.deadline = now() + TURN_MS;
+      log(t, t.seats[i].name + ' sagt Trumpf ' + f.name);
+      bump(t);
+      return { ok: true };
+    }
+
+    if (h.phase === 'spiel') {
+      var s = t.seats[i];
+      var k = int(op.karte);
+      if (!(k >= 0 && k < s.h.cards.length)) return { error: 'Diese Karte hast du nicht', code: 400 };
+      var karte = s.h.cards.splice(k, 1)[0];
+      h.stich.push({ platz: i, card: karte });
+      log(t, s.name + ' legt ' + kartenName(karte));
+
+      if (h.stich.length >= 4) return wStichFertig(t);
+      h.turn = naechsterPlatz(t, i, function (x) { return !!x; });
+      h.deadline = now() + TURN_MS;
+      bump(t);
+      return { ok: true };
+    }
+    return { error: 'Gerade ist nichts zu tun', code: 409 };
+  }
+
+  function kartenName(c) {
+    var k = kritisch(c);
+    var farbe = W_FARBEN.filter(function (f) { return f.s === c.s; })[0];
+    var rang = W_RANG.filter(function (r) { return r.r === c.r; })[0];
+    var name = (farbe ? farbe.name : c.s) + '-' + (rang ? rang.name : c.r);
+    return k >= 0 ? name + ' (' + W_KRITISCH[k].name + ')' : name;
+  }
+
+  function wStichFertig(t) {
+    var h = t.hand;
+    var sieger = wStich(h.stich, h);
+    h.gewonnen[team(sieger)]++;
+    h.letzterStich = { karten: h.stich.slice(), sieger: sieger };
+    log(t, t.seats[sieger].name + ' holt den Stich (' +
+        h.gewonnen[0] + ':' + h.gewonnen[1] + ')');
+    h.stich = [];
+    h.stichNr++;
+
+    if (h.gewonnen[0] >= 3 || h.gewonnen[1] >= 3) {
+      return wEnde(t, h.gewonnen[0] >= 3 ? 0 : 1);
+    }
+    h.turn = sieger;
+    h.anspiel = sieger;
+    h.deadline = now() + TURN_MS;
+    bump(t);
+    return { ok: true };
+  }
+
+  /* ── Gehen: den Wert der Hand erhoehen ── */
+
+  function wGehen(t, i) {
+    var h = t.hand;
+    if (h.phase !== 'spiel') return { error: 'Erst wird angesagt', code: 409 };
+    if (h.antwortVon !== undefined && h.antwortVon !== null) {
+      return { error: 'Es steht schon eine Erhöhung offen', code: 409 };
+    }
+    if (h.gehenVon === team(i)) return { error: 'Ihr habt zuletzt erhöht', code: 409 };
+
+    h.gehenVon = team(i);
+    h.geboten = h.punkte + 1;
+    /* Antworten darf die Gegenmannschaft; gefragt wird der Naechste von
+       ihnen in der Reihenfolge. */
+    h.antwortVon = naechsterPlatz(t, i, function (s, k) { return s && team(k) !== team(i); });
+    h.deadline = now() + TURN_MS;
+    log(t, t.seats[i].name + ' geht auf ' + h.geboten);
+    bump(t);
+    return { ok: true };
+  }
+
+  function wAntwort(t, i, was) {
+    var h = t.hand;
+    if (h.antwortVon === undefined || h.antwortVon === null) {
+      return { error: 'Es steht keine Erhöhung offen', code: 409 };
+    }
+    if (h.antwortVon !== i) return { error: 'Du bist nicht gefragt', code: 409 };
+
+    if (was === 'dabei') {
+      h.punkte = h.geboten;
+      h.antwortVon = null;
+      h.deadline = now() + TURN_MS;
+      log(t, t.seats[i].name + ' ist dabei — es geht um ' + h.punkte);
+      bump(t);
+      return { ok: true };
+    }
+    /* "Aus": die Mannschaft steigt aus und zahlt den bisherigen Wert. */
+    log(t, t.seats[i].name + ' geht aus — ' + h.punkte + ' für die Gegenseite');
+    return wEnde(t, h.gehenVon, true);
+  }
+
+  /* ── Abrechnen ── */
+
+  function wEnde(t, siegerTeam, aufgegeben) {
+    var h = t.hand;
+    var betrag = h.punkte * t.bb;
+
+    /* Erst einsammeln, was die Verlierer wirklich haben, dann verteilen —
+       so kann nie mehr ausgezahlt werden, als am Tisch liegt. */
+    var topf = 0;
+    t.seats.forEach(function (s, i) {
+      if (!s || team(i) === siegerTeam) return;
+      var b = Math.min(betrag, s.stack);
+      s.stack -= b;
+      topf += b;
+    });
+    var gewinner = [];
+    t.seats.forEach(function (s, i) { if (s && team(i) === siegerTeam) gewinner.push(i); });
+    var anteil = gewinner.length ? Math.floor(topf / gewinner.length) : 0;
+    var rest = topf - anteil * gewinner.length;
+    var gewinne = {};
+    gewinner.forEach(function (i, n) {
+      var g = anteil + (n < rest ? 1 : 0);
+      t.seats[i].stack += g;
+      gewinne[i] = g;
+    });
+
+    t.punkte = t.punkte || [0, 0];
+    t.punkte[siegerTeam] += h.punkte;
+
+    h.ergebnis = {
+      team: siegerTeam,
+      punkte: h.punkte,
+      aufgegeben: !!aufgegeben,
+      gewinne: gewinne,
+      stand: t.punkte.slice(),
+      /* Am Ende darf jeder sehen, was die anderen hatten. */
+      haende: t.seats.map(function (s) { return s ? s.h.cards.slice() : null; })
+    };
+    h.phase = 'ende';
+    h.turn = -1;
+    h.deadline = 0;
+    h.ende = now() + BREAK_MS;
+
+    log(t, 'Mannschaft ' + (siegerTeam + 1) + ' gewinnt die Hand (' + h.punkte +
+        ') — Stand ' + t.punkte[0] + ':' + t.punkte[1]);
+
+    if (t.punkte[siegerTeam] >= W_ZIEL) {
+      log(t, 'Partie gewonnen! Der Stand beginnt von vorn.');
+      t.punkte = [0, 0];
+    }
+    deps.save();
+    bump(t);
+    return { ok: true };
+  }
+
+  function wattenTimeout(t) {
+    var h = t.hand;
+    if (!h || h.ende) return;
+
+    if (h.antwortVon !== undefined && h.antwortVon !== null) {
+      // keine Antwort heisst mitgehen — sonst koennte man durch Wegsehen gewinnen
+      return wAntwort(t, h.antwortVon, 'dabei');
+    }
+    var i = h.turn;
+    var s = t.seats[i];
+    if (!s) return;
+    if (h.phase === 'schlag') {
+      return wattenAction(t, s.id, { action: 'schlag', schlag: GK_pick(W_RANG).r });
+    }
+    if (h.phase === 'trumpf') {
+      return wattenAction(t, s.id, { action: 'trumpf', trumpf: GK_pick(W_FARBEN).s });
+    }
+    if (h.phase === 'spiel') {
+      return wattenAction(t, s.id, { action: 'karte', karte: 0 });
+    }
+  }
+
+  function GK_pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  /**
+   * Watten-Bot. Er sagt an, was er selbst am haeufigsten hat, sticht wenn er
+   * kann und wirft sonst die niedrigste Karte weg. Auf eine Erhoehung geht er
+   * mit, wenn sein Blatt etwas hergibt.
+   */
+  function wattenBotZug(t, jetzt) {
+    var h = t.hand;
+    if (!h || h.ende) return false;
+
+    var i = (h.antwortVon !== undefined && h.antwortVon !== null) ? h.antwortVon : h.turn;
+    var s = t.seats[i];
+    if (!s || !s.bot) return false;
+    if (!s.denktBis) { s.denktBis = jetzt + 800 + Math.random() * 1200; return false; }
+    if (jetzt < s.denktBis) return false;
+    s.denktBis = 0;
+
+    if (h.antwortVon !== undefined && h.antwortVon !== null && h.antwortVon === i) {
+      var stark = s.h.cards.filter(function (c) {
+        return kritisch(c) >= 0 || c.r === h.schlag || c.s === h.trumpf;
+      }).length;
+      wattenAction(t, s.id, { action: stark >= 2 ? 'dabei' : 'aus' });
+      return true;
+    }
+
+    if (h.phase === 'schlag') {
+      var proRang = {};
+      s.h.cards.forEach(function (c) { proRang[c.r] = (proRang[c.r] || 0) + 1; });
+      var bester = s.h.cards[0].r, best = 0;
+      Object.keys(proRang).forEach(function (r) {
+        var w = proRang[r] * 10 + (W_RANG.filter(function (x) { return x.r === r; })[0] || { v: 0 }).v;
+        if (w > best) { best = w; bester = r; }
+      });
+      wattenAction(t, s.id, { action: 'schlag', schlag: bester });
+      return true;
+    }
+
+    if (h.phase === 'trumpf') {
+      var proFarbe = {};
+      s.h.cards.forEach(function (c) { proFarbe[c.s] = (proFarbe[c.s] || 0) + 1; });
+      var beste = s.h.cards[0].s, b2 = 0;
+      Object.keys(proFarbe).forEach(function (f) {
+        if (proFarbe[f] > b2) { b2 = proFarbe[f]; beste = f; }
+      });
+      wattenAction(t, s.id, { action: 'trumpf', trumpf: beste });
+      return true;
+    }
+
+    if (h.phase === 'spiel') {
+      var karten = s.h.cards;
+      var wahl = 0;
+      if (!h.stich.length) {
+        // anspielen: die staerkste Karte vorn
+        var maxW = -1;
+        karten.forEach(function (c, k) {
+          var w = wWert(c, h) || c.v;
+          if (w > maxW) { maxW = w; wahl = k; }
+        });
+      } else {
+        // koennte ich den Stich holen? Dann mit der billigsten passenden Karte
+        var fuehrend = wStich(h.stich, h);
+        var fuehrKarte = h.stich.filter(function (x) { return x.platz === fuehrend; })[0].card;
+        var farbe = h.stich[0].card.s;
+        var fuehrW = wWert(fuehrKarte, h) || (fuehrKarte.s === farbe ? fuehrKarte.v : 0);
+        var billigste = -1, billigW = Infinity, schwaechste = 0, schwachW = Infinity;
+        karten.forEach(function (c, k) {
+          var w = wWert(c, h) || (c.s === farbe ? c.v : 0);
+          if (w > fuehrW && w < billigW) { billigW = w; billigste = k; }
+          if (w < schwachW) { schwachW = w; schwaechste = k; }
+        });
+        var partner = team(fuehrend) === team(i);
+        wahl = (partner || billigste < 0) ? schwaechste : billigste;
+      }
+      wattenAction(t, s.id, { action: 'karte', karte: wahl });
+      return true;
+    }
+    return false;
+  }
+
   /* ═══════════════ MUENZDUELL 1 gegen 1 ═══════════════ */
 
   function starteFlip(t) {
@@ -883,7 +1292,13 @@ function createMP(deps) {
         if (!s) return null;
         var eigen = s.id === viewer;
         var karten = null;
-        if (s.h && s.h.cards) {
+        if (t.game === 'watten') {
+          /* Beim Watten haelt jeder seine Karten selbst — im Sitz steht nur,
+             wieviele noch da sind. Am Ende der Hand darf man alles sehen. */
+          var fertig = h && h.ergebnis && h.ergebnis.haende;
+          if (eigen && s.h) karten = s.h.cards;
+          else if (fertig) karten = h.ergebnis.haende[i];
+        } else if (s.h && s.h.cards) {
           if (eigen) karten = s.h.cards;
           else if (zeigen && !s.h.folded) karten = s.h.cards;
         }
@@ -896,6 +1311,8 @@ function createMP(deps) {
           folded: s.h ? !!s.h.folded : false,
           allIn: s.h ? !!s.h.allIn : false,
           cards: karten,
+          anzahl: s.h && s.h.cards ? s.h.cards.length : 0,
+          team: i % 2,
           verdeckt: !!(s.h && s.h.cards && !karten)
         };
       }),
@@ -907,6 +1324,24 @@ function createMP(deps) {
 
   function sichtHand(t, viewer) {
     var h = t.hand;
+    if (t.game === 'watten') {
+      var mein = seatOf(t, viewer);
+      return {
+        nr: h.nr, phase: h.phase,
+        schlag: h.schlag, trumpf: h.trumpf,
+        vorhand: h.vorhand, anspiel: h.anspiel,
+        stich: h.stich, stichNr: h.stichNr,
+        letzterStich: h.letzterStich || null,
+        gewonnen: h.gewonnen,
+        punkte: h.punkte, geboten: h.geboten || 0,
+        gehenVon: h.gehenVon, antwortVon: h.antwortVon === undefined ? null : h.antwortVon,
+        meineKarten: mein >= 0 && t.seats[mein] && t.seats[mein].h ? t.seats[mein].h.cards : [],
+        meinTeam: mein >= 0 ? mein % 2 : -1,
+        turn: h.turn, deadline: h.deadline, ende: h.ende,
+        ergebnis: h.ergebnis,
+        stand: t.punkte || [0, 0]
+      };
+    }
     if (t.game === 'coinflip') {
       var meinPlatz = seatOf(t, viewer);
       return {
@@ -1007,6 +1442,10 @@ function createMP(deps) {
 
   return {
     GAMES: GAMES,
+    /* Die Watten-Rangfolge ist die kniffligste Regel im Haus. Sie steht hier
+       offen, damit sie sich einzeln pruefen laesst, ohne eine ganze Partie
+       durchspielen zu muessen. Reine Funktionen, kein Zustand. */
+    wattenRegeln: { wert: wWert, stich: wStich, kritisch: kritisch, name: kartenName },
     shutdown: shutdown,
     touch: touch,
     lobby: lobby,
