@@ -1165,7 +1165,25 @@
   border:2px solid rgba(255,255,255,.12);background:rgba(10,0,26,.55);
   display:flex;flex-direction:column;align-items:center;gap:4px
 }
-.mp-sitz.leer{color:#6d5f90;font-size:.76rem;justify-content:center;min-height:96px;border-style:dashed}
+/* Freier Platz: kein leerer Kasten mehr, sondern ein Knopf fuer einen Bot. */
+.mp-sitz.frei{
+  color:#8a7cb0;justify-content:center;min-height:96px;border-style:dashed;
+  cursor:pointer;background:rgba(255,255,255,.03);transition:border-color .2s,color .2s
+}
+.mp-sitz.frei:hover{border-color:var(--gold);color:var(--gold)}
+.mp-plus{font-size:1.7rem;line-height:1;font-family:'Bungee',sans-serif}
+.mp-frei-text{font-size:.62rem;letter-spacing:.06em}
+.mp-sitz.bot{border-style:dashed}
+.mp-bot-tag{
+  font-size:.54rem;padding:1px 5px;border-radius:999px;
+  background:rgba(0,229,255,.2);color:var(--cyan);letter-spacing:.06em
+}
+.mp-kick{
+  margin-left:auto;width:18px;height:18px;flex:0 0 18px;padding:0;border:none;
+  border-radius:50%;background:rgba(255,60,90,.25);color:#ff9db0;
+  font-size:.6rem;line-height:1;cursor:pointer
+}
+.mp-kick:hover{background:rgba(255,60,90,.55);color:#fff}
 .mp-sitz.dran{border-color:var(--gold);box-shadow:0 0 20px rgba(255,209,46,.5)}
 .mp-sitz.raus{opacity:.45}
 .mp-sitz.weg{filter:grayscale(.7)}

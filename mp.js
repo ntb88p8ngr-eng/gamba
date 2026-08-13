@@ -96,6 +96,7 @@ function createMP(deps) {
   }
 
   function isOnline(id) {
+    if (String(id).indexOf('bot:') === 0) return true;
     var o = online.get(id);
     return !!o && now() - o.at < ONLINE_MS;
   }
@@ -192,6 +193,124 @@ function createMP(deps) {
     return { ok: true, table: t.id };
   }
 
+  /* ── Bots ─────────────────────────────────────────────────────────────
+     Ein Bot fuellt einen freien Platz, damit man nicht auf Mitspieler warten
+     muss. Seine Chips kommen nicht von einem Konto, sondern aus der Bank —
+     wie bei den Einzelspielen, wo man auch gegen das Haus gewinnt. Wer gegen
+     Bots spielt, spielt also gegen das Casino, nicht gegen jemanden, dem die
+     Chips gehoeren. Deshalb taucht so ein Gewinn auch nicht im Feed auf. */
+
+  var BOT_NAMEN = ['Grimbart', 'Ulla', 'Knut', 'Sieglinde', 'Bertram', 'Hedda',
+                   'Ottokar', 'Rosalind', 'Falk', 'Wilma'];
+  var BOT_AVATARE = ['🤖', '🐙', '👻', '🦊', '🐼', '🦁', '🧙', '🐝', '🦖', '🍄'];
+
+  function addBot(t, opts) {
+    var frei = t.seats.indexOf(null);
+    if (frei < 0) return { error: 'Der Tisch ist voll', code: 409 };
+    if (t.game !== 'poker') return { error: 'Bots gibt es nur beim Poker', code: 400 };
+
+    var genutzt = t.seats.filter(Boolean).map(function (s) { return s.name; });
+    var frei2 = BOT_NAMEN.filter(function (n) { return genutzt.indexOf(n) < 0; });
+    var name = frei2.length ? frei2[Math.floor(Math.random() * frei2.length)] : 'Bot ' + frei;
+
+    var einkauf = clamp(int(opts && opts.buyIn) || t.minBuy * 2, t.minBuy, t.maxBuy);
+    var nr = BOT_NAMEN.indexOf(name);
+    t.seats[frei] = {
+      id: 'bot:' + newId(''), name: name,
+      avatar: BOT_AVATARE[nr >= 0 ? nr : 0],
+      stack: einkauf, buyIn: einkauf,
+      at: now(), bot: true, weg: 0, denktBis: 0
+    };
+    log(t, name + ' setzt sich dazu (Bot)');
+    starteWennMoeglich(t);
+    bump(t);
+    return { ok: true };
+  }
+
+  function removeBot(t, platz) {
+    var s = t.seats[platz];
+    if (!s || !s.bot) return { error: 'Da sitzt kein Bot', code: 400 };
+    if (t.hand && s.h && !s.h.folded) s.h.folded = true;
+    t.seats[platz] = null;
+    log(t, s.name + ' geht wieder');
+    if (t.hand) weiter(t);
+    if (besetzt(t) === 0) tables.delete(t.id);
+    bump(t);
+    return { ok: true };
+  }
+
+  /**
+   * Wie stark ist die Hand gerade? Ergibt 0 bis 1.
+   * Vor dem Flop zaehlen Hoehe, Paar, gleiche Farbe und Abstand; danach die
+   * tatsaechlich beste Fuenf. Das reicht fuer einen Gegner, der nicht
+   * durchschaubar ist, ohne dass er rechnen muesste wie ein Solver.
+   */
+  function botStaerke(s, board) {
+    var a = s.h.cards[0], b = s.h.cards[1];
+    if (!board.length) {
+      var hi = Math.max(a.v, b.v), lo = Math.min(a.v, b.v);
+      if (a.v === b.v) return clamp(0.5 + (a.v - 2) / 12 * 0.5, 0, 1);
+      var w = (hi - 2) / 12 * 0.42 + (lo - 2) / 12 * 0.18;
+      if (a.s === b.s) w += 0.09;
+      var luecke = hi - lo - 1;
+      if (luecke === 0) w += 0.07;
+      else if (luecke === 1) w += 0.04;
+      else w -= luecke * 0.02;
+      return clamp(w, 0.02, 0.99);
+    }
+    var beste = holdem.bestHand(s.h.cards.concat(board));
+    /* Kategorie 0..8 auf 0..1 ziehen. Ein Paar allein ist noch nichts, ab
+       zwei Paaren wird es ernst. */
+    var basis = [0.18, 0.38, 0.6, 0.74, 0.85, 0.9, 0.95, 0.98, 1][beste.cat];
+    // hohe Beikarten heben die schwachen Kategorien leicht an
+    return clamp(basis + (beste.score % 1000000) / 1e6 * 0.06, 0, 1);
+  }
+
+  function botZug(t, jetzt) {
+    if (t.game !== 'poker') return false;
+    var h = t.hand;
+    if (!h || h.ende || h.turn < 0) return false;
+    var s = t.seats[h.turn];
+    if (!s || !s.bot) return false;
+
+    /* Kurz "nachdenken", sonst knallen die Zuege im selben Takt durch und
+       man sieht am Tisch gar nicht, was passiert ist. */
+    if (!s.denktBis) { s.denktBis = jetzt + 900 + Math.random() * 1600; return false; }
+    if (jetzt < s.denktBis) return false;
+    s.denktBis = 0;
+
+    var staerke = botStaerke(s, h.board);
+    var fehlt = h.toCall - s.h.bet;
+    var potOdds = fehlt > 0 ? fehlt / (h.pot + fehlt) : 0;
+    var laune = (Math.random() - 0.5) * 0.16;      // nicht ganz berechenbar
+    var wert = staerke + laune;
+
+    if (fehlt <= 0) {
+      // nichts zu zahlen: mit starker Hand setzen, sonst schieben
+      if (wert > 0.72 && Math.random() < 0.6) {
+        return !botAction(t, s, 'raise', h.toCall + Math.max(h.minRaise, t.bb));
+      }
+      return !botAction(t, s, 'check');
+    }
+    if (wert < potOdds - 0.06) return !botAction(t, s, 'fold');
+    if (wert > 0.8 && Math.random() < 0.45) {
+      var ziel = h.toCall + Math.max(h.minRaise, Math.floor(h.pot * 0.6));
+      return !botAction(t, s, 'raise', ziel);
+    }
+    return !botAction(t, s, 'call');
+  }
+
+  /** Zug eines Bots ausfuehren; faellt auf das Einfachste zurueck. */
+  function botAction(t, s, was, betrag) {
+    var i = seatOf(t, s.id);
+    var out = handleAction(t, i, { action: was, amount: betrag });
+    if (out.error) {
+      var fehlt = t.hand.toCall - s.h.bet;
+      out = handleAction(t, i, { action: fehlt > 0 ? 'call' : 'check' });
+    }
+    return out.error;
+  }
+
   /** Aufstehen. Der Stapel geht zurueck aufs Konto. */
   function leave(id, grund) {
     var t = tableOf(id);
@@ -224,7 +343,9 @@ function createMP(deps) {
     deps.save();
 
     if (t.hand) weiter(t);
-    if (besetzt(t) === 0) tables.delete(t.id);
+    /* Ein Tisch, an dem nur noch Bots sitzen, spielt gegen sich selbst —
+       der wird abgeraeumt. */
+    if (!t.seats.some(function (x) { return x && !x.bot; })) tables.delete(t.id);
     else starteWennMoeglich(t);
     bump(t);
     return { ok: true };
@@ -251,7 +372,7 @@ function createMP(deps) {
       // wer lange nicht mehr da war, wird vom Tisch genommen
       t.seats.forEach(function (s) {
         if (!s) return;
-        if (isOnline(s.id)) { s.weg = 0; return; }
+        if (s.bot || isOnline(s.id)) { s.weg = 0; return; }
         if (!s.weg) s.weg = jetzt;
         else if (jetzt - s.weg > DROP_MS) { leave(s.id, 'Verbindung weg'); etwas = true; }
       });
@@ -273,7 +394,9 @@ function createMP(deps) {
       if (t.hand && t.hand.deadline && jetzt >= t.hand.deadline) {
         zeitAbgelaufen(t);
         etwas = true;
+        return;
       }
+      if (botZug(t, jetzt)) etwas = true;
     });
 
     // abgelaufene Anwesenheit aufraeumen
@@ -405,10 +528,15 @@ function createMP(deps) {
     if (!t) return { error: 'Du sitzt an keinem Tisch', code: 409 };
     touch(id);
     if (op.action === 'rebuy') return rebuy(t, id, op);
+    if (op.action === 'addbot') return addBot(t, op);
+    if (op.action === 'kickbot') return removeBot(t, int(op.seat));
     if (t.game === 'coinflip') return flipAction(t, id, op);
+    return handleAction(t, seatOf(t, id), op);
+  }
 
+  /** Der eigentliche Pokerzug — von Menschen wie von Bots benutzt. */
+  function handleAction(t, i, op) {
     var h = t.hand;
-    var i = seatOf(t, id);
     if (!h || h.ende) return { error: 'Gerade läuft keine Hand', code: 409 };
     if (h.turn !== i) return { error: 'Du bist nicht dran', code: 409 };
 
@@ -761,6 +889,7 @@ function createMP(deps) {
         }
         return {
           platz: i, id: s.id, name: s.name, avatar: s.avatar,
+          bot: !!s.bot,
           stack: s.stack, buyIn: s.buyIn,
           online: isOnline(s.id),
           bet: s.h ? s.h.bet : 0,
@@ -817,10 +946,11 @@ function createMP(deps) {
     tables.forEach(function (t) {
       var g = proSpiel[t.game];
       var leute = t.seats.filter(function (s) { return !!s; });
+      var menschen = leute.filter(function (s) { return !s.bot; });
       if (g) {
         g.tische++;
-        g.spieler += leute.length;
-        leute.forEach(function (s) { if (g.namen.length < 12) g.namen.push(s.name); });
+        g.spieler += menschen.length;
+        menschen.forEach(function (s) { if (g.namen.length < 12) g.namen.push(s.name); });
       }
       liste.push({
         id: t.id, game: t.game, name: t.name,
@@ -829,7 +959,8 @@ function createMP(deps) {
         besetzt: leute.length,
         laeuft: !!t.hand,
         spieler: leute.map(function (s) {
-          return { name: s.name, avatar: s.avatar, stack: s.stack, online: isOnline(s.id) };
+          return { name: s.name, avatar: s.avatar, stack: s.stack,
+                   bot: !!s.bot, online: isOnline(s.id) };
         })
       });
     });

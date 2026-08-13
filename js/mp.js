@@ -298,8 +298,25 @@
     return gefunden;
   }
 
-  function sitzKachel(s, t) {
-    if (!s) return el('div', { class: 'mp-sitz leer', text: 'frei' });
+  /**
+   * Ein Platz. Leere Plaetze zeigen keinen leeren Kasten mehr: wer selbst am
+   * Tisch sitzt, bekommt dort einen Knopf, um einen Bot dazuzusetzen — allen
+   * anderen wird der Platz gar nicht erst angezeigt, sonst steht die Haelfte
+   * des Tisches als Loch da.
+   */
+  function sitzKachel(s, t, platz) {
+    if (!s) {
+      if (!meinPlatz() || t.game !== 'poker') return null;
+      var plus = el('button', { class: 'mp-sitz frei', title: 'Bot auf diesen Platz setzen' }, [
+        el('span', { class: 'mp-plus', text: '+' }),
+        el('span', { class: 'mp-frei-text', text: 'BOT DAZU' })
+      ]);
+      plus.addEventListener('click', function () {
+        GK.sfx('click');
+        tue('action', { action: 'addbot' });
+      });
+      return plus;
+    }
     var h = t.hand;
     var dran = h && h.turn === s.platz;
     var karten = el('div', { class: 'mp-karten' });
@@ -309,14 +326,26 @@
     var gewinn = h && h.ergebnis && h.ergebnis.gewinne[s.platz];
     var handName = h && h.ergebnis && h.ergebnis.haende && h.ergebnis.haende[s.platz];
 
+    /* Einen Bot darf jeder am Tisch wieder wegschicken. */
+    var weg = null;
+    if (s.bot && meinPlatz()) {
+      weg = el('button', { class: 'mp-kick', title: s.name + ' wegschicken', text: '✕' });
+      weg.addEventListener('click', function () {
+        GK.sfx('click');
+        tue('action', { action: 'kickbot', seat: s.platz });
+      });
+    }
+
     return el('div', {
       class: 'mp-sitz' + (dran ? ' dran' : '') + (s.folded ? ' raus' : '') +
-             (s.online ? '' : ' weg') + (gewinn ? ' sieger' : '')
+             (s.online ? '' : ' weg') + (gewinn ? ' sieger' : '') + (s.bot ? ' bot' : '')
     }, [
       el('div', { class: 'mp-sitz-kopf' }, [
         el('span', { class: 'mp-av', text: s.avatar || '👤' }),
         el('span', { class: 'mp-sitz-name', text: s.name }),
-        t.dealer === s.platz ? el('span', { class: 'mp-knopf', text: 'D' }) : null
+        s.bot ? el('span', { class: 'mp-bot-tag', text: 'BOT' }) : null,
+        t.dealer === s.platz ? el('span', { class: 'mp-knopf', text: 'D' }) : null,
+        weg
       ].filter(Boolean)),
       karten,
       el('div', { class: 'mp-stack', text: GK.fmt(s.stack) + ' Chips' }),
@@ -441,8 +470,9 @@
       ]));
     }
 
-    wrap.appendChild(el('div', { class: 'mp-sitze n' + t.seats.length },
-      t.seats.map(function (s) { return sitzKachel(s, t); })));
+    var kacheln = t.seats.map(function (s, i) { return sitzKachel(s, t, i); })
+      .filter(Boolean);
+    wrap.appendChild(el('div', { class: 'mp-sitze n' + t.seats.length }, kacheln));
 
     wrap.appendChild(t.game === 'poker' ? pokerAktionen(t) : flipAktionen(t));
 
