@@ -1362,3 +1362,13 @@
 .mp-stufe-ic{font-size:1.7rem;line-height:1;flex:0 0 auto}
 .mp-stufe b{display:block;font-family:'Bungee',sans-serif;font-size:.84rem;color:var(--gold)}
 .mp-stufe-was{display:block;font-size:.76rem;color:#cfc2ea;line-height:1.35;margin-top:2px}
+
+/* Was der Spieler gerade auf der Hand hat — wie im Einzelspieler-Poker */
+.mp-handinfo{
+  text-align:center;font-family:'Bungee',sans-serif;font-size:.78rem;
+  color:var(--cyan);min-height:18px
+}
+.mp-handinfo b{color:#fff}
+.mp-handinfo.raus{opacity:.5}
+/* Marke der letzten Aktion in dieser Setzrunde */
+.mp-tag.zug{background:rgba(0,229,255,.18);color:var(--cyan);letter-spacing:.05em}

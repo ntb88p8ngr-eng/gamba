@@ -631,13 +631,16 @@ function createMP(deps) {
 
     if (was === 'fold') {
       s.h.folded = true;
+      s.h.tag = 'PASST';
       log(t, s.name + ' passt');
     } else if (was === 'check') {
       if (fehlt > 0) return { error: 'Da steht noch ein Einsatz', code: 400 };
+      s.h.tag = 'KLOPFT';
       log(t, s.name + ' klopft');
     } else if (was === 'call') {
       var b = Math.min(fehlt, s.stack);
       zahl(t, i, b);
+      s.h.tag = b < fehlt ? 'ALL-IN' : 'GEHT MIT';
       log(t, s.name + (b < fehlt ? ' geht All-in mit ' + b : ' geht mit (' + b + ')'));
     } else if (was === 'raise' || was === 'allin') {
       var ziel = was === 'allin' ? s.h.bet + s.stack : int(op.amount);
@@ -659,6 +662,7 @@ function createMP(deps) {
         // eine echte Erhoehung oeffnet die Runde wieder
         t.seats.forEach(function (x, k) { if (x && x.h && k !== i) x.h.dran = false; });
       }
+      s.h.tag = s.stack === 0 ? 'ALL-IN' : 'ERHÖHT';
       log(t, s.name + (s.stack === 0 ? ' geht All-in (' + ziel + ')' : ' erhöht auf ' + ziel));
     } else {
       return { error: 'Unbekannter Zug', code: 400 };
@@ -728,7 +732,13 @@ function createMP(deps) {
   function neueStrasseVorbereiten(t) {
     var h = t.hand;
     t.seats.forEach(function (s) {
-      if (s && s.h) { s.h.bet = 0; s.h.dran = false; }
+      if (!s || !s.h) return;
+      s.h.bet = 0;
+      s.h.dran = false;
+      /* Die Marke der letzten Aktion gilt nur fuer die laufende Setzrunde —
+         wer noch dabei ist, faengt bei der naechsten wieder bei null an.
+         "Passt" bleibt stehen, das gilt fuer die ganze Hand. */
+      if (!s.h.folded) s.h.tag = '';
     });
     h.toCall = 0;
     h.minRaise = t.bb;
@@ -1351,6 +1361,7 @@ function createMP(deps) {
           online: isOnline(s.id),
           bet: s.h ? s.h.bet : 0,
           gesamt: s.h ? s.h.gesamt || 0 : 0,
+          tag: s.h ? s.h.tag || '' : '',
           folded: s.h ? !!s.h.folded : false,
           allIn: s.h ? !!s.h.allIn : false,
           cards: karten,

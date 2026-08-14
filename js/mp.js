@@ -38,6 +38,13 @@
      Karten gleichzeitig los. Gemerkt wird Hand, Platz und Karte — beim
      naechsten Geben sind die Schluessel andere, dann fliegt wieder alles ein. */
   var gesehen = {};
+  /* Karten, die in diesem Durchlauf neu dazugekommen sind. Der Klang kommt
+     erst nach dem Aufbauen und gestaffelt — sonst faellt beim Geben alles auf
+     denselben Moment und man hoert einen Schlag statt vier. */
+  var neueKarten = 0;
+  /* Beim ersten Bild eines Tisches liegt schon alles da: wer sich mitten in
+     eine Hand setzt, soll nicht ein Dutzend Karten auf einmal hoeren. */
+  var ersterAufbau = true;
 
   /* ── Server ───────────────────────────────────────────────────────── */
 
@@ -129,6 +136,7 @@
     MP.seit = 0;
     gezeichnetV = '';
     gesehen = {};
+    ersterAufbau = true;
     stage.innerHTML = '';
     stage.appendChild(el('p', { class: 'mp-laden', text: 'Verbinde mit dem Casino…' }));
     schleife();
@@ -364,6 +372,7 @@
       var k = schluessel + '|' + (c ? c.r + c.s : 'back');
       neu = !gesehen[k];
       gesehen[k] = true;
+      if (neu) neueKarten++;
     }
     return GK.cardEl(c || { r: 'A', s: '♠' }, !c,
       (klein ? 'mini' : '') + (neu ? ' frisch' : ''));
@@ -450,15 +459,36 @@
       ].filter(Boolean)) : null,
       s.allIn ? el('div', { class: 'mp-tag', text: 'ALL-IN' }) : null,
       s.folded ? el('div', { class: 'mp-tag raus', text: 'passt' }) : null,
+      (!s.folded && !s.allIn && s.tag) ? el('div', { class: 'mp-tag zug', text: s.tag }) : null,
       gewinn ? el('div', { class: 'mp-tag win', text: '+' + GK.fmt(gewinn) }) : null,
       handName ? el('div', { class: 'mp-handname', text: handName.name }) : null
     ].filter(Boolean));
+  }
+
+  /**
+   * Was liegt bei mir gerade an? Vor dem Flop die beiden Karten, danach die
+   * beste Fuenf aus Hand und Tisch — dieselbe Anzeige wie im
+   * Einzelspieler-Poker. Gerechnet wird mit demselben Modul wie auf dem
+   * Server, sonst koennte hier etwas anderes stehen als ausgezahlt wird.
+   */
+  function handInfo(t) {
+    var h = t.hand;
+    var ich = meinPlatz();
+    if (!h || !ich || !ich.cards || !ich.cards.length) return null;
+    var text = h.board && h.board.length
+      ? GK.holdem.bestHand(ich.cards.concat(h.board)).name
+      : ich.cards.map(function (c) { return c.r + c.s; }).join(' ');
+    return el('div', { class: 'mp-handinfo' + (ich.folded ? ' raus' : '') },
+      [el('span', { text: 'Deine Hand: ' }), el('b', { text: text }),
+       ich.folded ? el('span', { text: '  (raus)' }) : null].filter(Boolean));
   }
 
   function pokerAktionen(t) {
     var h = t.hand;
     var ich = meinPlatz();
     var box = el('div', { class: 'mp-aktionen' });
+    var info = handInfo(t);
+    if (info) box.appendChild(info);
     if (!ich) return box;
 
     if (ich.stack <= 0 && (!h || !h.turn || h.turn !== ich.platz)) {
@@ -753,10 +783,25 @@
 
   var uhrTimer = null;
 
+  /** Ausgeteilt und aufgedeckt klingt wie im Einzelspieler-Poker. */
+  function kartenKlang(anzahl) {
+    if (!anzahl) return;
+    /* Bei einem Showdown werden auf einen Schlag viele Karten sichtbar —
+       fuenf Klaenge reichen, danach klingt es nur noch nach Rauschen. */
+    var wieviel = Math.min(anzahl, 5);
+    for (var i = 0; i < wieviel; i++) {
+      setTimeout(function () { GK.sfx('card'); }, i * 110);
+    }
+  }
+
   function zeichne() {
     if (!stage || !MP.an) return;
+    neueKarten = 0;
     stage.innerHTML = '';
     stage.appendChild(MP.tisch && MP.tisch.seats ? zeichneTisch() : zeichneLobby());
+
+    if (ersterAufbau) ersterAufbau = false;
+    else kartenKlang(neueKarten);
 
     var titel = document.getElementById('mp-title');
     if (titel) {
