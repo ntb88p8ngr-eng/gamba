@@ -1156,6 +1156,23 @@
   };
 
   /**
+   * Deck gewechselt? Dann sofort alle liegenden Karten umstellen.
+   *
+   * Die Spiele bauen ihre Karten einmal auf und rühren sie danach nicht mehr
+   * an — ohne das hier sah man das neue Deck erst bei der nächsten Hand, und
+   * am Mehrspieler-Tisch teils gar nicht. Der Pfad einer Karte unterscheidet
+   * sich nur im Theme-Ordner, deshalb reicht es, genau diesen Teil zu
+   * ersetzen. Die Vorschaubilder im Umschalter selbst liegen nicht in einer
+   * .card und bleiben deshalb unberührt — jedes zeigt ja sein eigenes Deck.
+   */
+  GK.on('cardtheme', function (id) {
+    $$('.card img').forEach(function (img) {
+      var neu = img.getAttribute('src').replace(/\/themes\/[^/]+\//, '/themes/' + id + '/');
+      if (neu !== img.getAttribute('src')) img.setAttribute('src', neu);
+    });
+  });
+
+  /**
    * Wiederverwendbarer Deck-Theme-Umschalter für Kartenspiele. Rendert die
    * Rückseiten aller Themes als klickbare Kacheln; die Auswahl ist global
    * (gilt geräteweit für alle Kartenspiele), nicht pro Spiel.

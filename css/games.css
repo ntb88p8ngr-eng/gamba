@@ -1372,3 +1372,4 @@
 .mp-handinfo.raus{opacity:.5}
 /* Marke der letzten Aktion in dieser Setzrunde */
 .mp-tag.zug{background:rgba(0,229,255,.18);color:var(--cyan);letter-spacing:.05em}
+.mp-tag.wartet{background:rgba(255,255,255,.1);color:#a99cc9;font-size:.6rem}

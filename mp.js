@@ -195,6 +195,18 @@ function createMP(deps) {
     return { ok: true, table: t.id };
   }
 
+  /**
+   * Zeigt der Zug noch auf jemanden, der ziehen kann? Wird nach jedem
+   * Platzwechsel aufgerufen. Ohne das wartet der Tisch bis zu 30 Sekunden
+   * auf einen Spieler, der gar nicht in der Hand ist.
+   */
+  function zugPruefen(t) {
+    var h = t.hand;
+    if (!h || h.ende || t.game !== 'poker') return;
+    if (h.turn >= 0 && kannZiehen(t.seats[h.turn])) return;
+    weiter(t);
+  }
+
   function log(t, text) {
     t.log.unshift({ at: now(), text: text });
     if (t.log.length > 30) t.log.length = 30;
@@ -227,8 +239,12 @@ function createMP(deps) {
       at: now(), bereit: true, weg: 0
     };
     touch(id);
-    log(t, p.name + ' setzt sich mit ' + einkauf + ' Chips an den Tisch');
+    log(t, p.name + ' setzt sich mit ' + einkauf + ' Chips an den Tisch' +
+        (t.hand && !t.hand.ende ? ' — ab der nächsten Hand dabei' : ''));
     deps.save();
+    /* Der freie Platz kann derselbe sein, den eben jemand geraeumt hat. Stand
+       der Zug dort, zeigt er jetzt auf einen Spieler ohne Karten. */
+    zugPruefen(t);
     starteWennMoeglich(t);
     bump(t);
     return { ok: true, table: t.id };
@@ -408,8 +424,42 @@ function createMP(deps) {
       s.h.folded = true;
       log(t, s.name + ' verlässt den Tisch und gibt auf');
     }
+    /* Was schon im Pot liegt, gehoert nicht mehr ihm — es bleibt drin und
+       geht an den Gewinner. Der Platz wird gleich geleert, deshalb muss der
+       Betrag hier gemerkt werden: sonst faellt er beim Abrechnen unter den
+       Tisch und die Chips sind schlicht weg. Genau das ist passiert. */
+    var extra = 0;
+    if (t.hand && !t.hand.ende && s.h) {
+      if (s.h.gesamt > 0) t.hand.tot = (t.hand.tot || 0) + s.h.gesamt;
+
+      var restlich = imSpiel(t);          // er selbst ist eben rausgeflogen
+      if (!restlich.length) {
+        /* Er war der Letzte, der die Hand noch haette gewinnen koennen — alle
+           anderen hatten schon gepasst. Damit haette ihm der Pot ohnehin
+           gehoert, und ohne diese Rueckgabe verschwaende er mit dem Tisch. */
+        extra = t.hand.pot;
+        t.hand.pot = 0;
+        t.hand.tot = 0;
+        t.hand.turn = -1;
+        t.hand.deadline = 0;
+        t.hand.ende = now();
+        if (extra) log(t, s.name + ' nimmt den Pot mit (' + extra + ') — sonst war niemand mehr drin');
+      } else if (restlich.length === 1) {
+        /* Nur noch einer uebrig: die Hand ist entschieden. */
+        beende(t, restlich);
+      }
+    }
+    /* Watten braucht zwei feste Mannschaften. Faellt einer aus, laesst sich
+       die Hand nicht sinnvoll zu Ende spielen — sie wird abgebrochen, es hat
+       ja noch niemand gezahlt. */
+    if (t.game === 'watten' && t.hand && !t.hand.ende) {
+      t.hand = null;
+      t.naechste = 0;
+      log(t, 'Hand abgebrochen — es fehlt ein Spieler');
+    }
 
     if (p) {
+      s.stack += extra;
       p.balance += s.stack;
       p.returned += s.stack;
       if (s.stack > s.buyIn) {
@@ -425,7 +475,10 @@ function createMP(deps) {
     log(t, s.name + ' steht auf (' + s.stack + ' Chips)' + (grund ? ' — ' + grund : ''));
     deps.save();
 
-    if (t.hand) weiter(t);
+    /* Weiterschalten nur, wenn der Aufstehende auch am Zug war — sonst
+       ueberspringt sein Weggang den Zug von jemand anderem. */
+    if (t.hand && !t.hand.ende && t.hand.turn === i) weiter(t);
+    zugPruefen(t);
     /* Ein Tisch, an dem nur noch Bots sitzen, spielt gegen sich selbst —
        der wird abgeraeumt. */
     if (!t.seats.some(function (x) { return x && !x.bot; })) tables.delete(t.id);
@@ -570,6 +623,19 @@ function createMP(deps) {
     if (s.stack === 0) s.h.allIn = true;
   }
 
+  /**
+   * Kann dieser Platz gerade einen Zug machen?
+   *
+   * Ein besetzter Platz heisst nicht, dass der Spieler auch in der Hand ist:
+   * wer sich mitten in eine laufende Hand setzt, bekommt keine Karten und
+   * damit kein h. Genau das ist passiert, als jemand aufstand und ein Neuer
+   * auf denselben Platz nachrueckte — der Zug zeigte dann auf einen Spieler,
+   * der gar nicht mitspielte.
+   */
+  function kannZiehen(s) {
+    return !!(s && s.h && !s.h.folded && !s.h.allIn);
+  }
+
   /** Alle, die in der Hand noch mitspielen. */
   function imSpiel(t) {
     var out = [];
@@ -626,6 +692,14 @@ function createMP(deps) {
     if (h.turn !== i) return { error: 'Du bist nicht dran', code: 409 };
 
     var s = t.seats[i];
+    if (!kannZiehen(s)) {
+      /* Kann eigentlich nicht sein, weil der Zug nur auf ziehbaren Plaetzen
+         steht — aber wenn doch, soll der Spieler eine Meldung sehen statt
+         eines Serverfehlers, und der Tisch soll weiterlaufen. */
+      weiter(t);
+      bump(t);
+      return { error: 'Du bist in dieser Hand nicht dabei — warte auf die nächste', code: 409 };
+    }
     var was = String(op.action || '');
     var fehlt = h.toCall - s.h.bet;
 
@@ -688,12 +762,27 @@ function createMP(deps) {
     if (t.game === 'coinflip') { flipTimeout(t); return; }
     if (t.game === 'watten') { wattenTimeout(t); return; }
     var h = t.hand;
-    if (!h || h.turn < 0) return;
-    var s = t.seats[h.turn];
-    if (!s || !s.h) return;
+    if (!h || h.ende) return;
+
+    var s = h.turn >= 0 ? t.seats[h.turn] : null;
+    if (!kannZiehen(s)) {
+      /* Der Zug zeigt ins Leere. Frueher wurde hier einfach nichts getan —
+         die Frist blieb in der Vergangenheit, jeder Takt versuchte dasselbe
+         erneut und der Tisch stand still. Jetzt geht es weiter. */
+      log(t, 'Der Zug lag auf einem leeren Platz — es geht weiter');
+      weiter(t);
+      /* Falls weiter() nichts bewegen konnte, ist die Hand hier zu Ende;
+         sonst haengt der Tisch beim naechsten Takt wieder an derselben
+         Stelle. */
+      if (t.hand && !t.hand.ende && !kannZiehen(t.seats[t.hand.turn])) {
+        beende(t, imSpiel(t));
+      }
+      return;
+    }
+
     var fehlt = h.toCall - s.h.bet;
-    if (fehlt <= 0) { s.h.dran = true; log(t, s.name + ' klopft (Zeit)'); }
-    else { s.h.folded = true; log(t, s.name + ' passt (Zeit)'); }
+    if (fehlt <= 0) { s.h.dran = true; s.h.tag = 'KLOPFT'; log(t, s.name + ' klopft (Zeit)'); }
+    else { s.h.folded = true; s.h.tag = 'PASST'; log(t, s.name + ' passt (Zeit)'); }
     weiter(t);
   }
 
@@ -723,9 +812,13 @@ function createMP(deps) {
     if (alleDran) return naechsteStrasse(t);
 
     var von = h.turn;
-    h.turn = naechsterPlatz(t, von, function (s) {
-      return s && s.h && !s.h.folded && !s.h.allIn;
-    });
+    var naechster = naechsterPlatz(t, von, kannZiehen);
+    /* Findet sich niemand mehr, der ziehen kann, ist die Setzrunde vorbei.
+       Ohne diese Pruefung stand h.turn auf -1, die Frist lief trotzdem weiter
+       und der Tisch haengte: alle 30 Sekunden gab es neue 30 Sekunden, ohne
+       dass irgendetwas passierte. */
+    if (naechster < 0) return naechsteStrasse(t);
+    h.turn = naechster;
     h.deadline = now() + TURN_MS;
   }
 
@@ -802,6 +895,15 @@ function createMP(deps) {
       if (betrag > 0) out.push({ betrag: betrag, spieler: berechtigt });
       vorher = grenze;
     });
+
+    /* Der Einsatz von Weggegangenen liegt noch im Pot, ihr Platz aber nicht
+       mehr am Tisch. Er kommt in den untersten Topf — da waren sie von Anfang
+       an dabei, und mehr als bis dorthin haetten sie ohnehin nicht gewonnen. */
+    var tot = (t.hand && t.hand.tot) || 0;
+    if (tot > 0) {
+      if (out.length) out[0].betrag += tot;
+      else out.push({ betrag: tot, spieler: imSpiel(t) });
+    }
     return out;
   }
 
@@ -1155,7 +1257,15 @@ function createMP(deps) {
     }
     var i = h.turn;
     var s = t.seats[i];
-    if (!s) return;
+    if (!s) {
+      /* Platz leer — die Hand kann nicht weiterlaufen. Ohne diesen Abbruch
+         blieb die Frist in der Vergangenheit stehen und der Tisch haengte. */
+      t.hand = null;
+      t.naechste = 0;
+      log(t, 'Hand abgebrochen — es fehlt ein Spieler');
+      bump(t);
+      return;
+    }
     if (h.phase === 'schlag') {
       return wattenAction(t, s.id, { action: 'schlag', schlag: GK_pick(W_RANG).r });
     }
@@ -1362,6 +1472,9 @@ function createMP(deps) {
           bet: s.h ? s.h.bet : 0,
           gesamt: s.h ? s.h.gesamt || 0 : 0,
           tag: s.h ? s.h.tag || '' : '',
+          /* Sitzt am Tisch, spielt diese Hand aber nicht mit — entweder
+             gerade erst dazugekommen oder ohne Chips. */
+          dabei: !!(s.h && s.h.cards),
           folded: s.h ? !!s.h.folded : false,
           allIn: s.h ? !!s.h.allIn : false,
           cards: karten,

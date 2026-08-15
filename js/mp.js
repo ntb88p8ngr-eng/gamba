@@ -406,6 +406,9 @@
     var h = t.hand;
     var dran = h && h.turn === s.platz;
     var karten = el('div', { class: 'mp-karten' });
+    /* Wer sitzt, aber keine Karten hat, spielt diese Hand nicht mit. Vorher
+       stand die Kachel einfach leer da und sah nach Fehler aus. */
+    var wartet = !!(h && !h.ende && !s.dabei && t.game === 'poker');
     var handNr = h ? h.nr : 0;
     if (s.cards) {
       s.cards.forEach(function (c, n) {
@@ -459,6 +462,7 @@
       ].filter(Boolean)) : null,
       s.allIn ? el('div', { class: 'mp-tag', text: 'ALL-IN' }) : null,
       s.folded ? el('div', { class: 'mp-tag raus', text: 'passt' }) : null,
+      wartet ? el('div', { class: 'mp-tag wartet', text: 'nächste Hand' }) : null,
       (!s.folded && !s.allIn && s.tag) ? el('div', { class: 'mp-tag zug', text: s.tag }) : null,
       gewinn ? el('div', { class: 'mp-tag win', text: '+' + GK.fmt(gewinn) }) : null,
       handName ? el('div', { class: 'mp-handname', text: handName.name }) : null
@@ -495,6 +499,11 @@
       var nach = el('button', { class: 'btn btn-gold btn-full', text: '🔁 NACHKAUFEN' });
       nach.addEventListener('click', function () { GK.sfx('click'); tue('action', { action: 'rebuy', buyIn: t.minBuy }); });
       box.appendChild(nach);
+      return box;
+    }
+    if (h && !h.ende && !ich.dabei) {
+      box.appendChild(el('p', { class: 'mp-warte', text:
+        'Diese Hand läuft schon — du bist ab der nächsten dabei.' }));
       return box;
     }
     if (!h || h.turn !== ich.platz) {
@@ -759,9 +768,9 @@
                    : t.game === 'watten' ? wattenAktionen(t)
                    : flipAktionen(t));
 
-    if (h && h.deadline) {
+    if (h && h.deadline && h.turn >= 0) {
       var rest = Math.max(0, Math.round((h.deadline - Date.now()) / 1000));
-      wrap.appendChild(el('div', { class: 'mp-uhr', text: rest + ' s' }));
+      wrap.appendChild(el('div', { class: 'mp-uhr' + (rest <= 8 ? ' knapp' : ''), text: rest + ' s' }));
     }
 
     /* Kartenspiele bekommen dieselbe Deck-Auswahl wie die Einzelspiele. Die
