@@ -114,11 +114,18 @@ function saveDB() {
   }, 120);
 }
 
-/** Beim Beenden sofort schreiben — sonst faellt der letzte Spielzug weg. */
+/**
+ * Beim Beenden sofort schreiben — sonst faellt der letzte Spielzug weg.
+ *
+ * Frueher stand hier ein "if (!saveTimer) return". Das sah sparsam aus, war
+ * aber die Stelle, an der Chips verschwanden: beim Herunterfahren bucht
+ * mp.shutdown() alle Stapel von den Tischen zurueck aufs Konto, ohne einen
+ * Speicher-Timer zu setzen. Ohne laufenden Timer schrieb flushDB dann gar
+ * nichts, und nach dem Neustart waren die Chips weg. Beim Beenden ist ein
+ * Schreibvorgang zu viel harmlos, ein fehlender nicht.
+ */
 function flushDB() {
-  if (!saveTimer) return;
-  clearTimeout(saveTimer);
-  saveTimer = null;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   writeDB();
 }
 
@@ -323,9 +330,17 @@ function findByName(name) {
    aufsteht, und beim Herunterfahren wird jeder Stapel zurueckgebucht. */
 var mp = require('./mp.js')({
   players: function () { return db.players; },
+  db: function () { return db; },
   save: saveDB,
   feed: pushFeed
 });
+
+/* Lag beim letzten Beenden noch etwas auf einem Tisch — etwa weil der Prozess
+   hart abgebrochen wurde —, kommt es jetzt zurueck aufs Konto. */
+(function () {
+  var zurueck = mp.erholen();
+  if (zurueck) console.log('[gambaking] ' + zurueck + ' Chips von offenen Tischen zurückgebucht.');
+})();
 
 /* ─────────────── Operationen ─────────────── */
 

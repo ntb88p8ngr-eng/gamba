@@ -107,6 +107,7 @@ function createMP(deps) {
   function bump(t) {
     seq++;
     if (t) t.v = seq;
+    offeneStapel();
     var offen = waiters;
     waiters = [];
     offen.forEach(function (w) {
@@ -1598,17 +1599,64 @@ function createMP(deps) {
     tables.forEach(function (t) {
       t.seats.forEach(function (s) {
         if (!s) return;
+        /* Auch was gerade im Pot liegt, gehoert dem Spieler zurueck — die
+           Hand wird ja nie zu Ende gespielt. */
+        var zurueck = s.stack + (s.h && s.h.gesamt ? s.h.gesamt : 0);
         var p = deps.players()[s.id];
-        if (p) { p.balance += s.stack; p.returned += s.stack; summe += s.stack; }
+        if (p) { p.balance += zurueck; p.returned += zurueck; summe += zurueck; }
         s.stack = 0;
       });
     });
     tables.clear();
+    offeneStapel();          // Spiegel leeren, sonst gaebe es beim Start doppelt
+    deps.save();
+    return summe;
+  }
+
+  /**
+   * Spiegel der offenen Stapel in der Datenbank.
+   *
+   * Die Tische leben nur im Speicher. Beim geordneten Herunterfahren bucht
+   * shutdown() alles zurueck — bei einem harten Abbruch (Absturz, SIGKILL,
+   * Stromausfall) kommt der aber nie dran, und die Chips waeren weg. Deshalb
+   * steht neben jedem Konto, was gerade auf einem Tisch liegt. Beim naechsten
+   * Start holt sich der Server das zurueck (siehe erholen()).
+   */
+  function offeneStapel() {
+    var db = deps.db && deps.db();
+    if (!db) return;
+    var offen = {};
+    tables.forEach(function (t) {
+      t.seats.forEach(function (s) {
+        if (!s || s.bot) return;
+        var betrag = s.stack + (s.h && s.h.gesamt ? s.h.gesamt : 0);
+        if (betrag > 0) offen[s.id] = (offen[s.id] || 0) + betrag;
+      });
+    });
+    db.mpStacks = offen;
+  }
+
+  /**
+   * Nach einem harten Abbruch: was beim letzten Mal noch auf Tischen lag,
+   * kommt zurueck aufs Konto. Die Tische selbst sind ohnehin weg.
+   */
+  function erholen() {
+    var db = deps.db && deps.db();
+    if (!db || !db.mpStacks) return 0;
+    var summe = 0;
+    Object.keys(db.mpStacks).forEach(function (id) {
+      var betrag = Math.floor(db.mpStacks[id]) || 0;
+      var p = deps.players()[id];
+      if (p && betrag > 0) { p.balance += betrag; p.returned += betrag; summe += betrag; }
+    });
+    db.mpStacks = {};
+    if (summe) deps.save();
     return summe;
   }
 
   return {
     GAMES: GAMES,
+    erholen: erholen,
     /* Die Watten-Rangfolge ist die kniffligste Regel im Haus. Sie steht hier
        offen, damit sie sich einzeln pruefen laesst, ohne eine ganze Partie
        durchspielen zu muessen. Reine Funktionen, kein Zustand. */
