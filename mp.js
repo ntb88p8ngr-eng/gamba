@@ -227,10 +227,16 @@ function createMP(deps) {
     var frei = t.seats.indexOf(null);
     if (frei < 0) return { error: 'Der Tisch ist voll', code: 409 };
 
-    var einkauf = clamp(int(opts.buyIn) || t.minBuy * 2, t.minBuy, t.maxBuy);
-    if (einkauf > p.balance) {
+    /* Unter dem Mindesteinkauf geht gar nichts — daran fuehrt kein Weg
+       vorbei, sonst saesse jemand mit zwei Chips am Tisch. */
+    if (p.balance < t.minBuy) {
       return { error: 'Dafür reichen deine Chips nicht — mindestens ' + t.minBuy, code: 400 };
     }
+    /* Nach oben begrenzt der Tisch, aber auch das Konto: wer 2.000 mitnehmen
+       will und 800 hat, setzt sich mit 800 hin, statt abgewiesen zu werden.
+       Mehr als vorhanden kann dabei nie abgebucht werden. */
+    var einkauf = clamp(int(opts.buyIn) || t.minBuy * 2,
+                        t.minBuy, Math.min(t.maxBuy, p.balance));
 
     p.balance -= einkauf;
     p.wagered += einkauf;

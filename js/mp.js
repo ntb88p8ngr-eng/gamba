@@ -329,20 +329,45 @@
         ? 'Blinds ' + (b / 2) + '/' + b + '  ·  Einkauf ab ' + GK.fmt(b * 10)
         : 'Einsatz ' + b + ' pro Wurf  ·  Einkauf ab ' + GK.fmt(b * 10) }));
     });
+    /* Beim Eroeffnen nimmt man gleich Platz — also gehoert der Einkauf hier
+       genauso hin wie beim Dazusetzen. Vorher wurde einfach das Zwanzigfache
+       des Blinds abgebucht, ohne dass man es vorher gesehen hat. */
+    var einkauf = el('input', { type: 'number', class: 'mp-feld' });
+    var hinweis = el('p', { class: 'mp-hinweis' });
+    function bereich() {
+      var bb = parseInt(blind.value, 10);
+      var min = bb * 10, max = bb * 200;
+      var moeglich = Math.min(max, p.balance);
+      einkauf.min = String(min);
+      einkauf.max = String(moeglich);
+      einkauf.step = String(bb);
+      einkauf.value = String(GK.clamp(bb * 20, min, Math.max(min, moeglich)));
+      hinweis.textContent = p.balance < min
+        ? 'Dafür brauchst du mindestens ' + GK.fmt(min) + ' Chips — du hast ' + GK.fmt(p.balance) + '.'
+        : 'Einkauf ' + GK.fmt(min) + ' bis ' + GK.fmt(moeglich) +
+          '. Der Betrag wird beim Eröffnen abgebucht und kommt beim Aufstehen zurück.';
+      ok.disabled = p.balance < min;
+    }
     var ok = el('button', { class: 'btn btn-gold btn-full', text: '✨ TISCH ERÖFFNEN' });
+    blind.addEventListener('change', bereich);
     ok.addEventListener('click', function () {
       var bb = parseInt(blind.value, 10);
       GK.closeModal();
-      tue('create', { game: spiel, name: name.value, bb: bb, buyIn: bb * 20 }).then(function (b) {
+      tue('create', {
+        game: spiel, name: name.value, bb: bb,
+        buyIn: parseInt(einkauf.value, 10) || bb * 20
+      }).then(function (b) {
         if (b && b.table) { MP.tisch = { id: b.table }; MP.seit = 0; anstossen(); }
       });
     });
+    bereich();
     GK.modal({
       title: 'Neuer Tisch',
       text: 'Du eröffnest den Tisch und nimmst gleich Platz. Sobald sich jemand dazusetzt, geht es los.',
       nodes: [
         el('label', { class: 'mp-label', text: 'Name' }), name,
         el('label', { class: 'mp-label', text: 'Höhe' }), blind,
+        el('label', { class: 'mp-label', text: 'Dein Einkauf' }), einkauf, hinweis,
         el('div', { style: 'height:10px' }), ok
       ]
     });
