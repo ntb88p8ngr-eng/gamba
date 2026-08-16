@@ -10,6 +10,12 @@
 
   /* ─────────────── VIEWS ─────────────── */
   function showView(id) {
+    /* Wer die Mehrspieler-Seite verlaesst — egal auf welchem Weg: Zurueck-
+       Knopf, Logo, ein anderes Spiel —, steht auch vom Tisch auf. Sonst
+       bleiben seine Chips dort liegen, waehrend er die Seite gar nicht mehr
+       sieht. Deshalb steht es hier an der einen Stelle, durch die jeder
+       Wechsel laeuft, und nicht an jedem einzelnen Knopf. */
+    if (id !== 'view-mp' && GK.mp && GK.mp.an) GK.mp.close();
     $$('.view').forEach(function (v) { v.classList.toggle('active', v.id === id); });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -1043,8 +1049,7 @@
     $('#btn-multiplayer').addEventListener('click', function () { GK.sfx('click'); openMP(); });
     $('#btn-mp-back').addEventListener('click', function () {
       GK.sfx('click');
-      GK.mp.close();
-      showView('view-lobby');
+      showView('view-lobby');          // steht auch vom Tisch auf, siehe showView
       renderAll();
     });
     $('#btn-mp-rules').addEventListener('click', function () { GK.sfx('click'); GK.mp.rules(); });

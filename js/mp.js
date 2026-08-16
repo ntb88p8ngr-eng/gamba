@@ -147,10 +147,36 @@
     schleife();
   };
 
+  /**
+   * Ansicht schliessen.
+   *
+   * Wer die Seite verlaesst, steht auch vom Tisch auf. Vorher blieb er sitzen
+   * und konnte nichts mehr tun: seine Chips lagen weiter auf dem Tisch, er
+   * wurde bei jedem Zug automatisch gepasst, und erst nach anderthalb Minuten
+   * ohne Lebenszeichen hat der Server ihn herausgenommen. Von aussen sah das
+   * so aus, als kaeme der Einsatz nicht zurueck.
+   */
   MP.close = function () {
+    var sass = !!(MP.tisch && MP.tisch.seats && meinPlatz());
     MP.an = false;
     anstossen();
+    if (!sass) return;
+    ruf('leave', {})
+      .then(function () { if (GK.net && GK.net.pull) GK.net.pull(); })
+      .catch(function () {});
+    MP.tisch = null;
   };
+
+  /* Beim Schliessen des Tabs bleibt keine Zeit mehr fuer eine normale
+     Anfrage — sendBeacon geht auch dann noch raus. Klappt es nicht, greift
+     die Nachfrist auf dem Server. */
+  window.addEventListener('pagehide', function () {
+    if (!MP.tisch || !MP.tisch.seats || !GK.net || !GK.net.session) return;
+    try {
+      navigator.sendBeacon('api/mp/leave',
+        new Blob([JSON.stringify({ session: GK.net.session })], { type: 'application/json' }));
+    } catch (e) {}
+  });
 
   /* ── Aktionen ─────────────────────────────────────────────────────── */
 
@@ -171,7 +197,14 @@
 
   function verlassen() {
     GK.sfx('click');
-    tue('leave', {}).then(function () { MP.tisch = null; MP.seit = 0; anstossen(); });
+    tue('leave', {}).then(function () {
+      MP.tisch = null;
+      MP.seit = 0;
+      anstossen();
+      /* Der Stapel ist gerade aufs Konto zurueckgebucht worden — sicherheits-
+         halber den Stand nachziehen, damit die Anzeige oben stimmt. */
+      if (GK.net && GK.net.pull) GK.net.pull();
+    });
   }
 
   function zug(action, amount) {
