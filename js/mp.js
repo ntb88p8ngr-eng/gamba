@@ -45,6 +45,10 @@
   /* Beim ersten Bild eines Tisches liegt schon alles da: wer sich mitten in
      eine Hand setzt, soll nicht ein Dutzend Karten auf einmal hoeren. */
   var ersterAufbau = true;
+  /* Fuer welche Hand der Gewinn schon gefeiert wurde. Der Tisch wird bei jeder
+     Aenderung neu gezeichnet und das Ergebnis bleibt einige Sekunden stehen —
+     ohne diese Sperre kaeme der Klang bei jedem Durchlauf erneut. */
+  var gefeiert = '';
 
   /* ── Server ───────────────────────────────────────────────────────── */
 
@@ -137,6 +141,7 @@
     gezeichnetV = '';
     gesehen = {};
     ersterAufbau = true;
+    gefeiert = '';
     stage.innerHTML = '';
     stage.appendChild(el('p', { class: 'mp-laden', text: 'Verbinde mit dem Casino…' }));
     schleife();
@@ -792,6 +797,34 @@
 
   var uhrTimer = null;
 
+  /**
+   * Eigener Gewinn — wie im Einzelspieler-Poker. GK.celebrate staffelt selbst
+   * nach Hoehe: normaler Gewinn, dicker Win, Jackpot.
+   *
+   * Fuer Verluste bleibt es bewusst still.
+   */
+  function gewinnKlang(t) {
+    var h = t.hand;
+    var ich = meinPlatz();
+    if (!h || !h.ergebnis || !ich) return;
+
+    var schluessel = t.id + ':' + h.nr;
+    if (gefeiert === schluessel) return;
+
+    var gewinn = h.ergebnis.gewinne ? h.ergebnis.gewinne[ich.platz] : 0;
+    /* Erst hier merken, nicht schon beim Verlust: sonst wuerde eine spaeter
+       eintreffende Antwort mit dem Gewinn stumm bleiben. */
+    if (!gewinn) return;
+    gefeiert = schluessel;
+
+    /* Netto: was ueber den eigenen Einsatz dieser Hand hinausgeht. Bei einem
+       geteilten Pot kann das null oder negativ sein — dann gab es nichts zu
+       gewinnen und es bleibt still. */
+    var netto = gewinn - (ich.gesamt || 0);
+    if (netto <= 0) return;
+    GK.celebrate(netto, ich.gesamt ? gewinn / ich.gesamt : 1);
+  }
+
   /** Ausgeteilt und aufgedeckt klingt wie im Einzelspieler-Poker. */
   function kartenKlang(anzahl) {
     if (!anzahl) return;
@@ -811,6 +844,7 @@
 
     if (ersterAufbau) ersterAufbau = false;
     else kartenKlang(neueKarten);
+    if (MP.tisch && MP.tisch.seats && MP.tisch.game === 'poker') gewinnKlang(MP.tisch);
 
     var titel = document.getElementById('mp-title');
     if (titel) {
