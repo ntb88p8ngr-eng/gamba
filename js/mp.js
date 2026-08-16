@@ -437,8 +437,11 @@
       gesehen[k] = true;
       if (neu) neueKarten++;
     }
+    /* Watten wird mit deutschem Blatt gespielt — dort gilt immer dasselbe
+       Deck, unabhaengig von der Auswahl fuer die anderen Kartenspiele. */
+    var deck = (MP.tisch && MP.tisch.game === 'watten') ? 'watten' : null;
     return GK.cardEl(c || { r: 'A', s: '♠' }, !c,
-      (klein ? 'mini' : '') + (neu ? ' frisch' : ''));
+      (klein ? 'mini' : '') + (neu ? ' frisch' : ''), deck);
   }
 
   function meinPlatz() {
@@ -639,14 +642,34 @@
   /* ── Watten ───────────────────────────────────────────────────────── */
 
   var W_FARBEN = [
-    { s: '♣', name: 'Eichel' }, { s: '♠', name: 'Gras' },
-    { s: '♥', name: 'Herz' }, { s: '♦', name: 'Schellen' }
+    { s: '♣', name: 'Eichel',   datei: 'eichel' },
+    { s: '♠', name: 'Gras',     datei: 'gras' },
+    { s: '♥', name: 'Herz',     datei: 'herz' },
+    { s: '♦', name: 'Schellen', datei: 'schellen' }
   ];
   var W_RANG = [
     { r: '7', name: 'Sieben' }, { r: '8', name: 'Acht' }, { r: '9', name: 'Neun' },
     { r: '10', name: 'Zehn' }, { r: 'J', name: 'Unter' }, { r: 'Q', name: 'Ober' },
     { r: 'K', name: 'König' }, { r: 'A', name: 'Sau' }
   ];
+  /** Das Farbzeichen aus dem Blatt — Herz, Schellen, Eichel oder Gras. */
+  function farbZeichen(s, gross) {
+    var f = W_FARBEN.filter(function (x) { return x.s === s; })[0];
+    if (!f) return el('span', { text: s });
+    var bild = el('img', {
+      class: 'mp-farbe' + (gross ? ' gross' : ''),
+      src: 'assets/cards/watten/farbe-' + f.datei + '.webp',
+      alt: f.name, title: f.name, draggable: 'false'
+    });
+    /* Fehlt das Bild noch, bleibt das Zeichen aus dem Kartensatz stehen —
+       besser als eine Luecke. */
+    bild.addEventListener('error', function () {
+      var ersatz = el('span', { class: 'mp-farbe-text', text: s });
+      if (bild.parentNode) bild.parentNode.replaceChild(ersatz, bild);
+    });
+    return bild;
+  }
+
   function wName(liste, wert, feld) {
     var x = liste.filter(function (e) { return e[feld] === wert; })[0];
     return x ? x.name : wert;
@@ -676,11 +699,22 @@
     if (!zeige.length) reihe.appendChild(el('span', { class: 'mp-warte', text: 'Es wird angesagt…' }));
     mitte.appendChild(reihe);
 
-    var ansage = h.schlag
-      ? 'Schlag ' + wName(W_RANG, h.schlag, 'r') +
-        (h.trumpf ? '  ·  Trumpf ' + wName(W_FARBEN, h.trumpf, 's') + ' ' + h.trumpf : '')
-      : 'Schlag und Trumpf werden noch angesagt';
-    mitte.appendChild(el('div', { class: 'mp-pot', text: ansage }));
+    /* Angesagt wird ein Rang (Schlag) und eine Farbe (Trumpf). Die Farbe
+       bekommt ihr Zeichen aus dem Blatt daneben — ein ♥ oder ♦ waere hier
+       das falsche Bild, die Farben heissen Herz, Schellen, Eichel, Gras. */
+    var ansage = el('div', { class: 'mp-pot mp-ansage' });
+    if (h.schlag) {
+      ansage.appendChild(el('span', { text: 'Schlag ' + wName(W_RANG, h.schlag, 'r') }));
+      if (h.trumpf) {
+        ansage.appendChild(el('span', { class: 'mp-trenner', text: '·' }));
+        ansage.appendChild(el('span', { text: 'Trumpf' }));
+        ansage.appendChild(farbZeichen(h.trumpf));
+        ansage.appendChild(el('span', { text: wName(W_FARBEN, h.trumpf, 's') }));
+      }
+    } else {
+      ansage.appendChild(el('span', { text: 'Schlag und Trumpf werden noch angesagt' }));
+    }
+    mitte.appendChild(ansage);
     mitte.appendChild(el('div', { class: 'mp-watt-stand' }, [
       el('span', { class: 'team1', text: 'Wir ' + h.gewonnen[h.meinTeam] }),
       el('span', { text: 'Stiche' }),
@@ -747,8 +781,9 @@
       if (!dran) { box.appendChild(el('p', { class: 'mp-warte', text: t.seats[h.turn].name + ' sagt den Trumpf an…' })); return box; }
       box.appendChild(el('p', { class: 'mp-warte', text: 'Welche Farbe wird Trumpf?' }));
       box.appendChild(el('div', { class: 'mp-wahl' }, W_FARBEN.map(function (f) {
-        var b = el('button', { class: 'btn btn-ghost btn-small' + (f.s === '♥' || f.s === '♦' ? ' rot' : ''),
-                               text: f.name + ' ' + f.s });
+        var b = el('button', { class: 'btn btn-ghost btn-small mp-farbknopf' }, [
+          farbZeichen(f.s), el('span', { text: f.name })
+        ]);
         b.addEventListener('click', function () { GK.sfx('chip'); tue('action', { action: 'trumpf', trumpf: f.s }); });
         return b;
       })));
@@ -839,7 +874,10 @@
     /* Kartenspiele bekommen dieselbe Deck-Auswahl wie die Einzelspiele. Die
        Wahl gilt geraeteweit und nur fuer die eigene Ansicht — die anderen am
        Tisch sehen weiter ihr eigenes Deck. */
-    if (t.game === 'poker' || t.game === 'watten') {
+    /* Nur Poker hat eine Deck-Auswahl. Watten kommt mit deutschem Blatt und
+       laesst sich nicht umstellen — mit franzoesischen Karten waere es ein
+       anderes Spiel. */
+    if (t.game === 'poker') {
       if (!deckWahl) deckWahl = GK.cardThemePicker().el;
       wrap.appendChild(el('div', { class: 'mp-deck' }, [deckWahl]));
     }

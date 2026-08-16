@@ -1374,3 +1374,12 @@
 .mp-tag.zug{background:rgba(0,229,255,.18);color:var(--cyan);letter-spacing:.05em}
 .mp-tag.wartet{background:rgba(255,255,255,.1);color:#a99cc9;font-size:.6rem}
 .mp-hinweis{margin:6px 0 0;font-size:.76rem;color:#a99cc9;line-height:1.4}
+
+/* Farbzeichen des deutschen Blatts (Herz, Schellen, Eichel, Gras) */
+.mp-farbe{width:22px;height:22px;object-fit:contain;vertical-align:-5px}
+.mp-farbe.gross{width:34px;height:34px}
+.mp-farbe-text{font-size:1.1rem;line-height:1}
+.mp-ansage{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.mp-ansage .mp-trenner{opacity:.5}
+.mp-farbknopf{display:inline-flex;align-items:center;gap:6px}
+.mp-farbknopf .mp-farbe{width:20px;height:20px}

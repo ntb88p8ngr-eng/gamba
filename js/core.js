@@ -1147,10 +1147,28 @@
    * Eine Spielkarte als Element.
    * card = { r: 'A'..'K', s: '♠♥♦♣' }, hidden = Rückseite, cls = Zusatzklassen
    */
-  GK.cardEl = function (card, hidden, cls) {
+  GK.cardEl = function (card, hidden, cls, deck) {
     var e = GK.el('div', { class: 'card ' + (cls || '') + (hidden ? ' back' : '') });
     var file = hidden ? 'back' : (card.r + (SUIT_FILE[card.s] || 'S'));
-    var img = GK.el('img', { src: 'assets/cards/themes/' + GK.cardTheme().id + '/' + file + '.webp', alt: '', draggable: 'false' });
+    /* deck umgeht die Deck-Auswahl. Watten braucht das: dort gehoert ein
+       deutsches Blatt hin, und ein franzoesisches waere schlicht das falsche
+       Spiel. Der Ordner liegt deshalb ausserhalb von themes/ und taucht in
+       der Auswahl gar nicht erst auf. */
+    var pfad = deck
+      ? 'assets/cards/' + deck + '/'
+      : 'assets/cards/themes/' + GK.cardTheme().id + '/';
+    var img = GK.el('img', { src: pfad + file + '.webp', alt: '', draggable: 'false' });
+    if (deck) {
+      img.setAttribute('data-deck', deck);
+      /* Fehlt das eigene Blatt noch, greift das gewohnte Deck. Besser ein
+         franzoesisches Bild als ein kaputtes. */
+      img.addEventListener('error', function () {
+        if (img.getAttribute('data-ersatz')) return;
+        img.setAttribute('data-ersatz', '1');
+        img.removeAttribute('data-deck');
+        img.src = 'assets/cards/themes/' + GK.cardTheme().id + '/' + file + '.webp';
+      });
+    }
     e.appendChild(img);
     return e;
   };
@@ -1166,7 +1184,8 @@
    * .card und bleiben deshalb unberührt — jedes zeigt ja sein eigenes Deck.
    */
   GK.on('cardtheme', function (id) {
-    $$('.card img').forEach(function (img) {
+    /* Karten mit eigenem Deck (Watten) sind von der Auswahl ausgenommen. */
+    $$('.card img:not([data-deck])').forEach(function (img) {
       var neu = img.getAttribute('src').replace(/\/themes\/[^/]+\//, '/themes/' + id + '/');
       if (neu !== img.getAttribute('src')) img.setAttribute('src', neu);
     });
