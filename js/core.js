@@ -1122,6 +1122,16 @@
     { id: 'prismnight', name: 'Prismnight', aspect: '260/364' }
   ];
 
+  /* Feste Blätter ausserhalb der Deck-Auswahl. Watten gehört ein deutsches
+     Blatt, und das ist deutlich schmaler als ein französisches: 0.54 statt
+     0.71. Ohne eigenes Seitenverhältnis steckte die Karte in einer viel zu
+     breiten Kachel, mit weissen Streifen links und rechts — sie sah aus, als
+     hätte sie die falsche Grösse. Der Wert ist von tools/build-watten.py aus
+     der Vorlage gemessen und wird dort beim Schneiden ausgegeben. */
+  GK.CARD_DECKS = {
+    watten: { aspect: '260/478' }
+  };
+
   GK.cardThemeById = function (id) {
     for (var i = 0; i < GK.CARD_THEMES.length; i++) if (GK.CARD_THEMES[i].id === id) return GK.CARD_THEMES[i];
     return null;
@@ -1160,18 +1170,149 @@
     var img = GK.el('img', { src: pfad + file + '.webp', alt: '', draggable: 'false' });
     if (deck) {
       img.setAttribute('data-deck', deck);
+      /* Ein festes Blatt bringt sein eigenes Seitenverhältnis mit — sonst
+         gälte das des gewählten Themes und die Karte bekäme weisse Streifen.
+         Das Attribut steht zusätzlich auf der Karte selbst, damit games.css
+         die Breite anpassen kann: ein schmaleres Blatt wird bei gleicher
+         Breite höher, und der Tisch wüchse sonst über den Schirm. */
+      e.setAttribute('data-deck', deck);
+      var eigen = GK.CARD_DECKS[deck];
+      if (eigen) e.style.setProperty('--card-ar', eigen.aspect);
       /* Fehlt das eigene Blatt noch, greift das gewohnte Deck. Besser ein
          franzoesisches Bild als ein kaputtes. */
       img.addEventListener('error', function () {
         if (img.getAttribute('data-ersatz')) return;
         img.setAttribute('data-ersatz', '1');
         img.removeAttribute('data-deck');
+        e.removeAttribute('data-deck');
+        e.style.removeProperty('--card-ar');
         img.src = 'assets/cards/themes/' + GK.cardTheme().id + '/' + file + '.webp';
       });
     }
     e.appendChild(img);
     return e;
   };
+
+  /**
+   * Lupe — das Hover für Geräte ohne Hover.
+   *
+   * Am Schreibtisch wird eine Karte groß, sobald der Zeiger darauf liegt. Auf
+   * dem Handy gibt es keinen Zeiger, und gerade dort sind die Karten am
+   * kleinsten. Wer hier länger auf einer Karte bleibt, bekommt dasselbe: sie
+   * wächst, solange der Finger liegt, und geht beim Loslassen zurück.
+   *
+   * Zwei Dinge, die leicht schiefgehen:
+   *
+   *   1. Das Halten darf nicht als Zug durchgehen. Sonst legt man beim
+   *      Nachschauen versehentlich eine Karte. Nach dem Loslassen wird der
+   *      Klick deshalb einmal geschluckt.
+   *   2. Wer scrollt, berührt dabei fast immer irgendeine Karte. Rutscht der
+   *      Finger, bevor die Zeit um ist, passiert deshalb gar nichts.
+   *
+   * Vergrößert wird nicht die Karte selbst, sondern eine Kopie über dem Tisch.
+   * Der Mehrspieler-Tisch baut sich bei jeder Aktualisierung neu auf und
+   * räumte die vergrößerte Karte sonst mitten im Hinsehen weg; außerdem kann
+   * eine Kopie über den Rand ihrer Reihe hinauswachsen, die Karte selbst nicht.
+   *
+   * Angemeldet wird nur auf Berührungen. Eine Maus braucht das nicht, für sie
+   * gibt es das echte Hover in games.css.
+   */
+  (function lupe() {
+    var HALTEN = 350;     // so lange muss der Finger liegen bleiben
+    var WACKELN = 12;     // so weit darf er dabei rutschen
+    var SPERRE = 400;     // so lange gilt der Klick danach als verbraucht
+    var GROESSE = 200;    // so breit soll die Karte in der Lupe werden
+    var uhr = null, kopie = null, vonX = 0, vonY = 0, sperreBis = 0;
+
+    /** Eine Kopie der Karte, groß und über allem. */
+    function zeigen(el) {
+      var k = el.getBoundingClientRect();
+      if (!k.width) return;
+      /* So weit, dass man sie lesen kann, aber nie über den halben Schirm. */
+      var ziel = Math.min(GROESSE, window.innerWidth * 0.46, window.innerHeight * 0.3
+        * (k.width / k.height));
+      var mal = Math.max(1.35, Math.min(3.2, ziel / k.width));
+
+      /* Wächst die Karte aus dem Bild, wächst sie eben zur anderen Seite. */
+      var halb = k.width * (mal - 1) / 2;
+      var x = k.left - halb < 4 ? 'left'
+        : (k.right + halb > window.innerWidth - 4 ? 'right' : 'center');
+      var hoch = k.height * (mal - 1) / 2;
+      var y = k.top - hoch < 4 ? 'top'
+        : (k.bottom + hoch > window.innerHeight - 4 ? 'bottom' : 'center');
+
+      kopie = el.cloneNode(true);
+      kopie.className = el.className.replace(/\bfrisch\b/, '') + ' lupe';
+      kopie.style.left = k.left + 'px';
+      kopie.style.top = k.top + 'px';
+      kopie.style.width = k.width + 'px';
+      kopie.style.height = k.height + 'px';
+      kopie.style.transformOrigin = x + ' ' + y;
+      kopie.style.setProperty('--lupe', mal.toFixed(2));
+      document.body.appendChild(kopie);
+      /* Erst im nächsten Bild groß werden, sonst gibt es keinen Übergang. */
+      requestAnimationFrame(function () {
+        if (kopie) kopie.classList.add('gross');
+      });
+    }
+
+    function abbrechen() {
+      if (uhr) { clearTimeout(uhr); uhr = null; }
+    }
+
+    function zurueck() {
+      abbrechen();
+      if (!kopie) return;
+      if (kopie.parentNode) kopie.parentNode.removeChild(kopie);
+      kopie = null;
+      /* Der Klick kommt erst nach dem Loslassen. Statt einen Zuhörer scharf
+         zu stellen, der womöglich nie auslöst und dann irgendwann den
+         falschen Klick frisst, gilt hier nur ein kurzes Zeitfenster. */
+      sperreBis = Date.now() + SPERRE;
+    }
+
+    document.addEventListener('click', function (ev) {
+      if (Date.now() >= sperreBis) return;
+      sperreBis = 0;
+      ev.stopPropagation();
+      ev.preventDefault();
+    }, true);
+
+    document.addEventListener('touchstart', function (ev) {
+      zurueck();
+      if (ev.touches.length !== 1) return;
+      var ziel = ev.target.closest && ev.target.closest('.card:not(.slot)');
+      if (!ziel) return;
+      vonX = ev.touches[0].clientX;
+      vonY = ev.touches[0].clientY;
+      uhr = setTimeout(function () {
+        uhr = null;
+        zeigen(ziel);
+      }, HALTEN);
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (ev) {
+      if (!uhr || !ev.touches.length) return;
+      if (Math.abs(ev.touches[0].clientX - vonX) > WACKELN ||
+          Math.abs(ev.touches[0].clientY - vonY) > WACKELN) abbrechen();
+    }, { passive: true });
+
+    /* Auf touchend allein ist kein Verlass: genau beim langen Druck wertet
+       der Browser die Geste als seine eigene und beendet die Berührung mit
+       pointerup, ohne je ein touchend zu schicken — die Kopie bliebe dann am
+       Schirm kleben. Deshalb zählt hier jedes Loslassen, egal unter welchem
+       Namen es kommt. */
+    ['touchend', 'touchcancel', 'pointerup', 'pointercancel']
+      .forEach(function (name) {
+        document.addEventListener(name, zurueck, { passive: true });
+      });
+
+    /* Android blendet beim langen Halten sein Kontextmenü ein — dieselbe
+       Geste, mit der man hier die Karte gross macht. */
+    document.addEventListener('contextmenu', function (ev) {
+      if (ev.target.closest && ev.target.closest('.card')) ev.preventDefault();
+    });
+  }());
 
   /**
    * Deck gewechselt? Dann sofort alle liegenden Karten umstellen.

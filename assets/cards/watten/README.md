@@ -27,10 +27,16 @@ sucht sich das Raster selbst: Die Grundfarbe kommt aus dem äußersten Rand des
 Bildes, alles was sich davon absetzt ist bedruckt — also Karte. Aus dem
 zeilen- und spaltenweisen Anteil bedruckter Pixel ergeben sich vier Bänder und
 darin je neun. Die Spalten werden pro Reihe einzeln gesucht, damit eine leicht
-verrutschte Reihe nicht die anderen mitzieht. Zum Schluss kommt jede Karte auf
-dasselbe Seitenverhältnis wie die übrigen Decks (260 zu 364) — durch Auffüllen,
-nicht durch Beschneiden, weil ein deutsches Blatt schmaler ist und sonst die
-Randzeichen wegfielen. Heraus kommen:
+verrutschte Reihe nicht die anderen mitzieht.
+
+Das Ausgabeformat kommt aus der Vorlage selbst: 260 Pixel breit wie die übrigen
+Decks, die Höhe aus dem gemessenen Seitenverhältnis aller 36 Karten. Für dieses
+Blatt sind das **260 zu 478** (0,544) — ein deutsches Blatt ist deutlich
+schmaler als ein französisches (0,714). Steckte es in einer französischen
+Kachel, hätte es links und rechts weiße Streifen und sähe schlicht falsch aus.
+Quer über die Vorlage sind die Karten ein paar Prozent unterschiedlich groß;
+der Rest wird deshalb aufgefüllt statt beschnitten, sonst fielen bei den
+knappsten Karten die Randzeichen weg. Heraus kommen:
 
 * `7H.webp` … `AD.webp` — 32 Karten. Die Sechser braucht Watten nicht.
 * `farbe-herz.webp`, `farbe-schellen.webp`, `farbe-eichel.webp`,
@@ -49,6 +55,10 @@ Werkzeug meldet das, statt schief zu schneiden.
 Die Buchstaben in den Dateinamen sind die des französischen Blatts, weil
 `GK.cardEl` danach sucht: **H = Herz, D = Schellen, C = Eichel, S = Gras**,
 und **J = Unter, Q = Ober, A = Sau**.
+
+Ändert sich beim Neuschneiden das Format, gibt das Werkzeug es aus — dann
+gehört derselbe Wert nach `GK.CARD_DECKS` in `js/core.js`, sonst rechnet die
+Oberfläche weiter mit dem alten.
 
 Solange die Dateien fehlen, zeigt Watten weiter das gewohnte Deck und die
 Trumpfanzeige das Zeichen aus dem Kartensatz — kaputt ist nichts.

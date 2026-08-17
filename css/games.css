@@ -113,6 +113,30 @@
   background:#f0e8d8
 }
 .card img{width:100%;height:100%;display:block;object-fit:contain}
+/* Ohne das blendet iOS beim langen Halten sein eigenes Menü ein ("Bild
+   sichern") — genau die Geste, mit der man hier die Karte gross macht. */
+.card{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+
+/* ── Lupe: das Hover fuer Geraete ohne Hover ──
+   Am Schreibtisch waechst eine Karte, sobald der Zeiger darauf liegt. Auf dem
+   Handy gibt es das nicht, also uebernimmt das lange Halten diese Rolle.
+
+   Gezeigt wird nicht die Karte selbst, sondern eine Kopie ueber dem Tisch
+   (siehe js/core.js). Das hat zwei Gruende: der Mehrspieler-Tisch baut sich
+   bei jeder Aktualisierung neu auf und wuerde die vergroesserte Karte mitten
+   im Hinsehen wegraeumen, und innerhalb ihrer Reihe koennte die Karte gar
+   nicht ueber den Rand hinauswachsen.
+
+   animation:none ist Pflicht und nicht kosmetisch: .card bringt
+   "animation: dealin … both" mit, und eine nachwirkende Animation schlaegt
+   jedes normale transform — die Kopie wuerde sonst schlicht nicht wachsen. */
+.card.lupe{
+  position:fixed;margin:0;pointer-events:none;z-index:120;
+  animation:none;transform:scale(1);transform-origin:center;
+  transition:transform .16s cubic-bezier(.2,1.1,.4,1);
+  filter:drop-shadow(0 16px 30px rgba(0,0,0,.85))
+}
+.card.lupe.gross{transform:scale(var(--lupe,2))}
 @keyframes dealin{from{opacity:0;transform:translate(70px,-90px) rotate(28deg) scale(.7)}to{opacity:1;transform:none}}
 .card.back{background:#1a0a06}
 .bj-actions{display:flex;gap:9px;flex-wrap:wrap}
@@ -1282,6 +1306,15 @@
 .mp-hand .card{width:92px}
 .mp-legekarte .card{width:88px}
 
+/* Watten laeuft mit einem deutschen Blatt, und das ist deutlich schmaler als
+   ein franzoesisches (0.54 statt 0.71). Bei gleicher Breite waere es ein
+   Drittel hoeher — die Hand rutschte unter den Schirmrand. Also lieber
+   schmaler und dafuer gleich hoch wie ueberall sonst. */
+.mp-board .card[data-deck=watten]{width:73px}
+.mp-karten .card[data-deck=watten].mini{width:49px}
+.mp-hand .card[data-deck=watten]{width:70px}
+.mp-legekarte .card[data-deck=watten]{width:67px}
+
 /* Beim Zeigen kommt die Karte nach vorn. Nur wo es echtes Hover gibt — auf
    dem Handy wuerde die Vergroesserung sonst am ersten Tippen kleben
    bleiben. transform-origin haelt die Karte dabei im Kasten. */
@@ -1341,12 +1374,20 @@
   .mp-legekarte .card{width:58px}
   .mp-karten .card.mini{width:46px}
   .mp-hand .card{width:64px}
+  .mp-board .card[data-deck=watten]{width:46px}
+  .mp-legekarte .card[data-deck=watten]{width:44px}
+  .mp-karten .card[data-deck=watten].mini{width:35px}
+  .mp-hand .card[data-deck=watten]{width:49px}
 }
 @media(max-width:400px){
   .mp-board .card{width:52px}
   .mp-legekarte .card{width:50px}
   .mp-karten .card.mini{width:40px}
   .mp-hand .card{width:56px}
+  .mp-board .card[data-deck=watten]{width:40px}
+  .mp-legekarte .card[data-deck=watten]{width:38px}
+  .mp-karten .card[data-deck=watten].mini{width:31px}
+  .mp-hand .card[data-deck=watten]{width:43px}
 }
 
 /* Auswahl der Bot-Spielstärke */
