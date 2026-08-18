@@ -52,6 +52,39 @@
 
   /* ── Server ───────────────────────────────────────────────────────── */
 
+  /**
+   * Kontostand aus einer Serverantwort uebernehmen — und zwar sichtbar.
+   *
+   * Der Einkauf am Tisch wird auf dem Server abgebucht, das Aufstehen
+   * gutgeschrieben. Beides kam auch bisher richtig hier an, blieb aber
+   * unsichtbar: in der Kopfleiste stand weiter die alte Zahl, weil nur
+   * GK.state beschrieben wurde. Von aussen sah das aus, als wuerde beim
+   * Mehrspieler ueberhaupt nichts verrechnet.
+   *
+   * Die Zahl kommt auf zwei Wegen: Einkauf, Aufstehen und jede Aktion liefern
+   * den ganzen Spielerstand mit, die Langabfrage nur das eigene Guthaben —
+   * die kommt an einem laufenden Tisch mehrmals je Sekunde zurueck, da waere
+   * alles andere Verschwendung.
+   */
+  function konto(b) {
+    var vorher = GK.player() ? GK.player().balance : null;
+    if (b.state && GK.adoptState) GK.adoptState(b.state);
+    else if (typeof b.guthaben === 'number' && GK.player() &&
+             !(GK.net && GK.net.pending > 0)) {
+      /* Nur wenn gerade keine eigene Buchung unterwegs ist: sonst ueberschreibt
+         die Antwort der Langabfrage einen Stand, den der Server noch gar nicht
+         kennt, und der Gewinn von eben waere wieder weg. */
+      GK.player().balance = b.guthaben;
+      GK.save();
+    }
+    var jetzt = GK.player() ? GK.player().balance : null;
+    if (vorher === null || jetzt === null || jetzt === vorher) return;
+    /* Mit Differenz, damit die Zahl aufpoppt: gerade beim Einkauf soll man
+       sehen, dass die Chips vom Konto an den Tisch gewandert sind. */
+    GK.updateHUD(jetzt - vorher);
+    GK.emit('player-changed');
+  }
+
   function ruf(pfad, daten) {
     if (!GK.net || !GK.net.online) {
       return Promise.reject(new Error('Mehrspieler braucht den Casino-Server'));
@@ -67,7 +100,7 @@
       body: JSON.stringify(body)
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (b) {
-        if (b.state && GK.adoptState) GK.adoptState(b.state);
+        konto(b);
         if (!r.ok) { var e = new Error(b.error || ('HTTP ' + r.status)); e.status = r.status; throw e; }
         return b;
       });
