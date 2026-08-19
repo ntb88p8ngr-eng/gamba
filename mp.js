@@ -93,6 +93,7 @@ function createMP(deps) {
   /* deps: players() -> db.players, save(), feed(text, kind) */
 
   var tables = new Map();      // id -> Tisch
+  var partys = new Map();      // id -> Party (Einzelspiele nebeneinander)
   var online = new Map();      // Spieler-id -> { at, name, avatar }
   var waiters = [];            // offene Langabfragen
   var seq = 1;
@@ -108,6 +109,11 @@ function createMP(deps) {
     seq++;
     if (t) t.v = seq;
     offeneStapel();
+    weckAlle();
+  }
+
+  /** Alle offenen Langabfragen aufwecken. */
+  function weckAlle() {
     var offen = waiters;
     waiters = [];
     offen.forEach(function (w) {
@@ -165,6 +171,7 @@ function createMP(deps) {
   }
 
   function createTable(id, opts) {
+    if (opts.game === 'party') return createParty(id, opts);
     var spiel = GAMES[opts.game] ? opts.game : 'poker';
     var g = GAMES[spiel];
     var p = deps.players()[id];
@@ -216,6 +223,9 @@ function createMP(deps) {
   /* ── Platz nehmen und aufstehen ───────────────────────────────────── */
 
   function join(id, opts) {
+    if (opts.party || partys.has(String(opts.table || ''))) {
+      return joinParty(id, { party: opts.party || opts.table });
+    }
     var t = tables.get(String(opts.table || ''));
     if (!t) return { error: 'Diesen Tisch gibt es nicht mehr', code: 404 };
     var p = deps.players()[id];
@@ -419,6 +429,8 @@ function createMP(deps) {
 
   /** Aufstehen. Der Stapel geht zurueck aufs Konto. */
   function leave(id, grund) {
+    var raus = leaveParty(id);
+    if (raus) return raus;
     var t = tableOf(id);
     if (!t) return { ok: true };
     var i = seatOf(t, id);
@@ -510,6 +522,8 @@ function createMP(deps) {
   function tick() {
     var jetzt = now();
     var etwas = false;
+
+    partyTick(jetzt);
 
     tables.forEach(function (t) {
       // wer lange nicht mehr da war, wird vom Tisch genommen
@@ -680,7 +694,255 @@ function createMP(deps) {
     return { ok: true };
   }
 
+  /* ── Partymodus ────────────────────────────────────────────────────
+     Eine Party ist kein Tisch: es gibt keine Plaetze, keine Karten und
+     keine Runden, an denen alle gemeinsam haengen. Jeder spielt fuer sich
+     die gewohnten Einzelspiele — nur eben mit demselben Startguthaben,
+     derselben Spielauswahl und derselben Uhr. Verglichen wird am Ende der
+     Gewinn.
+
+     Deshalb liegt das hier neben den Tischen und nicht in ihnen: die ganze
+     Tischmaschinerie (Einkauf, Blinds, Zugfristen, Bots) waere hier nur im
+     Weg. Gemeinsam benutzt werden nur die Langabfrage und die Praesenz. */
+
+  var P_MAX = 8;              // mehr Namen passen nicht mehr ins Leaderboard
+  var P_COUNTDOWN = 8000;     // Vorlauf, damit alle die Uhr sehen
+  var P_MELDUNGEN = 8;        // so viele Grossgewinne bleiben stehen
+
+  function partyOf(id) {
+    var gefunden = null;
+    partys.forEach(function (pa) {
+      if (pa.spieler.some(function (s) { return s.id === id; })) gefunden = pa;
+    });
+    return gefunden;
+  }
+
+  function partySpieler(pa, id) {
+    for (var i = 0; i < pa.spieler.length; i++) if (pa.spieler[i].id === id) return pa.spieler[i];
+    return null;
+  }
+
+  function createParty(id, opts) {
+    var p = deps.players()[id];
+    if (!p) return { error: 'Spieler nicht gefunden', code: 404 };
+    if (tableOf(id)) return { error: 'Du sitzt schon an einem Tisch', code: 409 };
+    if (partyOf(id)) return { error: 'Du bist schon in einer Party', code: 409 };
+    if (partys.size >= 20) return { error: 'Gerade laufen zu viele Partys', code: 429 };
+
+    var pa = {
+      id: newId('p'),
+      name: String(opts.name || (p.name + 's Party')).slice(0, 24),
+      host: id,
+      status: 'lobby',
+      startChips: clamp(int(opts.startChips) || 1000, 100, 100000),
+      dauer: clamp(int(opts.dauer) || 600, 60, 3600),
+      spiele: reinigeSpiele(opts.spiele),
+      spieler: [],
+      startAt: 0,
+      endeAt: 0,
+      meldungen: [],
+      v: seq + 1
+    };
+    partys.set(pa.id, pa);
+    var ein = joinParty(id, { party: pa.id });
+    if (ein.error) { partys.delete(pa.id); return ein; }
+    return { ok: true, party: pa.id };
+  }
+
+  /** Nur Spiele, die es wirklich gibt — die Liste kommt aus dem Browser. */
+  function reinigeSpiele(liste) {
+    if (!Array.isArray(liste)) return [];
+    var raus = [];
+    liste.forEach(function (g) {
+      var s = String(g || '').slice(0, 24);
+      if (s && raus.indexOf(s) < 0 && raus.length < 40) raus.push(s);
+    });
+    return raus;
+  }
+
+  function joinParty(id, opts) {
+    var pa = partys.get(String(opts.party || ''));
+    if (!pa) return { error: 'Diese Party gibt es nicht mehr', code: 404 };
+    if (partySpieler(pa, id)) return { ok: true, party: pa.id };
+    if (partyOf(id)) return { error: 'Du bist schon in einer Party', code: 409 };
+    if (tableOf(id)) return { error: 'Du sitzt schon an einem Tisch', code: 409 };
+    if (pa.status !== 'lobby') return { error: 'Die Party laeuft schon', code: 409 };
+    if (pa.spieler.length >= P_MAX) return { error: 'Die Party ist voll', code: 409 };
+
+    var p = deps.players()[id];
+    if (!p) return { error: 'Spieler nicht gefunden', code: 404 };
+    pa.spieler.push({
+      id: id, name: p.name, avatar: p.avatar,
+      chips: pa.startChips, start: pa.startChips,
+      besterWin: 0, runden: 0, at: now()
+    });
+    touch(id);
+    bumpParty(pa);
+    return { ok: true, party: pa.id };
+  }
+
+  function leaveParty(id) {
+    var pa = partyOf(id);
+    if (!pa) return null;
+    pa.spieler = pa.spieler.filter(function (s) { return s.id !== id; });
+    if (!pa.spieler.length) {
+      partys.delete(pa.id);
+      bump(null);
+      return { ok: true };
+    }
+    /* Geht der Gastgeber, uebernimmt der Naechste — sonst haengt eine Party
+       ohne jemanden, der sie starten darf. */
+    if (pa.host === id) pa.host = pa.spieler[0].id;
+    bumpParty(pa);
+    return { ok: true };
+  }
+
+  function bumpParty(pa) {
+    pa.v = ++seq;
+    weckAlle();
+  }
+
+  function partyAction(pa, id, op) {
+    var mich = partySpieler(pa, id);
+    if (!mich) return { error: 'Du bist nicht in dieser Party', code: 409 };
+
+    if (op.action === 'partyset') {
+      if (pa.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      if (pa.status !== 'lobby') return { error: 'Die Party laeuft schon', code: 409 };
+      if (op.startChips !== undefined) pa.startChips = clamp(int(op.startChips), 100, 100000);
+      if (op.dauer !== undefined) pa.dauer = clamp(int(op.dauer), 60, 3600);
+      if (op.spiele !== undefined) pa.spiele = reinigeSpiele(op.spiele);
+      if (op.name !== undefined) pa.name = String(op.name).slice(0, 24) || pa.name;
+      /* Das Startguthaben gilt fuer alle, auch fuer die, die schon da sind. */
+      pa.spieler.forEach(function (s) { s.chips = pa.startChips; s.start = pa.startChips; });
+      bumpParty(pa);
+      return { ok: true };
+    }
+
+    if (op.action === 'partystart') {
+      if (pa.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      if (pa.status !== 'lobby') return { error: 'Die Party laeuft schon', code: 409 };
+      if (!pa.spiele.length) return { error: 'Waehle mindestens ein Spiel aus', code: 400 };
+      pa.status = 'countdown';
+      pa.startAt = now() + P_COUNTDOWN;
+      pa.endeAt = pa.startAt + pa.dauer * 1000;
+      pa.spieler.forEach(function (s) {
+        s.chips = pa.startChips; s.start = pa.startChips; s.besterWin = 0; s.runden = 0;
+      });
+      pa.meldungen = [];
+      bumpParty(pa);
+      return { ok: true };
+    }
+
+    if (op.action === 'partystand') {
+      if (pa.status !== 'laeuft') return { ok: true };
+      /* Der Browser meldet seinen Stand. Das ist die eine Stelle, an der
+         der Server dem Client glauben muss: die Einzelspiele laufen dort.
+         Begrenzt wird trotzdem — ein Stand ausserhalb jeder Vernunft waere
+         ein offensichtlicher Eingriff und wird gekappt. */
+      var hoechst = pa.startChips * 1000;
+      mich.chips = clamp(int(op.chips), 0, hoechst);
+      mich.runden = clamp(int(op.runden), 0, 1000000);
+      mich.at = now();
+      if (int(op.besterWin) > mich.besterWin) {
+        mich.besterWin = clamp(int(op.besterWin), 0, hoechst);
+      }
+      /* Ein Grossgewinn wird allen gemeldet — er bleibt im Leaderboard
+         stehen, damit ihn auch sieht, wer gerade woanders hinschaut. */
+      var betrag = clamp(int(op.win), 0, hoechst);
+      if (betrag > 0) {
+        pa.meldungen.unshift({
+          at: now(), id: id, name: mich.name, avatar: mich.avatar,
+          betrag: betrag, spiel: String(op.spiel || '').slice(0, 24)
+        });
+        if (pa.meldungen.length > P_MELDUNGEN) pa.meldungen.length = P_MELDUNGEN;
+      }
+      bumpParty(pa);
+      return { ok: true };
+    }
+
+    if (op.action === 'partyende') {
+      if (pa.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      pa.status = 'ende';
+      pa.endeAt = now();
+      bumpParty(pa);
+      return { ok: true };
+    }
+
+    if (op.action === 'partyneu') {
+      if (pa.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      pa.status = 'lobby';
+      pa.startAt = 0; pa.endeAt = 0; pa.meldungen = [];
+      pa.spieler.forEach(function (s) {
+        s.chips = pa.startChips; s.start = pa.startChips; s.besterWin = 0; s.runden = 0;
+      });
+      bumpParty(pa);
+      return { ok: true };
+    }
+
+    return { error: 'Unbekannte Party-Aktion', code: 400 };
+  }
+
+  /** Countdown und Spielzeit weiterdrehen — laeuft im selben Sekundentakt. */
+  function partyTick(jetzt) {
+    partys.forEach(function (pa) {
+      if (pa.status === 'countdown' && jetzt >= pa.startAt) {
+        pa.status = 'laeuft';
+        bumpParty(pa);
+      } else if (pa.status === 'laeuft' && jetzt >= pa.endeAt) {
+        pa.status = 'ende';
+        bumpParty(pa);
+      }
+      /* Eine Party, in der seit einer Viertelstunde niemand mehr war,
+         raeumt sich selbst weg. */
+      var letzte = 0;
+      pa.spieler.forEach(function (s) {
+        var o = online.get(s.id);
+        if (o && o.at > letzte) letzte = o.at;
+      });
+      if (letzte && jetzt - letzte > 15 * 60000) {
+        partys.delete(pa.id);
+        bump(null);
+      }
+    });
+  }
+
+  function sichtParty(pa, viewer) {
+    var rang = pa.spieler.slice().sort(function (a, b) {
+      return (b.chips - b.start) - (a.chips - a.start) || b.chips - a.chips;
+    });
+    return {
+      art: 'party',
+      id: pa.id,
+      /* Ohne diese Nummer zeichnet der Browser die Ansicht nie neu: er
+         vergleicht sie mit der zuletzt gezeichneten. Fehlt sie, steht der
+         Countdown still und die Teilnehmerliste veraltet. */
+      v: pa.v,
+      name: pa.name,
+      host: pa.host,
+      ichBinHost: pa.host === viewer,
+      status: pa.status,
+      startChips: pa.startChips,
+      dauer: pa.dauer,
+      spiele: pa.spiele.slice(),
+      max: P_MAX,
+      startAt: pa.startAt,
+      endeAt: pa.endeAt,
+      jetzt: now(),
+      meldungen: pa.meldungen.slice(),
+      spieler: rang.map(function (s) {
+        return {
+          id: s.id, name: s.name, avatar: s.avatar,
+          chips: s.chips, gewinn: s.chips - s.start, runden: s.runden,
+          besterWin: s.besterWin, online: isOnline(s.id), ich: s.id === viewer
+        };
+      })
+    };
+  }
+
   function action(id, op) {
+    var pa = partyOf(id);
+    if (pa) return partyAction(pa, id, op);
     var t = tableOf(id);
     if (!t) return { error: 'Du sitzt an keinem Tisch', code: 409 };
     touch(id);
@@ -1580,12 +1842,29 @@ function createMP(deps) {
       if (now() - o.at < ONLINE_MS) wach.push({ id: id, name: o.name, avatar: o.avatar });
     });
 
+    var partyListe = [];
+    partys.forEach(function (pa) {
+      partyListe.push({
+        id: pa.id, name: pa.name, status: pa.status,
+        startChips: pa.startChips, dauer: pa.dauer,
+        spiele: pa.spiele.length, max: P_MAX,
+        besetzt: pa.spieler.length,
+        spieler: pa.spieler.map(function (s) {
+          return { name: s.name, avatar: s.avatar, online: isOnline(s.id) };
+        })
+      });
+    });
+    partyListe.sort(function (a, b) { return b.besetzt - a.besetzt || a.name.localeCompare(b.name); });
+
     var meiner = tableOf(viewer);
+    var meineParty = partyOf(viewer);
     return {
       spiele: Object.keys(proSpiel).map(function (g) { return proSpiel[g]; }),
       tische: liste,
+      partys: partyListe,
       online: wach,
       meinTisch: meiner ? meiner.id : null,
+      meineParty: meineParty ? meineParty.id : null,
       v: seq
     };
   }
@@ -1678,6 +1957,8 @@ function createMP(deps) {
     action: action,
     tableOf: tableOf,
     view: function (id, viewer) {
+      var pa = partys.get(String(id || ''));
+      if (pa) return sichtParty(pa, viewer);
       var t = tables.get(String(id || ''));
       if (!t) return null;
       return sichtTisch(t, viewer);

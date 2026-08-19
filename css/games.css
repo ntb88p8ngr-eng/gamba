@@ -1424,3 +1424,150 @@
 .mp-ansage .mp-trenner{opacity:.5}
 .mp-farbknopf{display:inline-flex;align-items:center;gap:6px}
 .mp-farbknopf .mp-farbe{width:20px;height:20px}
+
+/* ═══════════ PARTYMODUS ═══════════
+   Die Party laeuft in der gewohnten Spielhalle. Damit man trotzdem sofort
+   sieht, dass sie laeuft, bekommt der Hintergrund eine andere Farbe und die
+   Rangliste steht fest oben links — sie soll auch dann sichtbar bleiben,
+   wenn man gerade in einem Spiel steckt. */
+
+/* Andere Kulisse: waermer, greller, mehr Jahrmarkt als Nachtclub. */
+body.party-an .bg-fx{
+  background:
+    radial-gradient(1100px 700px at 12% -8%, #7a1050 0%, transparent 58%),
+    radial-gradient(900px 620px at 88% 4%, #8a3d05 0%, transparent 55%),
+    radial-gradient(1000px 820px at 55% 118%, #123a6e 0%, transparent 62%),
+    linear-gradient(180deg,#2a0035,#1a0722 68%,#2b0a12)
+}
+body.party-an .blob-1{background:#ff8a1f}
+body.party-an .blob-2{background:#ff3ea5}
+body.party-an .blob-3{background:#ffd12e}
+
+/* Der laufende Balken oben zeigt, dass gerade Party ist. */
+body.party-an::before{
+  content:'';position:fixed;top:0;left:0;right:0;height:4px;z-index:60;
+  background:linear-gradient(90deg,var(--gold),var(--pink),var(--cyan),var(--gold));
+  background-size:300% 100%;animation:partyband 6s linear infinite
+}
+@keyframes partyband{from{background-position:0 0}to{background-position:300% 0}}
+
+/* ── Rangliste ── */
+.party-tafel{
+  position:fixed;top:74px;left:12px;z-index:55;width:232px;
+  background:rgba(12,0,26,.9);border:2px solid var(--gold);border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);backdrop-filter:blur(8px);
+  font-size:.78rem;overflow:hidden
+}
+.party-tafel-kopf{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 11px;background:rgba(255,209,46,.14);cursor:pointer;
+  font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--gold)
+}
+.party-uhr{font-family:'Bungee',sans-serif;color:#fff;margin-left:auto}
+.party-raus{
+  background:none;border:none;cursor:pointer;font-size:.9rem;line-height:1;
+  color:#ff8fa3;padding:2px 4px;border-radius:6px
+}
+.party-raus:hover{background:rgba(255,60,90,.2)}
+.party-uhr.knapp{color:#ff6b8a;animation:pulse 1s ease-in-out infinite}
+.party-rang{padding:6px 8px;display:flex;flex-direction:column;gap:3px}
+.party-tafel.klein .party-rang,.party-tafel.klein .party-meldungen{display:none}
+.party-zeile{
+  display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:8px;
+  background:rgba(255,255,255,.04)
+}
+.party-zeile.ich{background:rgba(124,255,59,.14);outline:1px solid rgba(124,255,59,.4)}
+.party-zeile.erster .party-platz{color:var(--gold)}
+.party-platz{width:14px;text-align:center;font-family:'Bungee',sans-serif;font-size:.68rem;opacity:.8}
+.party-av{font-size:.95rem}
+.party-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.party-gewinn{font-family:'Bungee',sans-serif;font-size:.7rem}
+.party-gewinn.plus{color:var(--lime)}
+.party-gewinn.minus{color:#ff6b8a}
+
+/* ── Grossgewinn-Meldungen ──
+   Sie bleiben zwoelf Sekunden stehen, nicht zwei wie ein Toast: wer gerade
+   auf seine eigene Walze schaut, soll sie trotzdem noch mitbekommen. */
+.party-meldungen{padding:0 8px 8px;display:flex;flex-direction:column;gap:4px}
+.party-meldung{
+  display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:9px;
+  background:linear-gradient(90deg,rgba(255,209,46,.28),rgba(255,62,165,.18));
+  border:1px solid rgba(255,209,46,.5);
+  animation:partyMeldung .45s cubic-bezier(.2,1.4,.4,1) both
+}
+.party-meldung.eigen{background:linear-gradient(90deg,rgba(124,255,59,.28),rgba(0,229,255,.16));border-color:rgba(124,255,59,.5)}
+.party-meldung.weg{opacity:0;transform:translateX(-14px);transition:opacity .5s,transform .5s}
+.party-m-av{font-size:1rem}
+.party-m-text{font-size:.72rem;line-height:1.15}
+.party-m-text b{color:var(--gold)}
+@keyframes partyMeldung{
+  from{opacity:0;transform:translateX(-18px) scale(.9)}
+  to{opacity:1;transform:none}
+}
+
+/* ── Wartelobby ── */
+.party-werbung{border-color:var(--gold);background:rgba(255,209,46,.08)}
+.party-karte{border-color:rgba(255,209,46,.5)}
+.party-liste{display:flex;flex-direction:column;gap:6px}
+.party-teilnehmer{
+  display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:12px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)
+}
+.party-teilnehmer.ich{border-color:var(--lime);background:rgba(124,255,59,.1)}
+.party-teilnehmer .party-name{font-weight:700}
+.party-status{font-size:.72rem;opacity:.65}
+.party-krone{font-size:.9rem}
+.party-spielliste{display:flex;flex-wrap:wrap;gap:6px}
+.party-spiel-pille{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:.74rem
+}
+.party-spiel-pille svg,.party-spiel-pille img{width:15px;height:15px}
+.party-aktionen{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+
+/* ── Countdown ── */
+.party-countdown{
+  text-align:center;padding:22px 16px;margin-bottom:14px;border-radius:20px;
+  background:radial-gradient(circle at 50% 40%,rgba(255,209,46,.22),transparent 70%);
+  border:2px solid var(--gold)
+}
+.party-count-zahl{
+  font-family:'Bungee',sans-serif;font-size:4.2rem;line-height:1;color:var(--gold);
+  text-shadow:0 0 26px rgba(255,209,46,.7);animation:pulse 1s ease-in-out infinite
+}
+.party-count-text{margin-top:8px;font-size:.9rem;color:#e8dcff}
+
+/* ── Spielauswahl beim Anlegen ── */
+.party-wahl{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:7px;max-height:230px;overflow-y:auto;padding:2px}
+.party-wahl-kachel{
+  display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:11px;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);font-size:.74rem
+}
+.party-wahl-kachel:has(input:checked){border-color:var(--lime);background:rgba(124,255,59,.12)}
+.party-wahl-ic svg,.party-wahl-ic img{width:17px;height:17px}
+.party-wahl-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.party-wahl-knoepfe{display:flex;gap:7px;margin-bottom:7px}
+
+/* ── Endstand ── */
+.party-ergebnis{display:flex;flex-direction:column;gap:6px}
+.party-erg{
+  display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:12px;
+  background:rgba(255,255,255,.05)
+}
+.party-erg.ich{border:1px solid var(--lime);background:rgba(124,255,59,.1)}
+.party-erg-platz{font-family:'Bungee',sans-serif;width:24px;color:var(--gold)}
+.party-erg-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.party-erg-gewinn{font-family:'Bungee',sans-serif;font-size:.82rem}
+.party-erg-gewinn.plus{color:var(--lime)}
+.party-erg-gewinn.minus{color:#ff6b8a}
+
+@media(max-width:900px){
+  /* Auf schmalen Schirmen wuerde die Tafel ueber dem Spiel liegen — dort
+     sitzt sie schmaler am Rand und laesst sich zusammenklappen. */
+  .party-tafel{width:170px;top:66px;left:6px;font-size:.72rem}
+  .party-count-zahl{font-size:3.2rem}
+}
+@media(max-width:560px){
+  .party-tafel{width:150px}
+  .party-name{font-size:.7rem}
+}

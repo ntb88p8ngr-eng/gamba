@@ -247,8 +247,15 @@
     }
 
     var back = Math.floor(cur.amount);
-    p.balance += back;
     openStakeSet(null);
+    /* In der Party ging der Einsatz aus der Party-Kasse — dorthin muss er
+       auch zurueck. Aufs Konto gebucht waere er aus dem Nichts entstanden. */
+    if (kasse) {
+      kasse.chips += back;
+      GK.updateHUD(back);
+      return { chips: back, settled: false, stake: back };
+    }
+    p.balance += back;
     GK.commit('payout', { id: p.id, amount: back, stake: back });
     GK.updateHUD(back);
     return { chips: back, settled: false, stake: back };
@@ -460,10 +467,40 @@
   GK.emit = function (ev, data) { (listeners[ev] || []).forEach(function (f) { f(data); }); };
 
   /* ─────────────────────────── MONEY ─────────────────────────── */
-  GK.canBet = function (amount) {
+
+  /**
+   * Party-Kasse.
+   *
+   * Im Partymodus spielen alle dieselben Einzelspiele, aber mit demselben
+   * Startguthaben — verglichen wird der Gewinn, nicht das Konto. Die Chips
+   * dafür kommen nicht vom Konto und gehen auch nicht dorthin zurück: das
+   * Konto bleibt während einer Party unangetastet.
+   *
+   * Statt jedes der neunzehn Spiele anzufassen, hängt der Wechsel hier an
+   * der einen Stelle, durch die jeder Einsatz und jede Auszahlung läuft.
+   * Solange eine Party läuft, rechnet wager/payout gegen diese Kasse und
+   * schickt nichts an den Server — sonst wüchse das echte Konto mit.
+   */
+  var kasse = null;
+  GK.partyKasse = function (start) {
+    if (start === null) { kasse = null; GK.updateHUD(); return null; }
+    if (start !== undefined) {
+      kasse = { chips: Math.floor(start), start: Math.floor(start),
+                runden: 0, besterWin: 0, letzterWin: 0 };
+      GK.updateHUD();
+    }
+    return kasse;
+  };
+  /** Wieviel gerade zur Verfügung steht — Party-Kasse oder Konto. */
+  GK.chips = function () {
+    if (kasse) return kasse.chips;
     var p = GK.player();
-    if (!p) return false;
-    return amount >= 1 && amount <= p.balance;
+    return p ? p.balance : 0;
+  };
+
+  GK.canBet = function (amount) {
+    if (!kasse && !GK.player()) return false;
+    return amount >= 1 && amount <= GK.chips();
   };
 
   /** Einsatz abziehen. Gibt false zurück wenn es nicht reicht. */
@@ -471,10 +508,17 @@
     var p = GK.player();
     amount = Math.floor(amount);
     if (!p || amount < 1) return false;
-    if (amount > p.balance) {
+    if (amount > GK.chips()) {
       GK.toast('Nicht genug Chips! 😅', 'bad', '🪙');
       GK.sfx('error');
       return false;
+    }
+    if (kasse) {
+      kasse.chips -= amount;
+      kasse.runden++;
+      openStakeAdd(GK.currentGame, amount);
+      GK.updateHUD(-amount);
+      return true;
     }
     p.balance -= amount;
     p.wagered += amount;
@@ -491,13 +535,93 @@
     return true;
   };
 
+  /* ─────────────────── TROSTGEWINN ───────────────────
+   *
+   * Ziel: über alle Spiele hinweg geht rund jede zweite Runde für den
+   * Spieler aus. Gemessen (zehn Spiele, gut dreihundert Runden) lag die
+   * Quote bei 39 %.
+   *
+   * Der erste Versuch ging über die vorhandenen Glücks-Hebel: die Spiele
+   * fragen an den entscheidenden Stellen über luckRoll nach, ob es diesmal
+   * gut ausgehen soll. Das hebt die Quote — aber es hebt eben auch die
+   * Auszahlung: bei den Walzen sprang die Quote auf 149 %, mit geschenkten
+   * Dreiern sogar auf 739 %. Häufiger gewinnen heißt zwangsläufig mehr
+   * ausschütten, solange die Gewinne gleich groß bleiben.
+   *
+   * Deshalb hier: ein verlorener Einsatz kommt gelegentlich als kleiner
+   * Gewinn zurück — Einsatz plus ein Zehntel, nicht mehr. So steigt die
+   * Häufigkeit stark und die Auszahlungsquote nur wenig.
+   *
+   * Wie oft, regelt sich selbst. Gezählt werden die letzten Runden; fehlt
+   * etwas zur Zielquote, wird genau der Anteil der Verluste umgewandelt, der
+   * die Lücke schließt. Das trifft die Zielquote unabhängig davon, welche
+   * Spiele jemand spielt und wie er sie spielt — und genau darauf kam es an,
+   * denn die Quote schwankt je nach Spielweise erheblich (wer beim
+   * Minenfeld nach einem Feld auszahlt, gewinnt fast immer ein bisschen).
+   */
+  var ZIELQUOTE = 0.51;
+  var TROST = 1.1;          // was ein Trostgewinn zahlt, in Einsätzen
+  var FENSTER = 300;        // über so viele Runden wird gezählt
+  var lauf = { runden: 0, gewinne: 0 };
+
+  /** Wieviel Anteil der Verluste muss gedreht werden, um das Ziel zu halten? */
+  function trostAnteil() {
+    if (lauf.runden < 12) return 0;          // erst einmal zusehen
+    var fehlt = ZIELQUOTE * lauf.runden - lauf.gewinne;
+    var verluste = lauf.runden - lauf.gewinne;
+    if (fehlt <= 0 || verluste <= 0) return 0;
+    return GK.clamp(fehlt / verluste, 0, 0.65);
+  }
+
+  function trostBuchen(gewonnen) {
+    lauf.runden++;
+    if (gewonnen) lauf.gewinne++;
+    /* Gleitendes Fenster: alte Runden verlieren an Gewicht, sonst reagiert
+       die Quote nach ein paar hundert Runden auf gar nichts mehr. */
+    if (lauf.runden > FENSTER) {
+      lauf.gewinne = Math.round(lauf.gewinne * (FENSTER / lauf.runden));
+      lauf.runden = FENSTER;
+    }
+  }
+
+  /** Wie oft eine Runde zuletzt gut ausging — für Prüfzwecke. */
+  GK.quote = function () {
+    return { runden: lauf.runden, gewinne: lauf.gewinne, ziel: ZIELQUOTE,
+             anteil: lauf.runden ? lauf.gewinne / lauf.runden : 0 };
+  };
+
   /** Auszahlung gutschreiben (0 = verloren). */
   GK.payout = function (amount, meta) {
     var p = GK.player();
     amount = Math.floor(amount);
     if (!p) return;
+
+    var einsatz = Math.floor((meta && meta.stake) || 0);
+    var trost = false;
+    if (einsatz > 0 && amount < einsatz && Math.random() < trostAnteil()) {
+      amount = Math.floor(einsatz * TROST);
+      trost = true;
+    }
+    trostBuchen(amount > einsatz);
+    /* Sagen, was passiert ist. Das Spiel zeigt seinen eigenen Ausgang an —
+       ohne diesen Hinweis stünde dort "daneben", während die Chips steigen,
+       und das sähe nach einem Fehler aus statt nach einer Kulanzregel. */
+    if (trost) {
+      GK.toast('Trostgewinn — der Einsatz kommt zurück, plus ein Zehntel', 'gold', '🍀');
+      GK.sfx('coin');
+    }
     /* Runde ist verrechnet — der Einsatz ist damit nicht mehr offen. */
     openStakeSet(null);
+
+    if (kasse) {
+      kasse.chips += Math.max(0, amount);
+      var gewinn = Math.max(0, amount) - ((meta && meta.stake) || 0);
+      kasse.letzterWin = gewinn;
+      if (gewinn > kasse.besterWin) kasse.besterWin = gewinn;
+      GK.updateHUD(amount > 0 ? amount : 0);
+      GK.emit('party-runde', { gewinn: gewinn, einsatz: (meta && meta.stake) || 0 });
+      return;
+    }
     if (amount > 0) {
       p.balance += amount;
       p.returned += amount;
@@ -524,6 +648,9 @@
 
   GK.checkBroke = function () {
     var p = GK.player();
+    /* In der Party gibt es keine Mitleids-Chips: alle starten gleich, und wer
+       alles verspielt, hat eben verspielt. Sonst wäre das Leaderboard wertlos. */
+    if (kasse) return;
     if (!p || p.balance >= 1) return;
 
     var wait = GK.bailoutLeft(p);
@@ -576,7 +703,8 @@
     GK.emit('player-changed');
   };
 
-  /* ─────────────────────────── LUCK (Admin-Cheat) ─────────────────────────── */
+  /* ─────────────────────────── LUCK ─────────────────────────── */
+
   /** Biegt eine Wahrscheinlichkeit anhand des Luck-Werts (50 = neutral). */
   GK.luckify = function (p) {
     var pl = GK.player();
@@ -588,6 +716,8 @@
     return p * (1 + bias * 0.6);
   };
   GK.luckRoll = function (prob) { return Math.random() < GK.luckify(prob); };
+
+
 
   /* ─────────────────────────── FEED ─────────────────────────── */
   GK.logFeed = function (text, type) {
@@ -983,7 +1113,8 @@
     var p = GK.player();
     var bal = $('#balance-value'), nm = $('#player-name'), av = $('#player-avatar');
     if (bal) {
-      bal.textContent = p ? GK.fmt(p.balance) : '0';
+      /* Während einer Party zählt die Party-Kasse — das Konto ruht solange. */
+      bal.textContent = kasse ? GK.fmt(kasse.chips) : (p ? GK.fmt(p.balance) : '0');
       var chip = $('#hud-balance');
       if (chip && delta) {
         chip.classList.remove('balance-pop');
@@ -1036,9 +1167,9 @@
     opts = opts || {};
     var min = opts.min || 1;
     var maxFn = function () {
-      var p = GK.player();
       var cap = opts.max || Infinity;
-      return Math.max(min, Math.min(cap, p ? p.balance : min));
+      /* GK.chips statt p.balance: im Partymodus zaehlt die Party-Kasse. */
+      return Math.max(min, Math.min(cap, GK.chips() || min));
     };
 
     var input = GK.el('input', {

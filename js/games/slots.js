@@ -359,7 +359,7 @@
 
       function canAfford() {
         var p = GK.player();
-        return !!p && p.balance >= wantStake;
+        return !!p && GK.chips() >= wantStake;
       }
 
       function stopAuto() {
