@@ -615,7 +615,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Neun Loops, live im Browser erzeugt — jeder mit eigener Besetzung: Jazz-Trio, Ambient, Chiptune, Boom-Bap, ruhige Kalimba, Acid-Techno, Trance, Drum\'n\'Bass und Hardcore. Keine Downloads, jederzeit abschaltbar.',
+      text: 'Sechs Techno-Loops, live im Browser erzeugt — vom schleppenden Dub-Keller über Melodic und Trance bis zur Industrial-Stahlplatte. Keine Downloads, jederzeit abschaltbar.',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),
