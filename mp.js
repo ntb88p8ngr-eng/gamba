@@ -797,8 +797,23 @@ function createMP(deps) {
     return { ok: true };
   }
 
-  function bumpParty(pa) {
+  /**
+   * Aenderung an einer Party bekanntgeben.
+   *
+   * Mit Bedacht gedrosselt: acht Spieler melden ihren Stand mehrmals je
+   * Sekunde, und jede Meldung weckt saemtliche offenen Langabfragen. Ohne
+   * Bremse fragte jeder Browser danach sofort wieder an — aus der
+   * Langabfrage wuerde ein Rundlauf mit siebzig Anfragen je Sekunde.
+   *
+   * Wichtiges (Beitritt, Start, Ende, Grossgewinn) geht sofort raus. Der
+   * blosse Zwischenstand wartet auf den naechsten Sekundentakt; so schnell
+   * muss eine Rangliste nicht sein.
+   */
+  function bumpParty(pa, eilig) {
     pa.v = ++seq;
+    if (eilig === false) { pa.schuldet = true; return; }
+    pa.schuldet = false;
+    pa.zuletztGeweckt = now();
     weckAlle();
   }
 
@@ -857,7 +872,9 @@ function createMP(deps) {
         });
         if (pa.meldungen.length > P_MELDUNGEN) pa.meldungen.length = P_MELDUNGEN;
       }
-      bumpParty(pa);
+      /* Ein Grossgewinn soll sofort bei allen ankommen, ein blosser
+         Zwischenstand darf bis zum naechsten Sekundentakt warten. */
+      bumpParty(pa, betrag > 0);
       return { ok: true };
     }
 
@@ -886,6 +903,8 @@ function createMP(deps) {
   /** Countdown und Spielzeit weiterdrehen — laeuft im selben Sekundentakt. */
   function partyTick(jetzt) {
     partys.forEach(function (pa) {
+      /* Aufgeschobene Zwischenstaende jetzt bekanntgeben. */
+      if (pa.schuldet) bumpParty(pa);
       if (pa.status === 'countdown' && jetzt >= pa.startAt) {
         pa.status = 'laeuft';
         bumpParty(pa);

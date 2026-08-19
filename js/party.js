@@ -187,6 +187,7 @@
     if (tafel && tafel.parentNode) tafel.parentNode.removeChild(tafel);
     tafel = null;
     gezeigt = {};
+    offene = [];
   }
 
   function tafelZeichnen(d) {
@@ -204,7 +205,8 @@
       ]));
     });
     uhrStellen(d);
-    meldungenZeigen(d);
+    meldungenSammeln(d);
+    meldungenZeichnen();
   }
 
   function uhrStellen(d) {
@@ -221,38 +223,69 @@
    *
    * Sie stehen laenger als ein Toast — wer gerade auf seine eigene Walze
    * schaut, soll trotzdem mitbekommen, dass nebenan jemand abgeraeumt hat.
+   *
+   * Gehalten werden sie in einer eigenen Liste und nicht nur im Baum: die
+   * Tafel wird bei jeder Serverantwort neu gezeichnet, und eine Meldung, die
+   * nur dort haengt, ist beim naechsten Durchlauf weg. Genau das ist beim
+   * Pruefen passiert — nach fuenf Sekunden war nichts mehr zu sehen.
    */
-  function meldungenZeigen(d) {
-    var kasten = document.getElementById('party-meldungen');
-    if (!kasten) return;
+  var offene = [];
+
+  function meldungenSammeln(d) {
     (d.meldungen || []).slice().reverse().forEach(function (m) {
       var schluessel = m.id + ':' + m.at;
       if (gezeigt[schluessel]) return;
       gezeigt[schluessel] = true;
       /* Beim Betreten liegen alte Meldungen schon da — die nicht nachspielen. */
       if (Date.now() - m.at > MELDUNG_MS) return;
+      m.bis = Date.now() + MELDUNG_MS;
+      m.eigen = !!(GK.player() && GK.player().id === m.id);
+      offene.push(m);
+      if (!m.eigen) GK.sfx('coin');
+    });
+  }
 
-      var eigen = !!(GK.player() && GK.player().id === m.id);
-      var zeile = el('div', { class: 'party-meldung' + (eigen ? ' eigen' : '') }, [
-        el('span', { class: 'party-m-av', text: m.avatar || '👤' }),
-        el('span', { class: 'party-m-text' }, [
-          el('b', { text: eigen ? 'Du' : m.name }),
-          el('span', { text: ' + ' + GK.fmt(m.betrag) })
-        ])
-      ]);
-      kasten.appendChild(zeile);
-      if (!eigen) GK.sfx('coin');
-      setTimeout(function () {
-        zeile.classList.add('weg');
-        setTimeout(function () { if (zeile.parentNode) zeile.parentNode.removeChild(zeile); }, 600);
-      }, MELDUNG_MS);
+  /**
+   * Nur anbauen und abraeumen, nie neu bauen.
+   *
+   * Der erste Anlauf hat den Kasten bei jedem Durchlauf geleert und neu
+   * gefuellt — halbsekuendlich. Damit begann die Einblend-Animation jedes Mal
+   * von vorn, und die Meldung stand die meiste Zeit bei Deckkraft null: im
+   * Baum war sie da, zu sehen war sie nicht.
+   */
+  function meldungenZeichnen() {
+    var kasten = document.getElementById('party-meldungen');
+    if (!kasten) return;
+    var jetzt = Date.now();
+    offene.forEach(function (m) {
+      if (!m.el) {
+        m.el = el('div', { class: 'party-meldung' + (m.eigen ? ' eigen' : '') }, [
+          el('span', { class: 'party-m-av', text: m.avatar || '👤' }),
+          el('span', { class: 'party-m-text' }, [
+            el('b', { text: m.eigen ? 'Du' : m.name }),
+            el('span', { text: ' + ' + GK.fmt(m.betrag) })
+          ])
+        ]);
+        kasten.appendChild(m.el);
+      } else if (!m.el.parentNode) {
+        kasten.appendChild(m.el);          // Tafel war zwischendurch weg
+      }
+      if (m.bis - jetzt < 700) m.el.classList.add('weg');
+    });
+    offene = offene.filter(function (m) {
+      if (m.bis > jetzt) return true;
+      if (m.el && m.el.parentNode) m.el.parentNode.removeChild(m.el);
+      return false;
     });
   }
 
   /* Die Uhr laeuft auch ohne neue Serverantwort weiter. */
   setInterval(function () {
-    if (Party.an && Party.daten) uhrStellen(Party.daten);
-  }, 1000);
+    if (!Party.an || !Party.daten) return;
+    uhrStellen(Party.daten);
+    /* Auch ohne neue Serverantwort muessen abgelaufene Meldungen verschwinden. */
+    meldungenZeichnen();
+  }, 500);
 
   /* ── Was der Rest der Anwendung braucht ───────────────────────────── */
 
@@ -283,7 +316,11 @@
     beenden(null);
     Party.daten = null;
     Party.id = null;
+    /* Auch die Mehrspieler-Ansicht muss die Party loslassen — sonst fragt die
+       Langabfrage weiter nach einem Tisch, an dem man gar nicht mehr sitzt. */
+    if (GK.mp) { GK.mp.tisch = null; GK.mp.seit = 0; }
     ruf('leave', {}).catch(function () {});
+    GK.toast('Party verlassen — dein Konto ist unverändert', '', '🚪');
   };
 
 })(window.GK);

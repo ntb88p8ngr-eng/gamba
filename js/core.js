@@ -552,42 +552,58 @@
    * Gewinn zurück — Einsatz plus ein Zehntel, nicht mehr. So steigt die
    * Häufigkeit stark und die Auszahlungsquote nur wenig.
    *
-   * Wie oft, regelt sich selbst. Gezählt werden die letzten Runden; fehlt
-   * etwas zur Zielquote, wird genau der Anteil der Verluste umgewandelt, der
-   * die Lücke schließt. Das trifft die Zielquote unabhängig davon, welche
-   * Spiele jemand spielt und wie er sie spielt — und genau darauf kam es an,
-   * denn die Quote schwankt je nach Spielweise erheblich (wer beim
-   * Minenfeld nach einem Feld auszahlt, gewinnt fast immer ein bisschen).
+   * Wie oft umgewandelt wird, rechnet sich selbst aus. Gezählt wird, wie oft
+   * eine Runde von sich aus gut ausgeht — daraus folgt genau der Anteil der
+   * Verluste, der zur Zielquote fehlt:
+   *
+   *     Anteil = (Ziel − natürliche Quote) / (1 − natürliche Quote)
+   *
+   * Der erste Anlauf hat stattdessen die bisherige Bilanz nachgerechnet und
+   * versucht, sie geradezubiegen. Das zieht die Quote nur langsam hoch, weil
+   * verlorene Runden von früher nicht mehr einzuholen sind: nach fünfzig
+   * Runden stand sie erst bei 28 %. Die Schätzung oben trifft das Ziel
+   * dagegen ab der nächsten Runde — und sie tut es unabhängig davon, welche
+   * Spiele jemand spielt und wie er sie spielt. Darauf kommt es an, denn die
+   * natürliche Quote schwankt enorm: von 5 % an den Walzen bis über 90 % im
+   * Minenfeld, wenn man nach einem Feld auszahlt.
    */
   var ZIELQUOTE = 0.51;
   var TROST = 1.1;          // was ein Trostgewinn zahlt, in Einsätzen
-  var FENSTER = 300;        // über so viele Runden wird gezählt
-  var lauf = { runden: 0, gewinne: 0 };
+  var FENSTER = 400;        // über so viele Runden wird gemittelt
+  /* Gezählt wird der Ausgang VOR einem Trostgewinn — sonst schätzte sich das
+     Verfahren an seiner eigenen Wirkung fest. */
+  var lauf = { runden: 0, gewinne: 0, trost: 0 };
 
-  /** Wieviel Anteil der Verluste muss gedreht werden, um das Ziel zu halten? */
+  /** Welcher Anteil der Verluste muss gedreht werden, um das Ziel zu treffen? */
   function trostAnteil() {
-    if (lauf.runden < 12) return 0;          // erst einmal zusehen
-    var fehlt = ZIELQUOTE * lauf.runden - lauf.gewinne;
-    var verluste = lauf.runden - lauf.gewinne;
-    if (fehlt <= 0 || verluste <= 0) return 0;
-    return GK.clamp(fehlt / verluste, 0, 0.65);
+    if (lauf.runden < 8) return 0;           // erst ein paar Runden zusehen
+    var natur = lauf.gewinne / lauf.runden;
+    if (natur >= ZIELQUOTE) return 0;
+    return GK.clamp((ZIELQUOTE - natur) / (1 - natur), 0, 0.8);
   }
 
-  function trostBuchen(gewonnen) {
+  function trostBuchen(natuerlichGewonnen, gabTrost) {
     lauf.runden++;
-    if (gewonnen) lauf.gewinne++;
-    /* Gleitendes Fenster: alte Runden verlieren an Gewicht, sonst reagiert
-       die Quote nach ein paar hundert Runden auf gar nichts mehr. */
+    if (natuerlichGewonnen) lauf.gewinne++;
+    if (gabTrost) lauf.trost++;
+    /* Gleitendes Mittel: sonst zählt die Spielweise von vor tausend Runden
+       genauso viel wie die von jetzt. */
     if (lauf.runden > FENSTER) {
-      lauf.gewinne = Math.round(lauf.gewinne * (FENSTER / lauf.runden));
+      var f = FENSTER / lauf.runden;
+      lauf.gewinne = Math.round(lauf.gewinne * f);
+      lauf.trost = Math.round(lauf.trost * f);
       lauf.runden = FENSTER;
     }
   }
 
-  /** Wie oft eine Runde zuletzt gut ausging — für Prüfzwecke. */
+  /** Wie die Runden zuletzt ausgingen — für Prüfzwecke. */
   GK.quote = function () {
-    return { runden: lauf.runden, gewinne: lauf.gewinne, ziel: ZIELQUOTE,
-             anteil: lauf.runden ? lauf.gewinne / lauf.runden : 0 };
+    var natur = lauf.runden ? lauf.gewinne / lauf.runden : 0;
+    return {
+      runden: lauf.runden, natuerlich: natur, trost: lauf.trost,
+      ziel: ZIELQUOTE, anteil: trostAnteil(),
+      erwartet: natur + (1 - natur) * trostAnteil()
+    };
   };
 
   /** Auszahlung gutschreiben (0 = verloren). */
@@ -597,12 +613,17 @@
     if (!p) return;
 
     var einsatz = Math.floor((meta && meta.stake) || 0);
+    var natur = amount > einsatz;
     var trost = false;
-    if (einsatz > 0 && amount < einsatz && Math.random() < trostAnteil()) {
+    /* Umgewandelt wird alles, was keinen Gewinn brachte — auch ein
+       Unentschieden. Sonst waere die Zielquote gar nicht erreichbar: die
+       Formel unten teilt durch den Anteil aller Runden ohne Gewinn, und wenn
+       ein Teil davon unantastbar bleibt, bleibt die Quote darunter. */
+    if (einsatz > 0 && !natur && Math.random() < trostAnteil()) {
       amount = Math.floor(einsatz * TROST);
       trost = true;
     }
-    trostBuchen(amount > einsatz);
+    trostBuchen(natur, trost);
     /* Sagen, was passiert ist. Das Spiel zeigt seinen eigenen Ausgang an —
        ohne diesen Hinweis stünde dort "daneben", während die Chips steigen,
        und das sähe nach einem Fehler aus statt nach einer Kulanzregel. */
@@ -613,13 +634,19 @@
     /* Runde ist verrechnet — der Einsatz ist damit nicht mehr offen. */
     openStakeSet(null);
 
+    /* Der tatsaechliche Ausgang einer Runde — nach einem etwaigen
+       Trostgewinn. Wer die Quote nachmessen will, haengt sich hier an; von
+       aussen ist der Ausgang sonst nicht zu sehen, weil jedes Spiel sein
+       Ergebnis selbst anzeigt. */
+    GK.emit('runde', { einsatz: einsatz, aus: Math.max(0, amount), trost: trost });
+
     if (kasse) {
       kasse.chips += Math.max(0, amount);
-      var gewinn = Math.max(0, amount) - ((meta && meta.stake) || 0);
+      var gewinn = Math.max(0, amount) - einsatz;
       kasse.letzterWin = gewinn;
       if (gewinn > kasse.besterWin) kasse.besterWin = gewinn;
       GK.updateHUD(amount > 0 ? amount : 0);
-      GK.emit('party-runde', { gewinn: gewinn, einsatz: (meta && meta.stake) || 0 });
+      GK.emit('party-runde', { gewinn: gewinn, einsatz: einsatz });
       return;
     }
     if (amount > 0) {
