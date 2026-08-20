@@ -737,6 +737,11 @@ function createMP(deps) {
       startChips: clamp(int(opts.startChips) || 1000, 100, 100000),
       dauer: clamp(int(opts.dauer) || 600, 60, 3600),
       spiele: reinigeSpiele(opts.spiele),
+      /* Alle Spiele offen, auch die, die ein Teilnehmer noch nicht
+         freigespielt hat. Sonst sitzt in einer Party mit acht Leuten die
+         Haelfte vor verschlossenen Kacheln, weil der Gastgeber ein Spiel
+         ausgesucht hat, das erst ab Stufe sieben aufgeht. */
+      alleFrei: opts.alleFrei !== false,
       spieler: [],
       startAt: 0,
       endeAt: 0,
@@ -827,6 +832,7 @@ function createMP(deps) {
       if (op.startChips !== undefined) pa.startChips = clamp(int(op.startChips), 100, 100000);
       if (op.dauer !== undefined) pa.dauer = clamp(int(op.dauer), 60, 3600);
       if (op.spiele !== undefined) pa.spiele = reinigeSpiele(op.spiele);
+      if (op.alleFrei !== undefined) pa.alleFrei = !!op.alleFrei;
       if (op.name !== undefined) pa.name = String(op.name).slice(0, 24) || pa.name;
       /* Das Startguthaben gilt fuer alle, auch fuer die, die schon da sind. */
       pa.spieler.forEach(function (s) { s.chips = pa.startChips; s.start = pa.startChips; });
@@ -944,6 +950,7 @@ function createMP(deps) {
       startChips: pa.startChips,
       dauer: pa.dauer,
       spiele: pa.spiele.slice(),
+      alleFrei: !!pa.alleFrei,
       max: P_MAX,
       startAt: pa.startAt,
       endeAt: pa.endeAt,
