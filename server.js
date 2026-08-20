@@ -237,6 +237,12 @@ function int(v) {
 }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
+/** Zehntel-genaue Zahl — fuer die Glueckswerte, die feiner als ganzzahlig sind. */
+function zehntel(v) {
+  var n = Math.round(Number(v) * 10) / 10;
+  return isFinite(n) ? n : 0;
+}
+
 function newPlayer(name, avatar, id) {
   return {
     id: /^[a-z0-9]{4,32}$/i.test(String(id || '')) ? String(id) : crypto.randomBytes(8).toString('hex'),
@@ -456,7 +462,7 @@ function applyOp(op) {
     }
 
     case 'luck': {
-      p.luck = clamp(int(op.luck), 0, 100);
+      p.luck = clamp(zehntel(op.luck), 0, 100);
       break;
     }
 
@@ -513,7 +519,7 @@ function applyOp(op) {
       }
       var spiel = clean(op.game, 24).trim();
       if (!spiel) return { error: 'Kein Spiel angegeben', code: 400 };
-      var wert = clamp(int(op.luck), 0, 100);
+      var wert = clamp(zehntel(op.luck), 0, 100);
       /* Neutral wird geloescht statt gespeichert: so bleibt die Datei
          uebersichtlich und ein spaeter umbenanntes Spiel zieht keinen
          toten Eintrag mit. */

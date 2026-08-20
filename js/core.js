@@ -701,11 +701,17 @@
     return w === undefined ? 50 : w;
   };
 
+  /** Auf Zehntel gerundet und in 0..100 gehalten — so fein wie die Regler. */
+  GK.luckWert = function (v) {
+    var n = Math.round((Number(v) || 0) * 10) / 10;
+    return Math.max(0, Math.min(100, n));
+  };
+
   /** Quote eines Spiels setzen (nur Admin). 50 heisst neutral. */
   GK.setGameLuck = function (id, wert) {
     if (!id) return Promise.resolve(null);
     state.spielLuck = state.spielLuck || {};
-    wert = Math.max(0, Math.min(100, Math.round(Number(wert) || 0)));
+    wert = GK.luckWert(wert);
     if (wert === 50) delete state.spielLuck[id];
     else state.spielLuck[id] = wert;
     return GK.commit('gameLuck', { game: id, luck: wert });

@@ -736,7 +736,7 @@
             el('span', { style: 'font-size:1.4rem', text: p.avatar }),
             el('div', {}, [
               el('div', { class: 'nm', text: p.name }),
-              el('div', { style: 'font-size:.68rem;color:var(--muted)', text: 'Luck ' + p.luck + ' · ' + p.plays + ' Spiele' })
+              el('div', { style: 'font-size:.68rem;color:var(--muted)', text: 'Luck ' + luckText(GK.luckWert(p.luck)) + ' · ' + p.plays + ' Spiele' })
             ])
           ]),
           el('span', { class: 'bal', text: GK.fmt(p.balance) }),
@@ -855,25 +855,40 @@
       renderList(); renderAll();
     } });
 
-    var luckSlider = el('input', { type: 'range', min: '0', max: '100', step: '5', value: '50' });
-    var luckVal = el('b', { text: '50' });
-    function syncLuck() {
+    /* Genauso fein wie die Quoten: Regler in Zehnteln, daneben ein Feld zum
+       Eintippen — 1000 Stufen trifft man mit der Maus sonst nicht. */
+    var luckSlider = el('input', { type: 'range', min: '0', max: '100', step: '0.1', value: '50' });
+    var luckFeld = el('input', { class: 'quote-feld', type: 'number', min: '0', max: '100', step: '0.1', value: '50' });
+    var luckVal = el('b', { text: '⚖️' });
+    function syncLuck(vomFeld) {
       var p = target();
-      luckSlider.value = p ? p.luck : 50;
-      luckVal.textContent = (p ? p.luck : 50) + (p && p.luck > 50 ? ' 🍀' : (p && p.luck < 50 ? ' 💀' : ' ⚖️'));
+      var v = p ? GK.luckWert(p.luck) : 50;
+      luckSlider.value = String(v);
+      if (!vomFeld) luckFeld.value = luckFeldText(v);
+      luckVal.textContent = v > 50 ? '🍀' : (v < 50 ? '💀' : '⚖️');
     }
-    luckSlider.addEventListener('input', function () {
+    function luckSetzen(v, vomFeld) {
       var p = target();
       if (!p) return;
-      p.luck = Number(luckSlider.value);
-      syncLuck();
+      p.luck = GK.luckWert(v);
+      syncLuck(vomFeld);
       renderList();
-    });
+    }
+    luckSlider.addEventListener('input', function () { luckSetzen(luckSlider.value); });
     // erst beim Loslassen zum Server, nicht bei jedem Pixel
     luckSlider.addEventListener('change', function () {
       var p = target();
       if (!p) return;
       GK.commit('luck', { id: p.id, luck: p.luck });
+    });
+    luckFeld.addEventListener('change', function () {
+      var p = target();
+      if (!p) return;
+      if (String(luckFeld.value).trim() === '') { syncLuck(); return; }
+      luckSetzen(luckFeld.value, true);
+      luckFeld.value = luckFeldText(p.luck);
+      GK.commit('luck', { id: p.id, luck: p.luck });
+      GK.sfx('click');
     });
 
     var quick = el('div', { class: 'bet-quick' }, [
@@ -1036,56 +1051,79 @@
        fuer alle. Beide zaehlen als Abweichung von 50 und addieren sich. */
     /* Diese beiden fragen das Glueck nirgends ab: es sind ausgeteilte
        Kartenspiele, in denen ein heimlicher Schubs die Karten verbiegen
-       muesste. Ein Regler wuerde dort nur so tun als ob. */
+       muesste. Ein Regler waere dort eine Attrappe — deshalb stehen sie
+       gar nicht erst in der Liste. */
     var OHNE_QUOTE = { blackjack: 1, baccarat: 1 };
     var quotenBox = el('div', { class: 'quoten-liste' });
 
+    /* Zum Lesen mit Komma und ohne unnoetige Null: 62,5 statt 62.5, und 50
+       bleibt 50 statt 50,0. Zahlenfelder bekommen das nicht — ein
+       <input type=number> versteht nur den Punkt und leert sich beim Komma
+       kommentarlos. Fuer die gibt es luckFeldText. */
+    function luckText(v) {
+      var t = (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+      return t.replace(/,0$/, '');
+    }
+    function luckFeldText(v) {
+      return String(Math.round(v * 10) / 10);
+    }
+
     function quoteZeile(g) {
-      var aus = !!OHNE_QUOTE[g.id];
       var wert = GK.gameLuck(g.id);
-      var zahl = el('span', { class: 'quote-wert' });
-      var regler = el('input', { type: 'range', min: '0', max: '100', step: '5', value: String(wert) });
-      var zeile = el('div', { class: 'quote-zeile' + (aus ? ' aus' : '') }, [
+      /* Regler fuer grob, Zahlenfeld fuer genau: 1000 Stufen trifft man mit
+         der Maus nicht, getippt steht der Wert sofort. */
+      var regler = el('input', { type: 'range', min: '0', max: '100', step: '0.1', value: String(wert) });
+      var feld = el('input', { class: 'quote-feld', type: 'number', min: '0', max: '100', step: '0.1',
+                               value: String(wert) });
+      var zeile = el('div', { class: 'quote-zeile' }, [
         el('span', { class: 'quote-ic', html: GK.iconHTML(g.icon) }),
         el('span', { class: 'quote-name', text: g.name }),
-        regler, zahl
+        regler, feld
       ]);
+      zeile.title = g.name + ': 50 ist neutral, darüber gewinnt der Spieler öfter.';
 
       function zeigen(v) {
-        zahl.textContent = aus ? '—' : v + (v > 50 ? ' 🍀' : (v < 50 ? ' 💀' : ' ⚖️'));
-        zeile.classList.toggle('hoch', !aus && v > 50);
-        zeile.classList.toggle('tief', !aus && v < 50);
+        zeile.classList.toggle('hoch', v > 50);
+        zeile.classList.toggle('tief', v < 50);
       }
       zeigen(wert);
 
-      if (aus) {
-        regler.disabled = true;
-        zeile.title = g.name + ' reagiert nicht auf den Regler — dort werden Karten ausgeteilt.';
-      } else {
-        zeile.title = g.name + ': 50 ist neutral, darüber gewinnt der Spieler öfter.';
-        regler.addEventListener('input', function () { zeigen(Number(regler.value)); });
-        regler.addEventListener('change', function () {
-          var v = Number(regler.value);
-          zeigen(v);
-          GK.setGameLuck(g.id, v);
-          GK.sfx('click');
-        });
+      function setzen(v, vomFeld) {
+        v = GK.luckWert(v);
+        regler.value = String(v);
+        if (!vomFeld) feld.value = luckFeldText(v);
+        zeigen(v);
+        return v;
       }
-      return { node: zeile, regler: regler, zeigen: zeigen, aus: aus, id: g.id };
+      setzen(wert);
+
+      regler.addEventListener('input', function () { setzen(regler.value); });
+      regler.addEventListener('change', function () {
+        GK.setGameLuck(g.id, setzen(regler.value));
+        GK.sfx('click');
+      });
+      feld.addEventListener('change', function () {
+        /* Leeres Feld heisst "nichts eingegeben", nicht "null" — sonst
+           verstellte ein weggewischter Wert die Quote auf 0. */
+        if (String(feld.value).trim() === '') { setzen(GK.gameLuck(g.id)); return; }
+        var v = setzen(feld.value, true);
+        feld.value = luckFeldText(v);
+        GK.setGameLuck(g.id, v);
+        GK.sfx('click');
+      });
+      return { node: zeile, setzen: setzen, id: g.id };
     }
 
     var quotenZeilen = [];
     function renderQuoten() {
       quotenBox.innerHTML = '';
-      quotenZeilen = GK.games.map(quoteZeile);
+      quotenZeilen = GK.games
+        .filter(function (g) { return !OHNE_QUOTE[g.id]; })
+        .map(quoteZeile);
       quotenZeilen.forEach(function (z) { quotenBox.appendChild(z.node); });
     }
     function syncQuoten() {
-      quotenZeilen.forEach(function (z) {
-        var v = GK.gameLuck(z.id);
-        z.regler.value = String(v);
-        z.zeigen(v);
-      });
+      quotenZeilen.forEach(function (z) { z.setzen(GK.gameLuck(z.id)); });
     }
 
     var quotenNeutral = el('button', { class: 'btn btn-ghost btn-small', text: '⚖️ ALLE NEUTRAL' });
@@ -1137,15 +1175,21 @@
           ]),
 
           feld('GLÜCKS-REGLER (HEIMLICHER CHEAT)', [
-            el('div', { class: 'range-row' }, [luckSlider, el('div', { class: 'info-box', style: 'min-width:74px' }, [luckVal, el('span', { text: 'Luck' })])]),
-            el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet. Gilt nur für den oben gewählten Spieler und kommt zur Quote des Spiels dazu.' })
+            el('div', { class: 'range-row' }, [
+              luckSlider,
+              el('div', { class: 'info-box', style: 'min-width:92px' }, [
+                el('div', { class: 'luck-eingabe' }, [luckFeld, luckVal]),
+                el('span', { text: 'Luck' })
+              ])
+            ]),
+            el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet, auf ein Zehntel genau. Gilt nur für den oben gewählten Spieler und kommt zur Quote des Spiels dazu.' })
           ]),
 
           feld('QUOTEN JE SPIEL', [
             quotenBox,
             el('div', { style: 'height:8px' }),
             el('div', { class: 'modal-actions' }, [quotenNeutral]),
-            el('p', { class: 'hint', text: '50 ist neutral. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat teilen echte Karten aus und lassen sich nicht schieben.' })
+            el('p', { class: 'hint', text: '50 ist neutral, Zehntel sind möglich — 50,5 ist ein Hauch gnädiger. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat stehen nicht in der Liste: dort werden echte Karten ausgeteilt, da gibt es nichts zu schieben.' })
           ], true),
 
           feld('OFFENE TISCHE & PARTYS', [
