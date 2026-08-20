@@ -111,6 +111,22 @@
      Kontoabgleich und Fehlerbehandlung gelten dort genauso. */
   MP._ruf = ruf;
 
+  /**
+   * Einmal die Uebersicht holen, ohne die Ansicht zu oeffnen.
+   *
+   * Der Admin will von der Spielhalle aus sehen, was gerade offen ist. Die
+   * Langabfrage laeuft dort nicht, deshalb hier eine einzelne Anfrage mit
+   * since 0 — die kommt sofort zurueck.
+   */
+  MP.uebersicht = function () {
+    return ruf('lobby', { since: 0 }).then(function (b) { return b.lobby || null; });
+  };
+
+  /** Tisch oder Party aufloesen — braucht das Admin-Token. */
+  MP.aufloesen = function (id) {
+    return ruf('aufloesen', { table: id, token: GK.net && GK.net.token });
+  };
+
   function fehler(e) {
     if (e && e.name === 'AbortError') return;
     GK.toast(e && e.message ? e.message : 'Da ging etwas schief', 'bad', '📡');
@@ -428,6 +444,19 @@
 
   /* ── Partymodus ───────────────────────────────────────────────────── */
 
+  /* Auswahl fuer den Nachschub. Steht in beiden Dialogen — neue Party und
+     Einstellungen aendern — deshalb einmal hier. */
+  var NACHSCHUB = [[0, 'Aus — wer blank ist, ist raus'], [100, '100 Chips'],
+                   [250, '250 Chips'], [500, '500 Chips'], [1000, '1.000 Chips']];
+  function nachschubFeld(wert) {
+    var f = el('select', { class: 'mp-feld' });
+    NACHSCHUB.forEach(function (n) {
+      f.appendChild(el('option', { value: String(n[0]), text: n[1],
+                                   selected: n[0] === wert ? 'selected' : null }));
+    });
+    return f;
+  }
+
   /**
    * Neue Party aufmachen.
    *
@@ -454,6 +483,8 @@
         dauer.appendChild(el('option', { value: String(d[0]), text: d[1],
                                          selected: d[0] === 600 ? 'selected' : null }));
       });
+
+    var nach = nachschubFeld(250);
 
     /* Spielauswahl: alles an, was der Gastgeber selbst freigeschaltet hat.
        Ein Spiel, das er gar nicht kennt, kann er auch nicht sinnvoll waehlen. */
@@ -505,6 +536,7 @@
         startChips: parseInt(chips.value, 10),
         dauer: parseInt(dauer.value, 10),
         alleFrei: frei.checked,
+        nachschub: parseInt(nach.value, 10),
         spiele: gewaehlt
       }).then(function (b) {
         if (b && b.party) { MP.tisch = { id: b.party }; MP.seit = 0; anstossen(); }
@@ -521,6 +553,10 @@
         el('label', { class: 'mp-label', text: 'Name' }), name,
         el('label', { class: 'mp-label', text: 'Startchips für alle' }), chips,
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
+        el('label', { class: 'mp-label', text: 'Nachschub bei null Chips' }), nach,
+        el('p', { class: 'mp-hinweis', text:
+          'Wer sich verzockt hat, bekommt automatisch neue Chips und spielt weiter. ' +
+          'Für die Rangliste zählt das Geschenk nicht — es wird vom Gewinn abgezogen.' }),
         freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }),
         el('div', { class: 'party-wahl-knoepfe' }, [alle, keine]),
@@ -599,6 +635,10 @@
       '<b>' + Math.round(pa.dauer / 60) + ' Minuten</b> lang die Einzelspiele. ' +
       'Gewonnen hat, wer am Ende den größten Gewinn gemacht hat. ' +
       'Dein Konto bleibt unberührt. ' +
+      (pa.nachschub
+        ? 'Wer blank ist, bekommt <b>' + GK.fmt(pa.nachschub) + ' Chips</b> Nachschub — ' +
+          'der zählt aber nicht als Gewinn. '
+        : 'Nachschub gibt es keinen: wer blank ist, schaut zu. ') +
       (pa.alleFrei
         ? 'Alle ausgewählten Spiele sind <b>offen</b>, auch noch nicht freigespielte.'
         : 'Es gilt die <b>eigene Stufe</b> — wer ein Spiel noch nicht freigespielt hat, kann es nicht öffnen.') }));
@@ -670,6 +710,7 @@
         dauer.appendChild(el('option', { value: String(d[0]), text: d[1],
                                          selected: d[0] === pa.dauer ? 'selected' : null }));
       });
+    var nach = nachschubFeld(pa.nachschub || 0);
     var frei = el('input', { type: 'checkbox' });
     frei.checked = !!pa.alleFrei;
     var freiZeile = el('label', { class: 'party-schalter' }, [
@@ -706,6 +747,7 @@
         startChips: parseInt(chips.value, 10),
         dauer: parseInt(dauer.value, 10),
         alleFrei: frei.checked,
+        nachschub: parseInt(nach.value, 10),
         spiele: gewaehlt
       });
     });
@@ -716,6 +758,7 @@
       nodes: [
         el('label', { class: 'mp-label', text: 'Startchips' }), chips,
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
+        el('label', { class: 'mp-label', text: 'Nachschub bei null Chips' }), nach,
         freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }), gitter,
         el('div', { style: 'height:10px' }), ok

@@ -955,7 +955,77 @@
       GK.sfx('click');
     } });
 
+    /* ── Offene Tische und Partys ──
+       Der Admin sieht hier, was gerade laeuft, und kann aufraeumen: einen
+       Tisch, an dem seit einer Stunde einer allein sitzt, oder eine Party,
+       die nie gestartet wurde. Die Chips gehen dabei zurueck aufs Konto —
+       darum kuemmert sich der Server. */
+    var mpBox = el('div', { class: 'admin-players' });
+
+    function renderMP() {
+      mpBox.innerHTML = '';
+      mpBox.appendChild(el('div', { class: 'feed-empty', text: 'Lade…' }));
+      if (!GK.mp || !GK.mp.uebersicht) return;
+      GK.mp.uebersicht().then(function (l) {
+        mpBox.innerHTML = '';
+        var alles = [];
+        (l && l.tische || []).forEach(function (t) {
+          alles.push({
+            id: t.id, name: t.name, art: t.game,
+            wer: (t.spieler || []).map(function (s) { return s.name; }),
+            zustand: t.laeuft ? 'läuft' : 'wartet',
+            zahl: t.besetzt + '/' + t.plaetze
+          });
+        });
+        (l && l.partys || []).forEach(function (pa) {
+          alles.push({
+            id: pa.id, name: pa.name, art: 'Party',
+            wer: (pa.spieler || []).map(function (s) { return s.name; }),
+            zustand: pa.status === 'lobby' ? 'wartet' : pa.status,
+            zahl: pa.besetzt + '/' + pa.max
+          });
+        });
+        if (!alles.length) {
+          mpBox.appendChild(el('div', { class: 'feed-empty', text: 'Gerade ist nichts offen.' }));
+          return;
+        }
+        alles.forEach(function (e) {
+          var weg = el('button', { class: 'mini-btn', text: '🗑', title: 'Auflösen' });
+          weg.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            GK.mp.aufloesen(e.id).then(function () {
+              GK.toast('"' + e.name + '" aufgelöst', 'gold', '🗑');
+              GK.sfx('chip');
+              renderMP();
+              renderAll();
+            }).catch(function (err) {
+              GK.toast(err && err.message ? err.message : 'Ging nicht', 'bad', '⚠️');
+              GK.sfx('error');
+            });
+          });
+          mpBox.appendChild(el('div', { class: 'admin-row' }, [
+            el('div', { class: 'who' }, [
+              el('div', {}, [
+                el('div', { class: 'nm', text: e.name }),
+                el('div', { style: 'font-size:.68rem;color:var(--muted)',
+                            text: e.art + ' · ' + e.zustand + ' · ' + e.zahl +
+                                  (e.wer.length ? ' · ' + e.wer.join(', ') : '') })
+              ])
+            ]),
+            weg
+          ]));
+        });
+      }).catch(function () {
+        mpBox.innerHTML = '';
+        mpBox.appendChild(el('div', { class: 'feed-empty', text: 'Übersicht nicht erreichbar.' }));
+      });
+    }
+
+    var mpNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
+    mpNeu.addEventListener('click', function () { GK.sfx('click'); renderMP(); });
+
     renderList();
+    renderMP();
     syncLuck();
 
     GK.modal({
@@ -986,6 +1056,13 @@
         el('div', { style: 'height:6px' }),
         el('div', { class: 'range-row' }, [luckSlider, el('div', { class: 'info-box', style: 'min-width:74px' }, [luckVal, el('span', { text: 'Luck' })])]),
         el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet. Wirkt auf Slots, Roulette, Münze, Würfel, Crash, Rad, Plinko und Rubbellos.' }),
+        el('div', { style: 'height:16px' }),
+        el('div', { class: 'bet-label', text: 'OFFENE TISCHE & PARTYS' }),
+        el('div', { style: 'height:6px' }),
+        mpBox,
+        el('div', { style: 'height:8px' }),
+        el('div', { class: 'modal-actions' }, [mpNeu]),
+        el('p', { class: 'hint', text: 'Auflösen bucht alle Einkäufe zurück aufs Konto. Tische und Partys, in denen drei Minuten lang nichts passiert und die nie gestartet sind, verschwinden von selbst.' }),
         el('div', { style: 'height:16px' }),
         el('div', { class: 'bet-label', text: 'EINZELNEN SPIELER ZURÜCKSETZEN' }),
         el('div', { style: 'height:6px' }),

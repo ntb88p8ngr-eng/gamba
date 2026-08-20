@@ -58,7 +58,7 @@
       var kk = GK.partyKasse();
       if (!Party.an || !kk) return;
       ruf('action', {
-        action: 'partystand', chips: kk.chips,
+        action: 'partystand', chips: kk.chips, nachschub: kk.nachschub,
         runden: kk.runden, besterWin: kk.besterWin
       }).catch(function () {});
     }, 900);
@@ -69,10 +69,21 @@
     var k = GK.partyKasse();
     if (!Party.an || !k) return;
     ruf('action', {
-      action: 'partystand', chips: k.chips, runden: k.runden,
-      besterWin: k.besterWin, win: gewinn, spiel: spiel || ''
+      action: 'partystand', chips: k.chips, nachschub: k.nachschub,
+      runden: k.runden, besterWin: k.besterWin, win: gewinn, spiel: spiel || ''
     }).catch(function () {});
   }
+
+  /* Nachschub geht sofort raus: der Stand hat sich sprunghaft geaendert,
+     und der Abzug vom Gewinn soll nicht eine Runde lang fehlen. */
+  GK.on('party-nachschub', function () {
+    var k = GK.partyKasse();
+    if (!Party.an || !k) return;
+    ruf('action', {
+      action: 'partystand', chips: k.chips, nachschub: k.nachschub,
+      runden: k.runden, besterWin: k.besterWin
+    }).catch(function () {});
+  });
 
   GK.on('party-runde', function (r) {
     var k = GK.partyKasse();
@@ -95,7 +106,7 @@
   function starten(d) {
     if (Party.an) return;
     Party.an = true;
-    GK.partyKasse(d.startChips);
+    GK.partyKasse(d.startChips, d.nachschub);
     document.body.classList.add('party-an');
     GK.emit('party-start', d);
     GK.sfx('jackpot');
@@ -116,8 +127,7 @@
        weil sie nach dem Ende einfach weiterflog. */
     GK.emit('party-schliessen');
 
-    var k = GK.partyKasse();
-    var gewinn = k ? k.chips - k.start : 0;
+    var gewinn = GK.partyGewinn();
     GK.partyKasse(null);
     document.body.classList.remove('party-an');
     tafelWeg();
@@ -133,6 +143,8 @@
         el('span', { class: 'party-erg-platz', text: (i + 1) + '.' }),
         el('span', { class: 'party-erg-av', text: s.avatar || '👤' }),
         el('span', { class: 'party-erg-name', text: s.name }),
+        s.nachschub ? el('span', { class: 'party-gabe', title: 'Nachschub: ' +
+                                   GK.fmt(s.nachschub) + ' Chips', text: '🎁' }) : null,
         el('span', { class: 'party-erg-gewinn' + (s.gewinn >= 0 ? ' plus' : ' minus'),
                      text: GK.fmtSigned(s.gewinn) })
       ]);
@@ -211,6 +223,10 @@
         el('span', { class: 'party-platz', text: String(i + 1) }),
         el('span', { class: 'party-av', text: s.avatar || '👤' }),
         el('span', { class: 'party-name', text: s.name }),
+        /* Ein Geschenk hinter dem Namen: sonst wundert sich, wer viele Chips
+           vor sich liegen sieht und trotzdem hinten steht. */
+        s.nachschub ? el('span', { class: 'party-gabe', title: 'Nachschub: ' +
+                                   GK.fmt(s.nachschub) + ' Chips', text: '🎁' }) : null,
         el('span', { class: 'party-gewinn' + (s.gewinn >= 0 ? ' plus' : ' minus'),
                      text: GK.fmtSigned(s.gewinn) })
       ]));

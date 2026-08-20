@@ -489,15 +489,49 @@
    * schickt nichts an den Server — sonst wüchse das echte Konto mit.
    */
   var kasse = null;
-  GK.partyKasse = function (start) {
+  GK.partyKasse = function (start, nachschub) {
     if (start === null) { kasse = null; GK.updateHUD(); return null; }
     if (start !== undefined) {
       kasse = { chips: Math.floor(start), start: Math.floor(start),
+                /* satz = was es bei Pleite geschenkt gibt (0 = aus),
+                   nachschub = wieviel davon bisher zusammenkam. */
+                satz: Math.max(0, Math.floor(nachschub || 0)), nachschub: 0,
                 runden: 0, besterWin: 0, letzterWin: 0 };
       GK.updateHUD();
     }
     return kasse;
   };
+
+  /** Gewinn in der Party: was übrig ist, ohne Startgeld und ohne Geschenke. */
+  GK.partyGewinn = function () {
+    return kasse ? kasse.chips - kasse.start - kasse.nachschub : 0;
+  };
+
+  /**
+   * Nachschub in der Party: wer blank ist, bekommt gratis weiter Chips.
+   *
+   * Damit sitzt niemand die halbe Party daneben, nur weil er sich früh
+   * verzockt hat. Für die Rangliste zählt das Geschenk nicht — es wird vom
+   * Gewinn abgezogen, sonst führte am Ende, wer am öftesten pleite ging.
+   */
+  function pruefeNachschub() {
+    if (!kasse || kasse.satz < 1) return;
+    /* Nicht erst bei glatt null: mit drei Chips im Sack kommt man in kein
+       Spiel mehr rein, weil jeder Tisch einen Mindesteinsatz hat. Ein
+       Hundertstel des Startguthabens liegt sicher darunter. */
+    var grenze = Math.max(1, Math.floor(kasse.start / 100));
+    if (kasse.chips >= grenze) return;
+    /* Reicht ein Satz nicht bis über die Grenze, gibt es mehrere auf einmal —
+       aber höchstens zehn, damit eine krumme Einstellung nicht ausufert. */
+    var stapel = Math.min(10, Math.ceil((grenze - kasse.chips) / kasse.satz));
+    var gabe = stapel * kasse.satz;
+    kasse.chips += gabe;
+    kasse.nachschub += gabe;
+    GK.updateHUD(gabe);
+    GK.sfx('coin');
+    GK.toast('Blank! Nachschub vom Haus: +' + GK.fmt(gabe) + ' Chips 🎁', 'gold', '🎁');
+    GK.emit('party-nachschub', { betrag: gabe, gesamt: kasse.nachschub });
+  }
   /** Wieviel gerade zur Verfügung steht — Party-Kasse oder Konto. */
   GK.chips = function () {
     if (kasse) return kasse.chips;
@@ -558,6 +592,9 @@
       kasse.letzterWin = gewinn;
       if (gewinn > kasse.besterWin) kasse.besterWin = gewinn;
       GK.updateHUD(amount > 0 ? amount : 0);
+      /* Erst der Nachschub, dann die Meldung: so geht der aufgefüllte Stand
+         gleich mit an die Rangliste. */
+      pruefeNachschub();
       GK.emit('party-runde', { gewinn: gewinn, einsatz: einsatz });
       return;
     }
