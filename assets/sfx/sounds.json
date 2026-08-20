@@ -44,7 +44,9 @@
   "games": {
     "_": "Pro Spiel abweichende Klaenge. Ein Eintrag hier ueberschreibt nur die Felder, die er selbst setzt — \"boom\": { \"volume\": 1.6 } behaelt also die globale Datei und dreht nur lauter.",
     "slots": {},
-    "roulette": {},
+    "roulette": {
+      "spin": { "file": "roulette/spin.mp3", "volume": 0.3 }
+    },
     "blackjack": {},
     "coinflip": {},
     "dice": {},
@@ -52,7 +54,7 @@
     "mines": {},
     "wheel": {},
     "plinko": {
-      "lose": { "file": "ui/plinko-loss.mp3", "volume": 0.2 }
+      "lose": { "file": "plinko/loss.mp3", "volume": 0.2 }
     },
     "scratch": {},
     "horses": {},
