@@ -246,9 +246,11 @@
         running = true;
         cashedAt = 0;
         crashAt = rollCrash();
-        /* Wer mitten im Flug rausgeht, ist eben nicht ausgestiegen — dann
-           crasht die Rakete und der Einsatz ist weg. Ohne das koennte man
-           jeden drohenden Crash durch Schliessen abwenden. */
+        /* Der Einsatz wird sofort als verloren gebucht. Das ist die
+           Rueckfallebene, falls der Browser mitten im Flug zugeht: dann
+           bleibt kein Einsatz in der Luft haengen. Geht der Spieler selbst in
+           die Lobby, zahlt die Aufraeumfunktion unten den aktuellen Stand
+           aus — siehe dort. */
         GK.commitResult(0, stake);
         mult = 1;
         zigSeed = Math.random();
@@ -321,6 +323,21 @@
       cashBtn.addEventListener('click', function () { GK.sfx('click'); cashOut(); });
 
       return function () {
+        /* Wer mitten im Flug in die Lobby geht, bekommt den Stand von jetzt
+           ausgezahlt — als hätte er im letzten Moment auf AUSSTEIGEN
+           gedrückt. Das ist nichts geschenkt: derselbe Knopf lag die ganze
+           Zeit daneben. Nur wenn die Rakete schon geplatzt ist, gibt es
+           nichts mehr abzuholen. */
+        if (running && !cashedAt && !stopped) {
+          var raus = Math.max(1, mult);
+          var gut = Math.floor(stake * raus);
+          running = false;
+          cashedAt = raus;
+          GK.payout(gut, { stake: stake });
+          GK.logPlay('Raketen-Crash', stake, gut);
+          GK.toast('Flug beendet bei ' + raus.toFixed(2) + '× — ' + GK.fmt(gut) + ' Chips gesichert',
+                   'gold', '🚀');
+        }
         stopped = true;
         running = false;
         if (raf) cancelAnimationFrame(raf);

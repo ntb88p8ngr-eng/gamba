@@ -431,6 +431,9 @@
   SYMBOLS.forEach(function (n) { SYMBOL_IMGS[n] = 'assets/symbols/' + n + '.webp'; });
   /* Die Münze bekommt den Münzstapel unter ihrem bisherigen Namen. */
   SYMBOL_IMGS.coin = 'assets/symbols/coins.webp';
+  /* Der Vogel wohnt bei seinen eigenen Bildern, nicht im Symbolordner —
+     dort liegt das ganze Blatt aus assets/bird beieinander. */
+  SYMBOL_IMGS.vogel = 'assets/bird/vogel.webp';
 
   /* Verläufe einmal ins Dokument hängen */
   var injected = false;
