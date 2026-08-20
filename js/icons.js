@@ -424,7 +424,7 @@
   var SYMBOLS = ('baccarat bar bear bear2 bell candles cards cherry chest chip clover club coins crab crown ' +
     'diamondsuit dice dices dragon dragonhead fish flame fortune gem gift heart horse1 horse2 horse3 horse4 horse5 ' +
     'horsehead horseshoe iceberg kelp melon moneybag octopus pearl penguin penguin2 ' +
-    'party plinko plum poker reeffish rocket roulettewheel seven shark shell shield slotmachine spade star ticket trident trophy ' +
+    'party partychip plinko plum poker reeffish rocket roulettewheel seven shark shell shield slotmachine spade star ticket trident trophy ' +
     'floe').split(' ');
 
   var SYMBOL_IMGS = {};

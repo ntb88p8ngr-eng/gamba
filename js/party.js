@@ -167,7 +167,7 @@
     tafel = el('aside', { class: 'party-tafel', id: 'party-tafel' }, [
       el('div', { class: 'party-tafel-kopf' }, [
         el('span', { class: 'party-tafel-titel',
-                     html: GK.iconHTML('party', 'party-ic') + '<span>PARTY</span>' }),
+                     html: GK.iconHTML('partychip', 'party-ic') + '<span>PARTY</span>' }),
         el('span', { class: 'party-uhr', id: 'party-uhr', text: '' }),
         raus
       ]),

@@ -1464,10 +1464,15 @@ body.party-an::before{
   font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--gold)
 }
 .party-tafel-titel{display:inline-flex;align-items:center;gap:6px}
-.party-ic{width:20px;height:20px;flex:0 0 20px}
-/* Der gemalte Partychip in der Lobby-Kachel und auf den Tischkarten. */
-.party-werbung .mp-spiel-ic .gk-ic{width:44px;height:44px}
-.mp-tisch-spiel .gk-ic{width:16px;height:16px;vertical-align:-3px}
+/* Das gemalte Symbol braucht Platz: unter etwa vierzig Pixeln bleibt vom
+   ganzen Motiv nur ein Fleck. Deshalb steht an den kleinen Stellen der
+   engere Chip-Ausschnitt, und die Groessen sind eher grosszuegig. */
+.party-ic{width:26px;height:26px;flex:0 0 26px}
+.party-werbung .mp-spiel-ic .gk-ic{width:58px;height:58px}
+.mp-tisch-spiel .gk-ic{width:20px;height:20px;vertical-align:-5px}
+/* Im Dialog ist Platz — dort steht das ganze Motiv mit Konfetti und
+   Luftschlangen, und das braucht Groesse, um mehr als ein Fleck zu sein. */
+.modal-icon .gk-ic{width:112px;height:112px}
 .party-uhr{font-family:'Bungee',sans-serif;color:#fff;margin-left:auto}
 .party-raus{
   background:none;border:none;cursor:pointer;font-size:.9rem;line-height:1;

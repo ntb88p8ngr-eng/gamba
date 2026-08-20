@@ -533,7 +533,7 @@
     return el('div', { class: 'mp-tisch party-karte' }, [
       el('div', { class: 'mp-tisch-kopf' }, [
         el('span', { class: 'mp-tisch-name', text: pa.name }),
-        el('span', { class: 'mp-tisch-spiel', html: GK.iconHTML('party') + ' Party' })
+        el('span', { class: 'mp-tisch-spiel', html: GK.iconHTML('partychip') + ' Party' })
       ]),
       el('div', { class: 'mp-leute' }, pa.spieler.map(function (s) {
         return el('span', { class: 'mp-wer' + (s.online ? '' : ' fort') }, [
@@ -707,7 +707,7 @@
     var partyNeu = el('button', { class: 'btn btn-gold btn-small', text: '+ PARTY' });
     partyNeu.addEventListener('click', neueParty);
     wrap.appendChild(el('div', { class: 'mp-spiel party-werbung' }, [
-      el('div', { class: 'mp-spiel-ic', html: GK.iconHTML('party') }),
+      el('div', { class: 'mp-spiel-ic', html: GK.iconHTML('partychip') }),
       el('div', { class: 'mp-spiel-text' }, [
         el('h3', { text: 'Partymodus' }),
         el('p', { text: 'Bis zu acht Leute, dieselbe Spielhalle, dasselbe Startguthaben ' +
