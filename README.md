@@ -4,7 +4,7 @@ Ein knallbuntes Fantasy-Casino für Challenges unter Freunden. **Kein Echtgeld, 
 Einzahlung, keine Auszahlung** — alle Chips sind wertlose Spielwährung. Es geht nur um
 Angeben, Ehre und die Krone im Leaderboard.
 
-18 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon- und Bild-Set, prozedural
+20 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon- und Bild-Set, prozedural
 erzeugte Hintergrundmusik und ein gemeinsames Leaderboard über einen kleinen Server.
 
 ---
@@ -91,28 +91,30 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 ---
 
-## Die 18 Spiele
+## Die 20 Spiele
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
 | 1 | **Fantasy Slots** | 3 Walzen, gestaffelter Stopp, Auto-Spin und Endlos-Modus | 100× | 81 % |
 | 2 | **Neon Roulette** | Europäisches Rad (0–36), mehrere Felder gleichzeitig belegbar | 32× | 86,5–97,3 % |
 | 3 | **Royal Blackjack** | 6 Decks, Hit/Stand/Doppeln, Dealer zieht bis 17, BJ zahlt 6:5 | 6:5 | ~97 % |
-| 4 | **Drachenmünze** | Krone oder Drache, 3D-Flip, feste Bonus-Chips für Siegesserien | 2× + Bonus | ~100 % + Serien-Bonus |
-| 5 | **Würfelduell** | Duell gegen den Dealer, Über/Unter 7, Exakt 7 | 5,1× | 85–92 % |
-| 6 | **Raketen-Crash** | Multiplikator steigt live, Cash-out vor dem Crash, Auto-Cashout | ∞ | 95 % |
-| 7 | **Drachenhöhle** | 5×5 Minenfeld, 1–24 Drachen, jederzeit auszahlen | ~200× | 92 % |
-| 8 | **Rad des Schicksals** | 24 Segmente, nur 5 Totenköpfe — 79 % aller Drehungen zahlen | 5× | 92 % |
-| 9 | **Plinko Palast** | 12 Reihen Pins, 3 Risikostufen, mehrere Kugeln gleichzeitig | 40× | 90 % |
-| 10 | **Runen-Rubbellos** | Echtes Freirubbeln mit Maus/Finger, 35 % der Lose treffen | 20× | 88,5 % |
-| 11 | **Königliches Pferderennen** 🔒 Lv2 | 5 Pferde mit eigenen Quoten, Live-Rennen mit Führungswechseln | 11× | 88 % |
-| 12 | **Eisbär auf dem Eis** 🔒 Lv4 | Scholle für Scholle nach oben, 3 Schwierigkeiten, jederzeit aussteigen | 233× | 91 % |
-| 13 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack, Scatter-Truhe, Endlos-Modus | 1900× | 78 % |
-| 14 | **Königs-Poker** 🔒 Lv10 | Texas Hold'em gegen drei KI-Gegner, Blinds, Bluffs und Showdown | ganzer Pot | 8 % Rake |
-| 15 | **Pinguin-Sprung** 🔒 Lv15 | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
-| 16 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
-| 17 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
-| 18 | **Smaugs Höhle** 🔒 Lv30 | Schiebe-Labyrinth wie beim Verrückten Labyrinth: Kachel drehen, Reihe/Spalte schieben, Schatz sammeln — wacht Smaug auf, jagt er dich zum Ausgang | 100×+ | ~87 % |
+| 4 | **Baccarat Royale** | Punto Banco: Player, Banker oder Tie, Ziehregeln wie im Salon | 8:1 (Tie) | ~98,6 % |
+| 5 | **Drachenmünze** | Krone oder Drache, 3D-Flip, feste Bonus-Chips für Siegesserien | 2× + Bonus | ~100 % + Serien-Bonus |
+| 6 | **Würfelduell** | Duell gegen den Dealer, Über/Unter 7, Exakt 7 | 5,1× | 85–92 % |
+| 7 | **Raketen-Crash** | Multiplikator steigt live, Cash-out vor dem Crash, Auto-Cashout | ∞ | 95 % |
+| 8 | **Drachenhöhle** | 5×5 Minenfeld, 1–24 Drachen, jederzeit auszahlen | ~200× | 92 % |
+| 9 | **Rad des Schicksals** | 24 Segmente, nur 5 Totenköpfe — 79 % aller Drehungen zahlen | 5× | 92 % |
+| 10 | **Plinko Palast** | 12 Reihen Pins, 3 Risikostufen, mehrere Kugeln gleichzeitig | 40× | 90 % |
+| 11 | **Runen-Rubbellos** | Echtes Freirubbeln mit Maus/Finger, 35 % der Lose treffen | 20× | 88,5 % |
+| 12 | **Königliches Pferderennen** 🔒 Lv2 | 5 Pferde mit eigenen Quoten, Live-Rennen mit Führungswechseln | 11× | 88 % |
+| 13 | **Eisbär auf dem Eis** 🔒 Lv4 | Scholle für Scholle nach oben, 3 Schwierigkeiten, jederzeit aussteigen | 233× | 91 % |
+| 14 | **Tiefsee-Schatz** 🔒 Lv7 | 5 Walzen, 5 Gewinnlinien, Wild-Dreizack, Scatter-Truhe, Endlos-Modus | 1900× | 78 % |
+| 15 | **Königs-Poker** 🔒 Lv10 | Texas Hold'em gegen drei KI-Gegner, Blinds, Bluffs und Showdown | ganzer Pot | 8 % Rake |
+| 16 | **Pinguin-Sprung** 🔒 Lv15 | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
+| 17 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
+| 18 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
+| 19 | **Smaugs Höhle** 🔒 Lv30 | Schiebe-Labyrinth wie beim Verrückten Labyrinth: Kachel drehen, Reihe/Spalte schieben, Schatz sammeln — wacht Smaug auf, jagt er dich zum Ausgang | 100×+ | ~87 % |
+| 20 | **Flatterflug** 🔒 Lv50 | Flappy-Bird mit Einsatz: jede Röhre erhöht den Multiplikator, der Zuwachs wächst mit — erste Röhre +2 %, zehnte +29 %, ab der 21. je +60 %. Lücke und Tempo ziehen mit an; jederzeit aussteigen | 1800× nach 25 Röhren | Können |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
 gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,
@@ -156,7 +158,7 @@ du anderswo benutzt.
 ## ⭐ Level & XP
 
 XP gibt es fürs Spielen: **Einsatz/8** pro Runde (max. 60) plus Bonus-XP für Gewinne.
-Acht Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10, 15, 20, 25 und 30).
+Neun Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10, 15, 20, 25, 30 und 50).
 
 **Nach oben ist offen** — es gibt kein Maximallevel mehr. Bis Level 30 wird jede Stufe
 teurer als die vorige (Level 2 braucht 280 XP, Level 10 schon 6.840, Level 15 dann
