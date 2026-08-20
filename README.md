@@ -113,8 +113,8 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 16 | **Pinguin-Sprung** 🔒 Lv15 | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
 | 17 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
 | 18 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
-| 19 | **Flatterflug** 🔒 Lv30 | Flappy-Bird mit Einsatz: jede Röhre erhöht den Multiplikator, der Zuwachs wächst mit — erste Röhre +2 %, zehnte +29 %, ab der 21. je +60 %. Lücke und Tempo ziehen mit an; jederzeit aussteigen | 1800× nach 25 Röhren | Können |
-| 20 | **Smaugs Höhle** 🔒 Lv50 | Schiebe-Labyrinth wie beim Verrückten Labyrinth: Kachel drehen, Reihe/Spalte schieben, Schatz sammeln — wacht Smaug auf, jagt er dich zum Ausgang | 100×+ | ~87 % |
+| 19 | **Smaugs Höhle** 🔒 Lv30 | Schiebe-Labyrinth wie beim Verrückten Labyrinth: Kachel drehen, Reihe/Spalte schieben, Schatz sammeln — wacht Smaug auf, jagt er dich zum Ausgang | 100×+ | ~87 % |
+| 20 | **Flatterflug** 🔒 Lv50 | Flappy-Bird mit Einsatz: jede Röhre erhöht den Multiplikator, der Zuwachs wächst mit — erste Röhre +2 %, zehnte +29 %, ab der 21. je +60 %. Lücke und Tempo ziehen mit an; jederzeit aussteigen | 1800× nach 25 Röhren | Können |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
 gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,

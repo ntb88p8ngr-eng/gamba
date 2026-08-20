@@ -67,13 +67,17 @@
   var ZIEL = 25;
 
   /* Schwierigkeit. Beides zieht mit der Zahl der geschafften Röhren an:
-     die Lücke wird enger, das Tempo höher, der Abstand kürzer. */
+     die Lücke wird enger, das Tempo höher, der Abstand kürzer.
+
+     Das Anfangstempo liegt bewusst über dem gemütlichen Bereich: mit 160
+     px/s trudelte der Vogel die ersten Röhren so lahm entlang, dass die
+     Runde erst nach einer halben Minute interessant wurde. */
   function luecke(n, gluck) {
     var g = Math.max(110, 205 - 5 * n);
     /* Der Glücks-Regler des Admins verschiebt die Lücke um bis zu ±12 %. */
     return g * (1 + ((gluck - 50) / 50) * 0.12);
   }
-  function tempo(n) { return Math.min(370, 160 + 7 * n); }
+  function tempo(n) { return Math.min(370, 185 + 6.5 * n); }
   function abstand(n) { return Math.max(196, 272 - 2.4 * n); }
 
   GK.registerGame({
@@ -84,7 +88,7 @@
     blurb: 'Ein Tipp lässt ihn steigen, sonst fällt er. Jede Röhre zahlt mehr — und die Lücke wird enger.',
     badge: 'BIS ' + Math.round(multNach(ZIEL)) + '×',
     color: '#3bc94a',
-    minLevel: 30,
+    minLevel: 50,
     rules: [
       'Setze Chips und starte den Flug. <b>Tippen, klicken oder Leertaste</b> lässt den Vogel flattern — sonst fällt er.',
       'Jede durchflogene Röhre erhöht den Multiplikator. Die erste bringt nur <b>+2 %</b>, danach steigt der Zuwachs mit jeder Röhre: die fünfte bringt <b>+14 %</b>, die zehnte <b>+29 %</b>, ab der 21. sind es <b>+60 %</b>. Früh aussteigen lohnt sich also kaum — das Geld liegt weit hinten.',
