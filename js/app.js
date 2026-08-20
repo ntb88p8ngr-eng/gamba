@@ -572,6 +572,13 @@
   function dailyBonus() {
     var p = GK.player();
     if (!p) return;
+    /* In der Party gibt es keinen Tagesbonus — der Knopf ist dort zwar
+       ausgeblendet, aber die Tastatur kommt trotzdem an ihn heran. */
+    if (GK.party && GK.party.an) {
+      GK.toast('Den Tagesbonus gibt es nach der Party', 'bad', '🎉');
+      GK.sfx('error');
+      return;
+    }
     var DAY = 24 * 3600 * 1000;
     var left = (p.lastBonus || 0) + DAY - Date.now();
     if (left > 0) {
@@ -1120,6 +1127,12 @@
           'gewinnt Ruhm, Ehre und ewiges Angeben-Recht.';
     }
     if (card) card.style.display = d ? 'none' : '';
+    /* Der Tagesbonus gehört zum Konto, nicht zur Party: er würde 250 echte
+       Chips gutschreiben, die in der Partykasse niemand sieht — und wer ihn
+       mitten in der Runde abholt, hätte sie nach der Party trotzdem. Während
+       einer Party ist der Knopf deshalb weg. */
+    var bonus = $('#btn-daily');
+    if (bonus) bonus.style.display = d ? 'none' : '';
   }
 
   function boot() {
