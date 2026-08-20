@@ -572,6 +572,13 @@
   function dailyBonus() {
     var p = GK.player();
     if (!p) return;
+    /* In der Party gibt es keinen Tagesbonus — der Knopf ist dort zwar
+       ausgeblendet, aber die Tastatur kommt trotzdem an ihn heran. */
+    if (GK.party && GK.party.an) {
+      GK.toast('Den Tagesbonus gibt es nach der Party', 'bad', '🎉');
+      GK.sfx('error');
+      return;
+    }
     var DAY = 24 * 3600 * 1000;
     var left = (p.lastBonus || 0) + DAY - Date.now();
     if (left > 0) {
@@ -1024,57 +1031,146 @@
     var mpNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
     mpNeu.addEventListener('click', function () { GK.sfx('click'); renderMP(); });
 
+    /* ── Quoten je Spiel ──
+       Der Regler darueber verschiebt einen Spieler, dieser hier ein Spiel —
+       fuer alle. Beide zaehlen als Abweichung von 50 und addieren sich. */
+    /* Diese beiden fragen das Glueck nirgends ab: es sind ausgeteilte
+       Kartenspiele, in denen ein heimlicher Schubs die Karten verbiegen
+       muesste. Ein Regler wuerde dort nur so tun als ob. */
+    var OHNE_QUOTE = { blackjack: 1, baccarat: 1 };
+    var quotenBox = el('div', { class: 'quoten-liste' });
+
+    function quoteZeile(g) {
+      var aus = !!OHNE_QUOTE[g.id];
+      var wert = GK.gameLuck(g.id);
+      var zahl = el('span', { class: 'quote-wert' });
+      var regler = el('input', { type: 'range', min: '0', max: '100', step: '5', value: String(wert) });
+      var zeile = el('div', { class: 'quote-zeile' + (aus ? ' aus' : '') }, [
+        el('span', { class: 'quote-ic', html: GK.iconHTML(g.icon) }),
+        el('span', { class: 'quote-name', text: g.name }),
+        regler, zahl
+      ]);
+
+      function zeigen(v) {
+        zahl.textContent = aus ? '—' : v + (v > 50 ? ' 🍀' : (v < 50 ? ' 💀' : ' ⚖️'));
+        zeile.classList.toggle('hoch', !aus && v > 50);
+        zeile.classList.toggle('tief', !aus && v < 50);
+      }
+      zeigen(wert);
+
+      if (aus) {
+        regler.disabled = true;
+        zeile.title = g.name + ' reagiert nicht auf den Regler — dort werden Karten ausgeteilt.';
+      } else {
+        zeile.title = g.name + ': 50 ist neutral, darüber gewinnt der Spieler öfter.';
+        regler.addEventListener('input', function () { zeigen(Number(regler.value)); });
+        regler.addEventListener('change', function () {
+          var v = Number(regler.value);
+          zeigen(v);
+          GK.setGameLuck(g.id, v);
+          GK.sfx('click');
+        });
+      }
+      return { node: zeile, regler: regler, zeigen: zeigen, aus: aus, id: g.id };
+    }
+
+    var quotenZeilen = [];
+    function renderQuoten() {
+      quotenBox.innerHTML = '';
+      quotenZeilen = GK.games.map(quoteZeile);
+      quotenZeilen.forEach(function (z) { quotenBox.appendChild(z.node); });
+    }
+    function syncQuoten() {
+      quotenZeilen.forEach(function (z) {
+        var v = GK.gameLuck(z.id);
+        z.regler.value = String(v);
+        z.zeigen(v);
+      });
+    }
+
+    var quotenNeutral = el('button', { class: 'btn btn-ghost btn-small', text: '⚖️ ALLE NEUTRAL' });
+    quotenNeutral.addEventListener('click', function () {
+      GK.sfx('click');
+      GK.resetGameLuck();
+      syncQuoten();
+      GK.toast('Alle Quoten stehen wieder neutral', 'gold', '⚖️');
+    });
+
     renderList();
     renderMP();
+    renderQuoten();
     syncLuck();
+
+    /* Jeder Abschnitt ist eine eigene Karte. Auf dem Handy stehen sie
+       untereinander wie bisher, auf dem Rechner nebeneinander im Gitter. */
+    function feld(titel, kinder, breit) {
+      return el('section', { class: 'admin-feld' + (breit ? ' admin-feld--breit' : '') },
+        [el('div', { class: 'bet-label', text: titel }), el('div', { style: 'height:6px' })]
+          .concat(kinder));
+    }
 
     GK.modal({
       emoji: '👑',
+      weit: true,
       title: 'Admin-Panel',
       text: 'Spieler wählen, Chips verteilen, Schicksal manipulieren. Mit großer Macht kommt großes Chaos.',
       nodes: [
         el('div', { class: 'admin-note', html: '💡 <b>Money-Give:</b> Spieler antippen, Betrag eingeben, <b>GEBEN</b> drücken. Geschenkte Chips zählen nicht als Profit im Leaderboard.' }),
-        el('div', { class: 'bet-label', text: 'SPIELER' }),
-        el('div', { style: 'height:6px' }),
-        listBox,
-        el('div', { class: 'field' }, [el('label', { text: 'BETRAG' }), amount]),
-        quick,
-        el('div', { style: 'height:12px' }),
-        el('div', { class: 'modal-actions' }, [giveBtn, takeBtn, setBtn]),
-        el('div', { style: 'height:18px' }),
-        el('div', { class: 'bet-label', text: 'ERFAHRUNG (XP & LEVEL)' }),
-        el('div', { style: 'height:6px' }),
-        el('div', { class: 'field' }, [el('label', { text: 'XP-BETRAG' }), xpAmount]),
-        xpQuick,
-        el('div', { style: 'height:10px' }),
-        xpGiveBtn,
-        el('div', { style: 'height:8px' }),
-        el('div', { class: 'modal-actions' }, [xpAllBtn]),
-        el('p', { class: 'hint', text: 'Level bringen Chips und schalten Spiele frei. XP abziehen kann ein Spiel auch wieder sperren.' }),
-        el('div', { style: 'height:16px' }),
-        el('div', { class: 'bet-label', text: 'GLÜCKS-REGLER (HEIMLICHER CHEAT)' }),
-        el('div', { style: 'height:6px' }),
-        el('div', { class: 'range-row' }, [luckSlider, el('div', { class: 'info-box', style: 'min-width:74px' }, [luckVal, el('span', { text: 'Luck' })])]),
-        el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet. Wirkt auf Slots, Roulette, Münze, Würfel, Crash, Rad, Plinko und Rubbellos.' }),
-        el('div', { style: 'height:16px' }),
-        el('div', { class: 'bet-label', text: 'OFFENE TISCHE & PARTYS' }),
-        el('div', { style: 'height:6px' }),
-        mpBox,
-        el('div', { style: 'height:8px' }),
-        el('div', { class: 'modal-actions' }, [mpNeu]),
-        el('p', { class: 'hint', text: 'Auflösen bucht alle Einkäufe zurück aufs Konto. Tische und Partys, in denen drei Minuten lang nichts passiert und die nie gestartet sind, verschwinden von selbst.' }),
-        el('div', { style: 'height:16px' }),
-        el('div', { class: 'bet-label', text: 'EINZELNEN SPIELER ZURÜCKSETZEN' }),
-        el('div', { style: 'height:6px' }),
-        el('div', { class: 'modal-actions' }, [resetOneBtn]),
-        el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' }),
-        el('div', { style: 'height:16px' }),
-        el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
-        el('div', { style: 'height:8px' }),
-        el('div', { class: 'modal-actions' }, [pinBtn, exitBtn]),
-        el('div', { style: 'height:16px' }),
-        el('div', { class: 'admin-note', html: '⚠️ <b>Gefahrenzone:</b> löscht alle Spieler, Chips und Statistiken — für alle, auf dem Server. Nicht rückgängig zu machen.' }),
-        el('div', { class: 'modal-actions' }, [wipeBtn])
+        el('div', { class: 'admin-gitter' }, [
+
+          feld('SPIELER', [
+            listBox,
+            el('div', { class: 'field' }, [el('label', { text: 'BETRAG' }), amount]),
+            quick,
+            el('div', { style: 'height:12px' }),
+            el('div', { class: 'modal-actions' }, [giveBtn, takeBtn, setBtn])
+          ]),
+
+          feld('ERFAHRUNG (XP & LEVEL)', [
+            el('div', { class: 'field' }, [el('label', { text: 'XP-BETRAG' }), xpAmount]),
+            xpQuick,
+            el('div', { style: 'height:10px' }),
+            xpGiveBtn,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [xpAllBtn]),
+            el('p', { class: 'hint', text: 'Level bringen Chips und schalten Spiele frei. XP abziehen kann ein Spiel auch wieder sperren.' })
+          ]),
+
+          feld('GLÜCKS-REGLER (HEIMLICHER CHEAT)', [
+            el('div', { class: 'range-row' }, [luckSlider, el('div', { class: 'info-box', style: 'min-width:74px' }, [luckVal, el('span', { text: 'Luck' })])]),
+            el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet. Gilt nur für den oben gewählten Spieler und kommt zur Quote des Spiels dazu.' })
+          ]),
+
+          feld('QUOTEN JE SPIEL', [
+            quotenBox,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [quotenNeutral]),
+            el('p', { class: 'hint', text: '50 ist neutral. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat teilen echte Karten aus und lassen sich nicht schieben.' })
+          ], true),
+
+          feld('OFFENE TISCHE & PARTYS', [
+            mpBox,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [mpNeu]),
+            el('p', { class: 'hint', text: 'Auflösen bucht alle Einkäufe zurück aufs Konto. Tische und Partys, in denen drei Minuten lang nichts passiert und die nie gestartet sind, verschwinden von selbst.' })
+          ]),
+
+          feld('EINZELNEN SPIELER ZURÜCKSETZEN', [
+            el('div', { class: 'modal-actions' }, [resetOneBtn]),
+            el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' })
+          ]),
+
+          feld('VERWALTUNG', [
+            el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
+          ]),
+
+          feld('GEFAHRENZONE', [
+            el('div', { class: 'admin-note', html: '⚠️ Löscht alle Spieler, Chips und Statistiken — für alle, auf dem Server. Nicht rückgängig zu machen.' }),
+            el('div', { class: 'modal-actions' }, [wipeBtn])
+          ])
+        ])
       ]
     });
   }
@@ -1120,6 +1216,12 @@
           'gewinnt Ruhm, Ehre und ewiges Angeben-Recht.';
     }
     if (card) card.style.display = d ? 'none' : '';
+    /* Der Tagesbonus gehört zum Konto, nicht zur Party: er würde 250 echte
+       Chips gutschreiben, die in der Partykasse niemand sieht — und wer ihn
+       mitten in der Runde abholt, hätte sie nach der Party trotzdem. Während
+       einer Party ist der Knopf deshalb weg. */
+    var bonus = $('#btn-daily');
+    if (bonus) bonus.style.display = d ? 'none' : '';
   }
 
   function boot() {

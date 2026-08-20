@@ -194,11 +194,15 @@
       function rollCrash() {
         var u = Math.random();
         if (u < 0.04) return 1.00; // Sofort-Crash
-        var c = 0.92 / (1 - u);
-        // Admin-Luck schiebt den Crashpunkt nach oben
-        var p = GK.player();
-        if (p && p.luck > 50) c *= 1 + ((p.luck - 50) / 50) * 0.8;
-        if (p && p.luck < 50) c *= 1 - ((50 - p.luck) / 50) * 0.5;
+        /* Der Zaehler ist zugleich die Auszahlungsquote: die Rakete haelt bis
+           zum Ziel T mit der Wahrscheinlichkeit Zaehler/T durch. 0,95 heisst
+           also 95 % Rueckfluss — bei 2x steigt die Chance von 46 auf 47,5 %. */
+        var c = 0.95 / (1 - u);
+        /* Admin-Luck schiebt den Crashpunkt nach oben — das persoenliche
+           Glueck und die Quote dieses Spiels stecken beide in luckOf. */
+        var l = GK.luckOf('crash');
+        if (l > 50) c *= 1 + ((l - 50) / 50) * 0.8;
+        if (l < 50) c *= 1 - ((50 - l) / 50) * 0.5;
         return Math.max(1, Math.min(500, Math.floor(c * 100) / 100));
       }
 

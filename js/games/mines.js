@@ -107,7 +107,6 @@
         mines = [];
         var pool = [];
         for (var i = 0; i < SIZE; i++) pool.push(i);
-        // Admin-Luck: sehr glückliche Spieler bekommen leicht "gnädigere" Verteilung
         for (var m = 0; m < mineCount; m++) {
           var idx = GK.rndInt(0, pool.length - 1);
           mines.push(pool.splice(idx, 1)[0]);
@@ -128,12 +127,45 @@
         snapshot();
       }
 
+      /**
+       * Der Glücks-Regler greift erst beim Antippen ein, nicht beim Verteilen.
+       * So bleibt die Zahl der Drachen — und damit die Quote — unverändert; es
+       * verschiebt sich nur, wo sie liegen.
+       */
+      function schicksal(i) {
+        var l = GK.luckOf('mines');
+        var drauf = mines.indexOf(i) >= 0;
+        if (l === 50) return drauf;
+
+        if (drauf && l > 50 && Math.random() < ((l - 50) / 50) * 0.45) {
+          var frei = [];
+          for (var k = 0; k < SIZE; k++) {
+            if (k !== i && revealed.indexOf(k) < 0 && mines.indexOf(k) < 0) frei.push(k);
+          }
+          if (frei.length) {
+            mines[mines.indexOf(i)] = frei[GK.rndInt(0, frei.length - 1)];
+            return false;
+          }
+        }
+        if (!drauf && l < 50 && Math.random() < ((50 - l) / 50) * 0.35) {
+          /* Umziehen darf nur ein Drache, der noch unter einer zugedeckten
+             Kachel liegt — sonst wären es auf einmal mehr. */
+          var versteckt = mines.filter(function (m) { return revealed.indexOf(m) < 0; });
+          if (versteckt.length) {
+            mines[mines.indexOf(versteckt[GK.rndInt(0, versteckt.length - 1)])] = i;
+            return true;
+          }
+        }
+        return drauf;
+      }
+
       function pickCell(i) {
         if (!active || revealed.indexOf(i) >= 0) return;
+        var drauf = schicksal(i);
         revealed.push(i);
         var c = cells[i];
 
-        if (mines.indexOf(i) >= 0) {
+        if (drauf) {
           c.classList.add('boom', 'done');
           c.innerHTML = GK.iconHTML('dragonblue');
           GK.sfx('boom');

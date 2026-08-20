@@ -75,7 +75,10 @@ function emptyDB() {
   return {
     players: {},
     feed: [],
-    settings: { adminPin: process.env.GAMBAKING_PIN || '1337' }
+    /* spielLuck: Feinjustierung je Spiel, 0..100 mit 50 als neutral. Was
+       nicht drinsteht, laeuft neutral — deshalb ein leeres Objekt und keine
+       Liste aller Spiele: welche es gibt, weiss der Browser. */
+    settings: { adminPin: process.env.GAMBAKING_PIN || '1337', spielLuck: {} }
   };
 }
 
@@ -86,6 +89,7 @@ function loadDB() {
     db.players = db.players || {};
     db.feed = db.feed || [];
     db.settings = Object.assign(emptyDB().settings, db.settings || {});
+    if (!db.settings.spielLuck || typeof db.settings.spielLuck !== 'object') db.settings.spielLuck = {};
     return db;
   } catch (e) {
     return emptyDB();
@@ -307,7 +311,10 @@ function publicState() {
     Object.keys(p).forEach(function (f) { if (f !== 'pw') c[f] = p[f]; });
     safe[k] = c;
   });
-  return { players: safe, feed: db.feed, startBalance: START_BALANCE };
+  return {
+    players: safe, feed: db.feed, startBalance: START_BALANCE,
+    spielLuck: db.settings.spielLuck || {}
+  };
 }
 
 function nameTaken(name) {
@@ -344,7 +351,7 @@ var mp = require('./mp.js')({
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, wipe: 1, resetPassword: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, wipe: 1, resetPassword: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -492,6 +499,26 @@ function applyOp(op) {
         x.xp = 0; x.claimedLevel = 1;
         x.lastBailout = 0;
       });
+      break;
+    }
+
+    /* Quote eines einzelnen Spiels. Sie gilt fuer alle Spieler und kommt zum
+       persoenlichen Glueck dazu — der Regler oben verschiebt einen Spieler,
+       dieser hier ein Spiel. */
+    case 'gameLuck': {
+      db.settings.spielLuck = db.settings.spielLuck || {};
+      if (op.alle) {
+        db.settings.spielLuck = {};
+        break;
+      }
+      var spiel = clean(op.game, 24).trim();
+      if (!spiel) return { error: 'Kein Spiel angegeben', code: 400 };
+      var wert = clamp(int(op.luck), 0, 100);
+      /* Neutral wird geloescht statt gespeichert: so bleibt die Datei
+         uebersichtlich und ein spaeter umbenanntes Spiel zieht keinen
+         toten Eintrag mit. */
+      if (wert === 50) delete db.settings.spielLuck[spiel];
+      else db.settings.spielLuck[spiel] = wert;
       break;
     }
 
