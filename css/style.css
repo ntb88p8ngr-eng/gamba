@@ -487,6 +487,11 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .feed-item.win{border-left-color:var(--lime)}
 .feed-item.lose{border-left-color:var(--red)}
 .feed-item.admin{border-left-color:var(--gold);background:rgba(255,209,46,.1)}
+/* Zeilen aus einer Party: draussen im Casino stehen sie mit "Party:" davor
+   und einem eigenen Rand, damit niemand einen Partygewinn fuer echte Chips
+   haelt. */
+.feed-item.ist-party{border-left-color:var(--pink)}
+.feed-party{color:var(--pink);font-family:'Bungee',sans-serif;font-size:.7rem;letter-spacing:.04em}
 .feed-when{margin-left:auto;font-size:.68rem;color:var(--muted);white-space:nowrap}
 .feed-empty{color:var(--muted);font-size:.88rem;padding:14px;text-align:center}
 

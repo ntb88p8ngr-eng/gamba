@@ -22,12 +22,24 @@
    .reel overflow:hidden hat. Ohne eigenen Compositor-Layer rastert der
    Browser normal und clippt zuverlässig. */
 .strip{display:flex;flex-direction:column}
-.sym{height:120px;display:grid;place-items:center;flex:0 0 120px}
+.sym{height:120px;display:grid;place-items:center;flex:0 0 120px;position:relative;overflow:hidden}
 /* Die Symbolbilder hingen an der globalen img.gk-ic-Regel (1em) statt an der
    Zellengröße — ohne eigenen Font-Size-Kontext macht das die Walzensymbole
    winzig statt fast zellfüllend. Prozentual statt em, damit es bei jeder
-   Reel-Höhe (Desktop/Handy) automatisch mitskaliert. */
-.sym img,.sym svg{width:64%;height:64%;object-fit:contain}
+   Reel-Höhe (Desktop/Handy) automatisch mitskaliert.
+
+   Absolut mit margin:auto statt als Gitterkind: eine Prozenthöhe braucht eine
+   feste Bezugshöhe. Die Gitterzeile hat keine — sie richtet sich nach ihrem
+   Inhalt —, also fiel height:64% auf "auto" zurück. Das Bild bekam dann seine
+   natürliche Höhe aus der Breite und saß je nach Seitenverhältnis mal höher,
+   mal tiefer: die Glocke ragte 27 px unten aus dem Fenster, der Stern stand
+   30 px zu tief. Die Zelle selbst ist fest 120 px hoch, und daran rechnet
+   sich inset/margin:auto sauber aus — das Symbol sitzt damit bei jeder Größe
+   genau in der Mitte. */
+.sym img,.sym svg{
+  position:absolute;top:0;right:0;bottom:0;left:0;margin:auto;
+  width:auto;height:auto;max-width:80%;max-height:72%;object-fit:contain
+}
 .reel.hit{animation:reelhit .55s;box-shadow:inset 0 0 30px rgba(124,255,59,.85),0 0 24px var(--lime)}
 @keyframes reelhit{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
 .payline{position:absolute;left:0;right:0;top:50%;height:3px;background:linear-gradient(90deg,transparent,var(--pink),transparent);transform:translateY(-50%);pointer-events:none;box-shadow:0 0 12px var(--pink)}
@@ -1432,16 +1444,25 @@
    wenn man gerade in einem Spiel steckt. */
 
 /* Andere Kulisse: waermer, greller, mehr Jahrmarkt als Nachtclub. */
+/* Rot statt orange: der zweite Fleck war ein Bernstein-Ton und zog die
+   ganze Kulisse ins Orange. Jetzt ist er tiefrot, und der Grundverlauf
+   laeuft nach unten in dasselbe Rot aus. */
 body.party-an .bg-fx{
   background:
     radial-gradient(1100px 700px at 12% -8%, #7a1050 0%, transparent 58%),
-    radial-gradient(900px 620px at 88% 4%, #8a3d05 0%, transparent 55%),
+    radial-gradient(900px 620px at 88% 4%, #8c0f1c 0%, transparent 55%),
     radial-gradient(1000px 820px at 55% 118%, #123a6e 0%, transparent 62%),
-    linear-gradient(180deg,#2a0035,#1a0722 68%,#2b0a12)
+    linear-gradient(180deg,#320024,#22040f 68%,#3a0710)
 }
-body.party-an .blob-1{background:#ff8a1f}
+body.party-an .blob-1{background:#ff2a3c}
 body.party-an .blob-2{background:#ff3ea5}
-body.party-an .blob-3{background:#ffd12e}
+body.party-an .blob-3{background:#c81030}
+
+/* Das Casino-Leaderboard bleibt in der Party weg: dort zaehlt die Rangliste
+   oben links, und die rechnet in Partychips. Beide nebeneinander hiessen zwei
+   Wahrheiten auf einem Bildschirm. */
+body.party-an #board-anchor,
+body.party-an .board-wrap{display:none}
 
 /* Der laufende Balken oben zeigt, dass gerade Party ist. */
 body.party-an::before{

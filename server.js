@@ -304,8 +304,18 @@ function settleLevels(p) {
   return reward;
 }
 
-function pushFeed(text, type) {
-  db.feed.unshift({ t: Date.now(), text: clean(text, 160), type: clean(type, 12) });
+/**
+ * Eintrag in die Aktionsliste.
+ *
+ * party: die Nummer der Party, in der das passiert ist. Damit trennt der
+ * Browser die beiden Welten — waehrend einer Party zeigt er nur, was in
+ * genau dieser Party passiert, sonst alles mit einem "Party:" davor.
+ */
+function pushFeed(text, type, party) {
+  var e = { t: Date.now(), text: clean(text, 160), type: clean(type, 12) };
+  var pid = clean(party, 24);
+  if (pid) e.party = pid;
+  db.feed.unshift(e);
   if (db.feed.length > FEED_MAX) db.feed.length = FEED_MAX;
 }
 
@@ -440,7 +450,7 @@ function applyOp(op) {
     }
 
     case 'feed': {
-      pushFeed(op.text, op.kind);
+      pushFeed(op.text, op.kind, op.party);
       break;
     }
 

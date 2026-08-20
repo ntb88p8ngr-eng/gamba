@@ -278,7 +278,13 @@
       '🃏 HAUS GEWINNT? NICHT HEUTE',
       '🚀 CASH OUT IST FÜR FEIGLINGE'
     ];
-    if (players.length) {
+    /* In der Party fuehrt, wer den groessten Gewinn macht — der Kontostand
+       aus dem Casino hat damit nichts zu tun und stuende hier nur im Weg. */
+    var d = GK.party && GK.party.an && GK.party.daten;
+    var vorn = d && (d.spieler || [])[0];
+    if (vorn) {
+      lines.splice(1, 0, '🎉 PARTY-SPITZE: ' + vorn.name.toUpperCase() + ' MIT ' + GK.fmtSigned(vorn.gewinn) + ' CHIPS');
+    } else if (!d && players.length) {
       lines.splice(1, 0, '🏆 SPITZENREITER: ' + players[0].name.toUpperCase() + ' MIT ' + GK.fmt(players[0].balance) + ' CHIPS');
     }
     var html = lines.map(function (l) { return '<span>' + l + '</span>'; }).join('');
@@ -339,18 +345,35 @@
     return Math.floor(s / 86400) + ' T.';
   }
 
+  /**
+   * Die Aktionsliste unten in der Spielhalle.
+   *
+   * In einer Party zeigt sie nur, was in genau dieser Party passiert — das
+   * Casino draussen läuft ja weiter, und dessen Zeilen haben mit dem Rennen
+   * nichts zu tun. Ausserhalb stehen Partyzeilen mit "Party:" davor, damit
+   * niemand einen Partygewinn für echte Chips hält.
+   */
   function renderFeed() {
     var box = $('#feed');
     box.innerHTML = '';
-    var feed = GK.state.feed;
+    var meine = (GK.party && GK.party.an && GK.party.id) || null;
+    var feed = GK.state.feed.filter(function (f) {
+      return meine ? f.party === meine : true;
+    });
     if (!feed.length) {
-      box.appendChild(el('div', { class: 'feed-empty', text: 'Hier erscheint gleich, wer gerade abräumt (oder alles verliert).' }));
+      box.appendChild(el('div', { class: 'feed-empty', text: meine
+        ? 'Hier erscheint gleich, wer in der Party abräumt (oder alles verliert).'
+        : 'Hier erscheint gleich, wer gerade abräumt (oder alles verliert).' }));
       return;
     }
     feed.slice(0, 25).forEach(function (f) {
-      box.appendChild(el('div', { class: 'feed-item ' + (f.type || '') }, [
+      var fremd = !meine && f.party;
+      box.appendChild(el('div', { class: 'feed-item ' + (f.type || '') + (f.party ? ' ist-party' : '') }, [
         el('span', { text: f.type === 'win' ? '🎉' : f.type === 'lose' ? '💀' : f.type === 'admin' ? '👑' : '🎲' }),
-        el('span', { text: f.text }),
+        el('span', {}, [
+          fremd ? el('b', { class: 'feed-party', text: 'Party:' }) : null,
+          el('span', { text: (fremd ? ' ' : '') + f.text })
+        ]),
         el('span', { class: 'feed-when', text: timeAgo(f.t) })
       ]));
     });
@@ -1266,6 +1289,11 @@
        einer Party ist der Knopf deshalb weg. */
     var bonus = $('#btn-daily');
     if (bonus) bonus.style.display = d ? 'none' : '';
+    /* Das Casino-Leaderboard hat in der Party nichts zu suchen — dort zählt
+       die Rangliste oben links, und die steht auf Partychips. Der Knopf
+       führte sonst zu einer ausgeblendeten Tafel. */
+    var zumBoard = $('#btn-goto-board');
+    if (zumBoard) zumBoard.style.display = d ? 'none' : '';
   }
 
   function boot() {

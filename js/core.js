@@ -745,10 +745,20 @@
 
 
   /* ─────────────────────────── FEED ─────────────────────────── */
-  GK.logFeed = function (text, type) {
-    state.feed.unshift({ t: Date.now(), text: text, type: type || '' });
+  /**
+   * Eintrag in die Aktionsliste.
+   *
+   * party: Nummer der Party, wenn das in einer Party passiert ist. Die Liste
+   * unten in der Spielhalle zeigt waehrend einer Party nur deren eigene
+   * Zeilen; ausserhalb stehen sie mit einem "Party:" davor zwischen den
+   * normalen. Ohne die Nummer liefen beide Welten durcheinander.
+   */
+  GK.logFeed = function (text, type, party) {
+    var e = { t: Date.now(), text: text, type: type || '' };
+    if (party) e.party = party;
+    state.feed.unshift(e);
     if (state.feed.length > 40) state.feed.length = 40;
-    GK.commit('feed', { text: text, kind: type || '' });
+    GK.commit('feed', { text: text, kind: type || '', party: party || '' });
     GK.emit('feed');
   };
 
@@ -760,7 +770,8 @@
     if (net > 0) txt = p.name + ' gewinnt ' + GK.fmt(net) + ' bei ' + game;
     else if (net === 0) txt = p.name + ' spielt ' + game + ' — Unentschieden';
     else txt = p.name + ' verliert ' + GK.fmt(-net) + ' bei ' + game;
-    GK.logFeed(txt, net > 0 ? 'win' : (net < 0 ? 'lose' : ''));
+    var inParty = (GK.party && GK.party.an && GK.party.id) || null;
+    GK.logFeed(txt, net > 0 ? 'win' : (net < 0 ? 'lose' : ''), inParty);
   };
 
   /* ─────────────────────────── AUDIO ─────────────────────────── */
