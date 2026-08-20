@@ -1,9 +1,16 @@
 /* ═══════════════════════════════════════════════════════════
    GAMBAKING — Hintergrundmusik
-   Neun Loops, komplett per Web Audio erzeugt. Jeder Track hat seine
-   eigene Besetzung, sein eigenes Schlagzeug und sein eigenes Groove-
-   Gefühl — vom Jazz-Trio am Roulettetisch bis zum Hardcore-Kick.
+   Vier Techno-Loops, komplett per Web Audio erzeugt. Jeder Track hat
+   seine eigene Besetzung, sein eigenes Schlagzeug und sein eigenes
+   Tempo — vom schleppenden Dub-Keller bis zum Acid-Rausch.
    Keine Audio-Dateien, kein Nachladen, jederzeit abschaltbar.
+
+   Ein Loop, der sich alle vier Takte wörtlich wiederholt, wird nach
+   zwei Minuten unerträglich. Deshalb hängt hier möglichst wenig am
+   Takt selbst: Zähler, die mit sechzehn nichts gemeinsam haben (drei,
+   fünf, sechs, sieben, dreiundzwanzig), verschieben Hi-Hats, Stiche und
+   Bassläufe von Takt zu Takt, Filter wandern über Dutzende Takte, und
+   mehrere Stücke wechseln nach vier oder acht Takten die Besetzung.
    ═══════════════════════════════════════════════════════════ */
 (function (GK) {
   'use strict';
@@ -146,11 +153,22 @@
     src.stop(t + dur + 0.02);
   }
 
+  /**
+   * Verzerrer für den Gabber-Kick.
+   *
+   * Die Kennlinie hat bewusst eine ungerade Zahl von Stützstellen. Bei einer
+   * geraden liegt die Eingangsnull genau zwischen zwei Werten, und heraus
+   * kommt ein winziger Gleichspannungsversatz — bei Stille, dauerhaft. Weil
+   * jeder Schlag seinen eigenen Verzerrer bekommt, summierte sich das: nach
+   * einer Viertelminute lag ein Versatz von 0.15 auf der Summe, mehr als der
+   * eigentliche Klang. Mit ungerader Länge trifft die Mitte exakt die Null.
+   */
   function shaper() {
     var c = ctx();
     if (!CURVE) {
-      CURVE = new Float32Array(1024);
-      for (var i = 0; i < 1024; i++) CURVE[i] = Math.tanh((i / 512 - 1) * 4);
+      var N = 1025, m = (N - 1) / 2;
+      CURVE = new Float32Array(N);
+      for (var i = 0; i < N; i++) CURVE[i] = Math.tanh((i / m - 1) * 4);
     }
     var ws = c.createWaveShaper();
     ws.curve = CURVE;
@@ -176,9 +194,13 @@
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + spec[2]);
     o.connect(g);
-    if (kind === 'gabber') { var ws = shaper(); g.connect(ws); ws.connect(Music._gain); }
+    var ws = null;
+    if (kind === 'gabber') { ws = shaper(); g.connect(ws); ws.connect(Music._gain); }
     else g.connect(Music._gain);
     o.start(t); o.stop(t + spec[2] + 0.05);
+    /* Aufräumen. Ein Oszillator hängt sich nach dem Stoppen selbst ab, ein
+       Verzerrer nicht — der bliebe für den Rest der Sitzung am Mischpult. */
+    if (ws) o.onended = function () { try { ws.disconnect(); g.disconnect(); } catch (e) {} };
     if (kind === 'hard' || kind === 'gabber') {
       noise(t, 0.03, { vol: vol * 0.3, filter: 'highpass', freq: 3200 });
     }
@@ -226,6 +248,12 @@
     fm(freq * 2.01, t, (dur || 0.9) * 0.6, { ratio: 2.7, index: 3, vol: vol * 0.4, atk: 0.003 });
   }
 
+  /** Tom für Wirbel am Phrasenende — fällt in der Tonhöhe ab. */
+  function tom(t, vol, freq) {
+    voice(freq, t, 0.16, { type: 'sine', vol: vol, atk: 0.002, glide: freq * 0.6 });
+    noise(t, 0.05, { vol: vol * 0.25, filter: 'bandpass', freq: freq * 4, q: 1.2 });
+  }
+
   /** Anschwellendes Rauschen vor dem Drop. */
   function riser(t, dur, vol) {
     noise(t, dur, { vol: vol, filter: 'bandpass', freq: 400, sweep: 9000, q: 2, atk: dur * 0.85 });
@@ -254,167 +282,150 @@
 
   var TRACKS = [
     {
-      id: 'lounge', name: 'Neon Lounge', mood: 'Jazz-Trio · Rhodes & Besen',
-      bpm: 88, swing: 0.3, cut: 3200,
-      chords: [[62, [0, 3, 7, 10]], [55, [0, 4, 7, 10]], [60, [0, 4, 7, 11]], [57, [0, 4, 7, 10]]],
-      walk: [[0, 7, 10, 12], [0, 7, 10, 11], [0, 7, 11, 12], [0, 4, 7, 10]],
-      mel: [
-        [[6, 19, 3], [10, 17, 2], [13, 14, 3]],
-        [],
-        [[2, 16, 2], [5, 14, 2], [8, 12, 6]],
-        [[10, 19, 2], [13, 22, 5]]
+      id: 'keller', name: 'Kellergewölbe', mood: 'Dub-Techno · Hallakkord & Vinylstaub',
+      bpm: 122, swing: 0, cut: 2600,
+      /* Acht Takte statt vier — die Harmonie kommt erst nach doppelt so langer
+         Zeit wieder an derselben Stelle an. */
+      chords: [
+        [48, [0, 3, 7, 10]], [48, [0, 3, 7, 10]], [46, [0, 4, 7, 10]], [48, [0, 3, 7, 10]],
+        [53, [0, 3, 7, 10]], [51, [0, 4, 7, 10]], [46, [0, 3, 7, 10]], [43, [0, 4, 7, 10]]
       ],
       step: function (x) {
-        // Rhodes: gezupftes Comping auf der Eins und der „Und" von zwei
-        if (x.s === 0 || x.s === 6 || (x.s === 11 && x.bar % 2 === 1)) {
-          chordFm(x.t, x.root + 12, x.ivs, x.beat * 1.4, { ratio: 2, index: 1.6, vol: 0.075, atk: 0.01 });
-        }
-        // Kontrabass läuft in Vierteln durch die Akkorde
-        if (x.s % 4 === 0) {
-          voice(midi(x.root - 12 + this.walk[x.bar][x.s / 4]), x.t, x.beat * 0.85,
-                { type: 'triangle', vol: 0.19, cut: 520 });
-        }
-        // Besen auf allen Achteln, Ride-Akzent auf zwei und vier
-        if (x.s % 2 === 0) hat(x.t, x.s % 8 === 4 ? 0.05 : 0.026, 'brush');
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.05, 'rim');
-        // Vibraphon spielt die Melodie
-        var m = melNote(this.mel, x.bar, x.s);
-        if (m) fm(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.4,
-                  { ratio: 4, index: 2.2, vol: 0.09, pan: 0.3 });
-        // und ganz zum Schluss klimpert eine Münze ins Fach
-        if (x.last && x.s === 14) coin(x.t, 0.045, 2093);
-      }
-    },
-    {
-      id: 'deep', name: 'Tiefsee', mood: 'Ambient · Riesenpad & Glockentropfen',
-      bpm: 60, swing: 0, cut: 1500,
-      chords: [[50, [0, 7, 14, 19]], [53, [0, 7, 12, 17]], [48, [0, 7, 14, 21]], [55, [0, 5, 12, 17]]],
-      drops: [[[4, 19]], [[6, 12], [13, 16]], [[2, 24]], [[8, 21], [14, 19]]],
-      step: function (x) {
-        if (x.s === 0) {
-          // Pad: kriecht über den ganzen Takt herein, Stimmen nach links und rechts verteilt
-          x.ivs.forEach(function (iv, i) {
-            voice(midi(x.root + iv), x.t, x.beat * 4.6, {
-              type: 'sine', vol: 0.11 / (i + 1.3), detune: 8,
-              atk: x.beat * 1.4, cut: 1200, pan: (i % 2 ? 0.45 : -0.45)
+        // Der Raum atmet über 32 Takte: das Filter fährt langsam auf und wieder zu
+        var atem = 0.5 + 0.5 * Math.sin(x.step / 128);
+        if (x.s % 4 === 0) kick(x.t, 0.3, 'deep');
+        // Sub auf der Eins, ein Schub auf der Und-von-drei
+        if (x.s === 0) voice(midi(x.root - 24), x.t, x.beat * 1.7, { type: 'sine', vol: 0.2, atk: 0.02 });
+        if (x.s === 10) voice(midi(x.root - 24 + 7), x.t, x.beat * 0.5, { type: 'sine', vol: 0.13 });
+        if (x.s === 4 || x.s === 12) snare(x.t, 0.055, 'rim');
+        /* Die Hi-Hats laufen in Sechsern und Zwölfern gegen den Viervierteltakt.
+           Erst nach drei Takten steht wieder dasselbe Muster über derselben
+           Kick — man hört nie zweimal hintereinander dasselbe. */
+        if (x.step % 6 === 1) hat(x.t, 0.02, 'closed');
+        if (x.step % 12 === 7) hat(x.t, 0.032, 'open');
+        // Der Dub-Akkord und seine drei Echos, jedes leiser und weiter im Raum
+        if ((x.bar % 2 === 0 && x.s === 6) || (x.bar === 5 && x.s === 14)) {
+          for (var e = 0; e < 4; e++) {
+            chord(x.t + e * x.beat * 0.75, x.root + 12, x.ivs, x.beat * (0.5 + e * 0.2), {
+              type: 'sawtooth', vol: 0.085 * Math.pow(0.55, e), detune: 7, atk: 0.012,
+              cut: 700 + atem * 2400 - e * 120, q: 2, pan: e % 2 ? 0.5 : -0.5
             });
-          });
-          voice(midi(x.root - 24), x.t, x.beat * 4.4, { type: 'sine', vol: 0.16, atk: 0.6 });
-        }
-        // Glockentropfen, sparsam über die Phrase verstreut
-        var list = this.drops[x.bar];
-        for (var i = 0; i < list.length; i++) {
-          if (list[i][0] === x.s) {
-            fm(midi(x.root + 12 + list[i][1]), x.t, 2.6,
-               { ratio: 3.5, index: 4, vol: 0.07, pan: i ? 0.5 : -0.5 });
           }
         }
-        // einzelne Wassertropfen — kein Schlagzeug, nur Bewegung
-        if (x.s === 7 || x.s === 15) {
-          voice(1100 + Math.random() * 500, x.t, 0.11,
-                { type: 'sine', vol: 0.035, glide: 420, atk: 0.003, pan: Math.random() * 1.2 - 0.6 });
+        /* Vinylstaub. Zwei teilerfremde Zähler sorgen dafür, dass die Knackser
+           nie ins Raster fallen — genau das macht sie glaubhaft. */
+        if (x.step % 23 === 5 || x.step % 31 === 11) {
+          noise(x.t, 0.012, { vol: 0.022, filter: 'highpass', freq: 3000,
+                              pan: (x.step % 7) / 7 - 0.5 });
         }
+        if (x.last && x.s >= 12) riser(x.t, x.beat, 0.03);
       }
     },
     {
-      id: 'chips', name: 'Retro Chips', mood: 'Chiptune · Pulslead & Münz-Blips',
-      bpm: 118, swing: 0, cut: 5200,
-      chords: [[57, [0, 3, 7]], [53, [0, 4, 7]], [60, [0, 4, 7]], [55, [0, 4, 7]]],
-      mel: [
-        [[0, 12, 2], [2, 15, 2], [4, 19, 4], [8, 17, 2], [10, 15, 2], [12, 12, 4]],
-        [[0, 16, 2], [4, 19, 2], [6, 21, 2], [8, 24, 6], [14, 19, 2]],
-        [[0, 12, 3], [3, 16, 3], [6, 19, 2], [8, 24, 4], [12, 19, 2], [14, 16, 2]],
-        [[0, 21, 2], [2, 19, 2], [4, 16, 2], [6, 12, 2], [8, 19, 6], [14, 24, 2]]
+      id: 'nebel', name: 'Nebelkammer', mood: 'Dub-Techno · Rhodes-Wolke & Bandecho',
+      bpm: 116, swing: 0, cut: 2000,
+      /* Der zweite Dub-Track, und bewusst anders gebaut als der erste:
+         langsamer, der Akkord kommt aus einer FM-Stimme statt aus Sägezähnen,
+         das Echo steht auf punktierten Vierteln statt auf Achteln, und die
+         Betonung liegt auf der Drei statt auf zwei und vier. Zwei Stücke mit
+         demselben Handgriff wären zwei Mal dasselbe Stück. */
+      chords: [
+        [45, [0, 3, 7, 10, 14]], [45, [0, 3, 7, 10, 14]],
+        [43, [0, 4, 7, 11, 14]], [50, [0, 3, 7, 10, 14]],
+        [48, [0, 3, 7, 10, 14]], [46, [0, 4, 7, 10, 14]],
+        [41, [0, 3, 7, 10, 17]], [43, [0, 3, 7, 10, 14]]
       ],
       step: function (x) {
-        // NES-Trick: statt eines Akkords rasen die Akkordtöne einzeln durch
-        voice(midi(x.root + 12 + x.ivs[x.step % x.ivs.length]), x.t, 0.055,
-              { type: 'square', vol: 0.042, atk: 0.002 });
-        // Pulsbass mit Oktavsprung
-        if (x.s % 2 === 0) {
-          voice(midi(x.root - 12 + (x.s % 4 === 2 ? 12 : 0)), x.t, 0.1,
-                { type: 'square', vol: 0.16, cut: 1600, atk: 0.003 });
-        }
-        var m = melNote(this.mel, x.bar, x.s);
-        if (m) voice(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.22,
-                     { type: 'square', vol: 0.1, cut: 4800, atk: 0.004 });
-        if (x.s === 0 || x.s === 8) kick(x.t, 0.24, 'punch');
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.12, 'snare');
-        if (x.s % 4 === 2) hat(x.t, 0.045, 'closed');
-        if (x.last && x.s === 12) coin(x.t, 0.065, 1976);
-      }
-    },
-    {
-      id: 'midnight', name: 'Mitternacht', mood: 'Boom-Bap · Staubdrums & Rauchtrompete',
-      bpm: 92, swing: 0.34, cut: 2400,
-      chords: [[48, [0, 3, 7, 10, 14]], [48, [0, 3, 7, 10, 14]], [53, [0, 3, 7, 10]], [51, [0, 4, 7, 10]]],
-      mel: [[], [[8, 15, 4], [12, 14, 3]], [], [[4, 12, 3], [8, 10, 2], [11, 7, 5]]],
-      step: function (x) {
-        var boom = (x.s === 0 || x.s === 7 || x.s === 10);
-        if (boom) {
-          kick(x.t, 0.26, 'boom');
-          voice(midi(x.root - 12), x.t, x.beat * 0.6, { type: 'sine', vol: 0.24, cut: 220 });
-        }
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.15, 'dusty');
-        if (x.s % 2 === 0) hat(x.t, x.s % 4 === 0 ? 0.04 : 0.026, x.s === 14 ? 'open' : 'closed');
-        // Rhodes-Stiche fallen zwischen die Schläge
-        if (x.s === 3 || x.s === 11) {
-          chordFm(x.t, x.root + 12, x.ivs, x.beat * 0.5,
-                  { ratio: 1.5, index: 2, vol: 0.055, pan: x.s === 3 ? -0.35 : 0.35 });
-        }
-        // gedämpfte Trompete, weit hinten im Raum
-        var m = melNote(this.mel, x.bar, x.s);
-        if (m) voice(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.25,
-                     { type: 'sawtooth', vol: 0.07, cut: 1300, vib: 22, vibRate: 5.5, atk: 0.06 });
-        // Vinyl-Knistern unter allem
-        if (Math.random() < 0.35) {
-          noise(x.t + Math.random() * 0.08, 0.012, { vol: 0.012, filter: 'highpass', freq: 4200 });
-        }
-      }
-    },
+        /* Zwei Atmungen übereinander, mit unterschiedlicher Länge: so trifft
+           dieselbe Kombination erst nach vielen Takten wieder zusammen. */
+        var weit = 0.5 + 0.5 * Math.sin(x.step / 173);
+        var eng = 0.5 + 0.5 * Math.sin(x.step / 61);
 
-    {
-      /* Eigene, neu komponierte Nummer — kein Zitat, keine Anlehnung an ein
-         bestehendes Stück. Bewusst percussion-frei und sehr karg: eine warme
-         FM-Kalimba tropft über liegenden Flächenklängen, dazwischen viel Stille. */
-      id: 'schacht', name: 'Ruhiger Schacht', mood: 'Ambient · Kalimba-Tropfen & Hall',
-      bpm: 64, swing: 0, cut: 1900,
-      chords: [[57, [0, 4, 7, 11]], [50, [0, 5, 9, 14]], [55, [0, 4, 7, 10]], [45, [0, 7, 12, 16]]],
-      mel: [
-        [[3, 19, 3], [11, 16, 4]],
-        [[6, 21, 3]],
-        [[1, 17, 4], [9, 20, 3], [13, 14, 2]],
-        []
-      ],
-      step: function (x) {
-        // Fläche: kriecht sehr langsam über den ganzen Takt herein
-        if (x.s === 0) {
-          x.ivs.forEach(function (iv, i) {
-            voice(midi(x.root + iv), x.t, x.beat * 4.4, {
-              type: 'sine', vol: 0.085 / (i + 1.2), detune: 6,
-              atk: x.beat * 2, cut: 1100, pan: (i % 2 ? 0.4 : -0.4)
+        if (x.s % 4 === 0) kick(x.t, 0.29, 'boom');
+        /* Sub liegt lang und legt sich unter zwei Schläge. */
+        if (x.s === 0) voice(midi(x.root - 24), x.t, x.beat * 2.2,
+                             { type: 'sine', vol: 0.21, atk: 0.03 });
+        if (x.s === 11) voice(midi(x.root - 24 + 5), x.t, x.beat * 0.7,
+                              { type: 'sine', vol: 0.12, atk: 0.02 });
+
+        /* Betonung auf der Drei — nicht auf zwei und vier wie üblich. */
+        if (x.s === 8) snare(x.t, 0.05, 'rim');
+        /* Besen in Siebenern, mit einem lauteren Schlag alle elf Schritte. */
+        if (x.step % 7 === 2) hat(x.t, 0.018, 'brush');
+        if (x.step % 11 === 5) hat(x.t, 0.03, 'brush');
+
+        /* Die Rhodes-Wolke: ein FM-Akkord und drei Wiederholungen im Abstand
+           einer punktierten Viertel. Das Echo trägt weiter als der Akkord
+           selbst und wandert dabei von links nach rechts. */
+        if ((x.bar % 2 === 1 && x.s === 4) || (x.bar === 6 && x.s === 12)) {
+          for (var e = 0; e < 4; e++) {
+            chordFm(x.t + e * x.beat * 1.5, x.root + 12, x.ivs, x.beat * (1.1 + e * 0.35), {
+              ratio: 2, index: 1.1 + eng * 1.6,
+              vol: 0.085 * Math.pow(0.6, e), atk: 0.02,
+              pan: e % 2 ? 0.55 : -0.55
             });
+          }
+        }
+        /* Ein einzelner Ton der Melodica, weit oben, alle vier Takte. */
+        if (x.bar % 4 === 3 && x.s === 6) {
+          fm(midi(x.root + 24 + x.ivs[3]), x.t, x.beat * 2.4, {
+            ratio: 3, index: 1.4, vol: 0.05, atk: 0.12, pan: 0.25
           });
-          voice(midi(x.root - 24), x.t, x.beat * 4.2, { type: 'sine', vol: 0.11, atk: 1.1 });
         }
-        // Kalimba: warme FM-Stimme, spärlich über die Phrase verteilt
-        var m = melNote(this.mel, x.bar, x.s);
-        if (m) fm(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.55,
-                  { ratio: 1.4, index: 1.8, vol: 0.075, pan: (m[0] % 2 ? 0.25 : -0.25), atk: 0.008 });
-        // vereinzeltes Erzglitzern, kaum hörbar — ersetzt jedes Schlagzeug
-        if (x.s === 9 && x.bar % 2 === 0) {
-          voice(2400 + Math.random() * 600, x.t, 0.08,
-                { type: 'sine', vol: 0.02, glide: 1600, atk: 0.004, pan: Math.random() * 1.4 - 0.7 });
-        }
-        // ein einzelner, ferner Tropfen zum Phrasenende
-        if (x.last && x.s === 15) {
-          voice(660, x.t, 0.5, { type: 'sine', vol: 0.05, glide: 300, atk: 0.01, cut: 1400 });
+        /* Bandrauschen: die ganze Zeit da, aber nur zu ahnen. Es folgt der
+           langsamen Atmung, damit es nicht als gleichmäßiges Zischen auffällt. */
+        if (x.s % 8 === 0) {
+          noise(x.t, x.beat * 2.1, {
+            vol: 0.006 + weit * 0.008, filter: 'bandpass',
+            freq: 1800 + weit * 2600, q: 0.6, atk: x.beat
+          });
         }
       }
     },
-
-    /* ── ab hier: schnell und laut ── */
-
+    {
+      id: 'beton', name: 'Betonwiese', mood: 'Minimal · Krumme Kick & Holzblock',
+      bpm: 134, swing: 0.12, cut: 4200,
+      chords: [
+        [47, [0, 3, 7, 10]], [47, [0, 3, 7, 10]], [45, [0, 3, 7, 10]], [52, [0, 4, 7, 10]]
+      ],
+      /* Zwei Takte lang, nicht einer: die Kick sitzt im zweiten Takt anders als
+         im ersten, und genau das trägt das ganze Stück. 1 = Kick. */
+      kicks: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
+              1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+      /* Basslauf über zwei Takte, null heisst Pause. */
+      bass: [0, null, null, 0, null, 7, null, null, 3, null, 0, null, null, 10, null, null,
+             0, null, 12, null, 7, null, null, 3, null, null, 0, null, 5, null, null, null],
+      step: function (x) {
+        var z = x.step % 32;
+        /* Jeder vierte Takt lässt die Kick weg — der Boden fällt kurz weg und
+           kommt danach doppelt so hart zurück. */
+        var loch = Math.floor(x.step / 16) % 8 === 7;
+        if (this.kicks[z] && !loch) kick(x.t, 0.3, 'boom');
+        if (x.s === 4 || x.s === 12) snare(x.t, 0.075, 'rim');
+        if (loch && x.s % 2 === 0) snare(x.t, 0.05, 'clap');
+        // Shaker mit wechselndem Akzent
+        if (x.s % 2 === 1) hat(x.t, x.s % 8 === 3 ? 0.03 : 0.014, 'closed');
+        if (x.step % 16 === 14) hat(x.t, 0.035, 'open');
+        // Holzblock in Siebenern — die Zutat, die den Takt schief zieht
+        if (x.step % 7 === 3) hat(x.t, 0.045, 'tick');
+        var b = this.bass[z];
+        if (b !== null && b !== undefined) {
+          voice(midi(x.root - 12 + b), x.t, x.beat * 0.3, {
+            type: 'square', vol: 0.16, cut: 620 + (z * 18), q: 4, atk: 0.004
+          });
+        }
+        // Glockenstich, alle fünf Schritte, dadurch nie auf derselben Zählzeit
+        if (x.step % 5 === 0 && x.step % 16 !== 0) {
+          fm(midi(x.root + 24 + x.ivs[(x.step / 5) % x.ivs.length]), x.t, 0.22, {
+            ratio: 3.5, index: 2.4, vol: 0.045, atk: 0.003,
+            pan: ((x.step / 5) % 3) - 1
+          });
+        }
+        if (x.last && x.s >= 12) {
+          tom(x.t, 0.09, 180 - (x.s - 12) * 22);
+        }
+      }
+    },
     {
       id: 'turbo', name: 'Turbo-Rausch', mood: 'Acid-Techno · 303-Bass & Kesselklick',
       bpm: 138, swing: 0, cut: 6000,
@@ -440,100 +451,6 @@
         if (x.last && x.s >= 12) riser(x.t, x.beat, 0.045);
       }
     },
-    {
-      id: 'jackpot', name: 'Jackpot-Fieber', mood: 'Trance-Hymne · Supersaw & Münzregen',
-      bpm: 132, swing: 0, cut: 7000,
-      chords: [[53, [0, 4, 7, 11]], [55, [0, 4, 7, 10]], [57, [0, 3, 7, 10]], [60, [0, 4, 7, 11]]],
-      mel: [
-        [[0, 19, 6], [6, 17, 4], [10, 16, 6]],
-        [[0, 17, 4], [4, 19, 8], [12, 21, 4]],
-        [[0, 24, 4], [4, 21, 4], [8, 19, 4], [12, 17, 4]],
-        [[0, 16, 8], [8, 19, 8]]
-      ],
-      step: function (x) {
-        if (x.s % 4 === 0) {
-          kick(x.t, 0.28, 'punch');
-          voice(midi(x.root - 24), x.t, x.beat * 0.5, { type: 'sine', vol: 0.16 });
-        }
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.11, 'clap');
-        // Offbeat-Bass und offene Hi-Hat — das Trance-Fundament
-        if (x.s % 4 === 2) {
-          hat(x.t, 0.045, 'open');
-          voice(midi(x.root - 12), x.t, x.beat * 0.22, { type: 'sawtooth', vol: 0.18, cut: 900, atk: 0.004 });
-        }
-        // Zupf-Arpeggio auf jedem Sechzehntel, oktavweise nach oben
-        var n = x.ivs[x.step % x.ivs.length] + 12 * (Math.floor(x.step / x.ivs.length) % 2);
-        voice(midi(x.root + 12 + n), x.t, 0.13,
-              { type: 'sawtooth', vol: 0.055, detune: 14, cut: 3600, atk: 0.004 });
-        // die große Hymne darüber
-        var m = melNote(this.mel, x.bar, x.s);
-        if (m) voice(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.24, {
-          type: 'sawtooth', vol: 0.085, detune: 11, cut: 5000, vib: 14, vibRate: 5, atk: 0.03
-        });
-        if (x.bar === 0 && x.s === 0) bell(x.t, 1046, 0.085, 1.1);
-        // Snare-Wirbel und Münzregen als Übergang in die nächste Runde
-        if (x.last && x.s >= 8) snare(x.t, 0.045 + (x.s - 8) * 0.012, 'snare');
-        if (x.last && x.s >= 12) coin(x.t, 0.05, 1200 + (x.s - 12) * 260);
-      }
-    },
-    {
-      id: 'adrenalin', name: 'Adrenalin', mood: "Drum'n'Bass · Amen-Break & Reese",
-      bpm: 168, swing: 0, cut: 5000,
-      chords: [[53, [0, 3, 7, 10]], [53, [0, 3, 7, 10]], [58, [0, 3, 7, 10]], [56, [0, 4, 7, 10]]],
-      step: function (x) {
-        // gebrochener Break statt Vierviertel
-        if (x.s === 0 || x.s === 10 || (x.bar % 2 === 1 && x.s === 6)) kick(x.t, 0.3, 'deep');
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.17, 'snare');
-        if (x.s === 7 || x.s === 15) snare(x.t, 0.045, 'snare');    // Geisternoten
-        if (x.s % 2 === 1) hat(x.t, 0.022, 'closed');
-        if (x.s === 14) hat(x.t, 0.045, 'open');
-        // Reese-Bass: zwei weit verstimmte Sägezähne, Filter wandert über die Phrase
-        if (x.s === 0 || x.s === 8) {
-          voice(midi(x.root - 12), x.t, x.beat * 1.6, {
-            type: 'sawtooth', vol: 0.2, detune: 26, cut: 420 + x.bar * 90, q: 5, atk: 0.02
-          });
-        }
-        if (x.s === 3 || x.s === 11) {
-          chord(x.t, x.root + 12, x.ivs, x.beat * 0.22, { type: 'square', vol: 0.065, cut: 2400, atk: 0.004 });
-        }
-        // hohes Ostinato springt zwischen den Kanälen
-        if (x.s === 2 || x.s === 9 || x.s === 13) {
-          voice(midi(x.root + 24 + x.ivs[x.s % x.ivs.length]), x.t, 0.1,
-                { type: 'triangle', vol: 0.05, atk: 0.003, pan: x.s === 2 ? -0.55 : 0.55 });
-        }
-        if (x.last && x.s === 8) siren(x.t, x.beat * 2, 0.045, 300, 1400);
-      }
-    },
-    {
-      id: 'allin', name: 'All In', mood: 'Hardcore · Gabber-Kick & Alarmsirene',
-      bpm: 176, swing: 0, cut: 6500,
-      chords: [[45, [0, 3, 7]], [48, [0, 3, 7]], [43, [0, 4, 7]], [44, [0, 4, 7]]],
-      riff: [0, 0, 12, 0, 3, 0, 12, 7],
-      step: function (x) {
-        if (x.s % 4 === 0) kick(x.t, 0.34, 'gabber');
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.15, 'clap');
-        if (x.s % 2 === 1) hat(x.t, 0.028, 'closed');
-        // Hoover-Stich, der beim Ausklingen nach unten rutscht
-        if (x.s === 2 || x.s === 10) {
-          voice(midi(x.root + 12), x.t, x.beat * 0.55, {
-            type: 'sawtooth', vol: 0.13, detune: 32, cut: 2600, q: 3,
-            glide: midi(x.root + 5), atk: 0.01
-          });
-        }
-        // Oktav-Riff auf Achteln
-        if (x.s % 2 === 0) {
-          voice(midi(x.root + 12 + this.riff[(x.s / 2) % 8]), x.t, 0.09,
-                { type: 'square', vol: 0.07, cut: 4200, atk: 0.003 });
-        }
-        if (x.bar === 0 && x.s === 0) {
-          bell(x.t, 523, 0.075, 1.4);
-          noise(x.t, 0.7, { vol: 0.045, filter: 'highpass', freq: 5200 });   // Crash
-        }
-        if (x.last && x.s >= 8) {
-          siren(x.t, x.beat * 0.5, 0.05, 500 + (x.s - 8) * 120, 1600 + (x.s - 8) * 180);
-        }
-      }
-    }
   ];
 
   var Music = GK.music = {
@@ -658,14 +575,22 @@
   function save() {
     try {
       localStorage.setItem(MKEY, JSON.stringify({
-        enabled: Music.enabled, trackIdx: Music.trackIdx, volume: Music.volume
+        enabled: Music.enabled, track: TRACKS[Music.trackIdx].id, volume: Music.volume
       }));
     } catch (e) {}
   }
   Music.load = function () {
     try {
       var d = JSON.parse(localStorage.getItem(MKEY) || '{}');
-      if (d.trackIdx !== undefined) Music.trackIdx = GK.clamp(d.trackIdx, 0, TRACKS.length - 1);
+      /* Gemerkt wird die Kennung, nicht die Position in der Liste: sonst
+         landet man nach einer Aenderung an der Liste auf einem fremden Stueck.
+         Alte Stände haben noch eine Nummer — die zaehlt weiter, solange sie
+         passt. */
+      if (d.track) {
+        for (var i = 0; i < TRACKS.length; i++) if (TRACKS[i].id === d.track) Music.trackIdx = i;
+      } else if (d.trackIdx !== undefined) {
+        Music.trackIdx = GK.clamp(d.trackIdx, 0, TRACKS.length - 1);
+      }
       if (d.volume !== undefined) Music.volume = d.volume;
       Music.wanted = !!d.enabled;   // erst nach der ersten Interaktion starten
     } catch (e) {}

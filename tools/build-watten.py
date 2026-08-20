@@ -50,7 +50,7 @@ OHNE = {'6'}                                            # Watten spielt ohne Sec
 # Reihenfolge der Reihen in der Vorlage; Buchstabe = Dateiname wie in den anderen Decks
 REIHEN = [('herz', 'H'), ('eichel', 'C'), ('gras', 'S'), ('schellen', 'D')]
 
-ZIEL = (260, 364)
+BREITE = 260                # so breit wie die Karten der uebrigen Decks
 LUFT = 3                    # Pixel Rand, die um jede Karte stehen bleiben
 
 
@@ -124,15 +124,17 @@ def baender(anteil, stueck, mindest):
     return gefunden if len(gefunden) == stueck else None
 
 
-def auf_format(karte):
-    """Auf 260 zu 364 bringen — durch Auffuellen, nicht durch Beschneiden.
+def auf_format(karte, ziel):
+    """Alle Karten auf dasselbe Format bringen.
 
-    Ein deutsches Blatt ist schmaler als das franzoesische. Beschneiden hiesse
-    hier, oben und unten die Randzeichen abzuschneiden; verzerren wuerde neben
-    den anderen Decks auffallen. Also wird mit der Randfarbe der Karte
-    aufgefuellt — bei weissem Papier sieht man davon nichts.
+    Das Format kommt aus der Vorlage selbst (siehe kartenformat) und nicht aus
+    dem franzoesischen Blatt — sonst steckt eine schmale deutsche Karte in
+    einer viel zu breiten Kachel und sieht daneben falsch aus. Der Rest ist
+    Auffuellen statt Beschneiden: quer ueber die Vorlage sind die Karten
+    minimal unterschiedlich gross, und Beschneiden hiesse bei den knappsten
+    Karten, die Randzeichen abzuschneiden.
     """
-    zw, zh = ZIEL
+    zw, zh = ziel
     b, h = karte.size
     faktor = min(zw / float(b), zh / float(h))
     klein = karte.resize((max(1, int(round(b * faktor))),
@@ -142,9 +144,21 @@ def auf_format(karte):
     rand = np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]])
     fuell = tuple(int(v) for v in np.median(rand, axis=0))
 
-    blatt = Image.new('RGB', ZIEL, fuell)
+    blatt = Image.new('RGB', ziel, fuell)
     blatt.paste(klein, ((zw - klein.width) // 2, (zh - klein.height) // 2))
     return blatt
+
+
+def kartenformat(kaesten):
+    """Das Seitenverhaeltnis des Blatts — gemessen, nicht geraten.
+
+    Quer ueber die Vorlage sind die Karten leicht unterschiedlich gross, die
+    aeusseren Spalten ein paar Prozent breiter als die inneren. Der Mittelwert
+    waere davon abhaengig, wie die Ausreisser liegen; der Median nicht.
+    """
+    hoch = np.median([(x1 - x0 + 2 * LUFT) / float(y1 - y0 + 2 * LUFT)
+                      for x0, y0, x1, y1 in kaesten])
+    return BREITE, int(round(BREITE / hoch))
 
 
 def _weiten(maske, rand):
@@ -286,13 +300,13 @@ def farbzeichen(karte, name, ziel):
         os.path.join(ziel, 'farbe-' + name + '.webp'), 'WEBP', quality=92, method=6)
 
 
-def rueckseite(ziel):
+def rueckseite(ordner, ziel):
     """Eine schlichte Rueckseite im Stil des Blatts.
 
     Die Vorlage zeigt nur die Vorderseiten, deshalb wird sie gezeichnet: roter
     Grund mit hellem Rautenmuster und weissem Rand.
     """
-    zw, zh = ZIEL
+    zw, zh = ziel
     bild = Image.new('RGB', (zw, zh), (176, 26, 30))
     px = bild.load()
     for y in range(zh):
@@ -304,7 +318,7 @@ def rueckseite(ziel):
         for x in range(zw):
             if x < rand or y < rand or x >= zw - rand or y >= zh - rand:
                 px[x, y] = (247, 244, 236)
-    bild.save(os.path.join(ziel, 'back.webp'), 'WEBP', quality=92, method=6)
+    bild.save(os.path.join(ordner, 'back.webp'), 'WEBP', quality=92, method=6)
 
 
 def main():
@@ -330,32 +344,44 @@ def main():
         print('  Vier Kartenreihen nicht gefunden. Stimmt die Vorlage?')
         return 1
 
-    geschrieben, uebersprungen = 0, 0
+    # Erst das ganze Raster vermessen, dann schneiden: das Zielformat kommt aus
+    # allen Karten zusammen, also muss es vor der ersten Datei feststehen.
+    raster, kaesten = [], []
     for (r0, r1), (farbe, brief) in zip(zeilen, REIHEN):
-        streifen = maske[r0:r1]
-        spalten = baender(streifen.mean(axis=0), len(RANG), 40)
+        spalten = baender(maske[r0:r1].mean(axis=0), len(RANG), 40)
         if not spalten:
             print('  %-9s neun Karten nicht gefunden — Reihe uebersprungen.' % farbe)
             continue
+        raster.append((farbe, brief, [(c0, r0, c1, r1) for c0, c1 in spalten]))
+        kaesten.extend(raster[-1][2])
+    if not kaesten:
+        print('  Keine Karte gefunden. Stimmt die Vorlage?')
+        return 1
 
+    format_ = kartenformat(kaesten)
+    print('Kartenformat %d x %d (%.3f) — aus %d Karten gemessen'
+          % (format_[0], format_[1], format_[0] / float(format_[1]), len(kaesten)))
+
+    geschrieben, uebersprungen = 0, 0
+    for farbe, brief, felder in raster:
         koenig = None
-        for (c0, c1), rang in zip(spalten, RANG):
-            karte = bild.crop((max(0, c0 - LUFT), max(0, r0 - LUFT),
-                               min(bild.width, c1 + LUFT), min(bild.height, r1 + LUFT)))
+        for (x0, y0, x1, y1), rang in zip(felder, RANG):
+            karte = bild.crop((max(0, x0 - LUFT), max(0, y0 - LUFT),
+                               min(bild.width, x1 + LUFT),
+                               min(bild.height, y1 + LUFT)))
             if rang == 'K':
                 koenig = karte
             if rang in OHNE:
                 uebersprungen += 1
                 continue
-            auf_format(karte).save(os.path.join(ziel, rang + brief + '.webp'),
-                                   'WEBP', quality=92, method=6)
+            auf_format(karte, format_).save(os.path.join(ziel, rang + brief + '.webp'),
+                                            'WEBP', quality=92, method=6)
             geschrieben += 1
         if koenig is not None:
             farbzeichen(koenig, farbe, ziel)
-        print('  %-9s fertig (%d x %d je Karte)' % (farbe, spalten[0][1] - spalten[0][0],
-                                                    r1 - r0))
+        print('  %-9s fertig' % farbe)
 
-    rueckseite(ziel)
+    rueckseite(ziel, format_)
     print('\n%d Karten geschrieben, %d Sechser weggelassen, '
           '4 Farbzeichen und eine Rueckseite.' % (geschrieben, uebersprungen))
     return 0

@@ -734,12 +734,25 @@ function handleRequest(req, res) {
 
       var teil = url.slice('/api/mp/'.length);
 
+      /* Der Kontostand gehoert in jede Antwort, auch in die Langabfrage.
+         Das Konto aendert sich naemlich auch ohne Zutun des Spielers: wer zu
+         lange weg ist, wird vom Tisch geholt und bekommt seinen Stapel
+         zurueck. Ohne diese Zeile stuende in der Kopfleiste weiter die alte
+         Zahl — es sah aus, als wuerde beim Mehrspieler gar nichts abgebucht
+         und nichts gutgeschrieben. Den ganzen Spielerstand mitzuschicken
+         waere zu teuer: die Langabfrage kommt bei einem laufenden Tisch
+         mehrmals je Sekunde zurueck. */
+      function guthaben() {
+        return db.players[me] ? db.players[me].balance : null;
+      }
+
       if (teil === 'lobby') {
         var seit = Number(body.since) || 0;
         return mp.wait(seit, function () {
           sendJSON(res, 200, {
             lobby: mp.lobby(me),
-            tisch: body.table ? mp.view(body.table, me) : null
+            tisch: body.table ? mp.view(body.table, me) : null,
+            guthaben: guthaben()
           });
         });
       }
@@ -748,8 +761,12 @@ function handleRequest(req, res) {
         var seit2 = Number(body.since) || 0;
         return mp.wait(seit2, function () {
           var t = mp.view(body.table, me);
-          if (!t) return sendJSON(res, 404, { error: 'Diesen Tisch gibt es nicht mehr' });
-          sendJSON(res, 200, { tisch: t, v: mp.seq() });
+          if (!t) {
+            return sendJSON(res, 404, {
+              error: 'Diesen Tisch gibt es nicht mehr', guthaben: guthaben()
+            });
+          }
+          sendJSON(res, 200, { tisch: t, v: mp.seq(), guthaben: guthaben() });
         });
       }
 

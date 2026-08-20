@@ -23,6 +23,13 @@
   function openGame(id) {
     var g = GK.gameById(id);
     if (!g) return;
+    /* In der Party gilt die Auswahl des Gastgebers — sonst spielt einer
+       Roulette, waehrend die anderen an den Walzen sitzen. */
+    if (GK.party && GK.party.an && !GK.party.erlaubt(g.id)) {
+      GK.toast(g.name + ' ist in dieser Party nicht dabei', 'bad', '🎉');
+      GK.sfx('error');
+      return;
+    }
     if (!GK.isUnlocked(g)) {
       GK.toast(g.name + ' ist noch gesperrt — ab Level ' + g.minLevel, 'bad', '🔒');
       GK.sfx('error');
@@ -122,7 +129,13 @@
     grid.innerHTML = '';
     var me = GK.player();
     drawnLevel = me ? GK.levelOf(me.xp) : null;
-    GK.games.forEach(function (g, i) {
+    /* Waehrend einer Party stehen nur die Spiele da, die der Gastgeber
+       ausgewaehlt hat — die uebrigen auszugrauen waere unnoetiger Krach. */
+    var inParty = !!(GK.party && GK.party.an);
+    var liste = inParty
+      ? GK.games.filter(function (g) { return GK.party.erlaubt(g.id); })
+      : GK.games;
+    liste.forEach(function (g, i) {
       var open = GK.isUnlocked(g);
       var kids = [
         el('span', { class: 'game-badge', text: g.badge }),
@@ -615,7 +628,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Neun Loops, live im Browser erzeugt — jeder mit eigener Besetzung: Jazz-Trio, Ambient, Chiptune, Boom-Bap, ruhige Kalimba, Acid-Techno, Trance, Drum\'n\'Bass und Hardcore. Keine Downloads, jederzeit abschaltbar.',
+      text: 'Vier Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und ein Acid-Rausch. Keine Downloads, jederzeit abschaltbar.',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),
@@ -981,7 +994,36 @@
      Jetzt zaehlt sie die Registry — einmal registriert, stimmt sie von selbst. */
   function renderGameCount() {
     var n = $('#game-count');
-    if (n) n.textContent = GK.games.length + ' SPIELE';
+    if (!n) return;
+    /* In der Party zaehlt nur, was der Gastgeber freigegeben hat. */
+    var d = GK.party && GK.party.an && GK.party.daten;
+    if (d) {
+      var wieviele = (GK.party.spiele() || GK.games.map(function (g) { return g.id; })).length;
+      n.textContent = wieviele + ' SPIELE';
+      return;
+    }
+    n.textContent = GK.games.length + ' SPIELE';
+  }
+
+  /**
+   * Der Kopf der Spielhalle passt sich der Party an.
+   *
+   * Sonst steht dort waehrend einer Party weiter "Jeder startet mit 500
+   * Chips" und darunter, welches Spiel als naechstes freischaltet — beides
+   * gilt gerade nicht: die Party hat ihr eigenes Guthaben, und gespielt wird
+   * nur, was ausgewaehlt wurde.
+   */
+  function renderHero() {
+    var sub = $('.hero-sub'), card = $('#level-card');
+    var d = GK.party && GK.party.an && GK.party.daten;
+    if (sub) {
+      sub.innerHTML = d
+        ? 'Party läuft: alle mit <b>' + GK.fmt(d.startChips) + ' Chips</b>. ' +
+          'Wer am Ende den <b>größten Gewinn</b> hat, gewinnt. Die Rangliste steht oben links.'
+        : 'Jeder startet mit <b>500 Chips</b>. Wer am Ende die dickste Krone trägt, ' +
+          'gewinnt Ruhm, Ehre und ewiges Angeben-Recht.';
+    }
+    if (card) card.style.display = d ? 'none' : '';
   }
 
   function boot() {
@@ -1091,6 +1133,17 @@
     };
     document.addEventListener('pointerdown', unlock);
     document.addEventListener('keydown', unlock);
+
+    /* Party an oder aus: die Spielhalle zeigt danach andere Kacheln, und der
+       Kontostand in der Kopfleiste kommt aus einer anderen Kasse. */
+    /* renderGames ausdruecklich: renderAll zeichnet die Kacheln nur neu, wenn
+       sich die Stufe geaendert hat — hier aendert sich aber die Auswahl. */
+    GK.on('party-start', function () {
+      showView('view-lobby'); renderGames(); renderGameCount(); renderHero(); renderAll();
+    });
+    GK.on('party-ende', function () {
+      renderGames(); renderGameCount(); renderHero(); renderAll();
+    });
 
     GK.on('player-changed', function () {
       renderAll();

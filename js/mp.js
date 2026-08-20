@@ -52,6 +52,39 @@
 
   /* ── Server ───────────────────────────────────────────────────────── */
 
+  /**
+   * Kontostand aus einer Serverantwort uebernehmen — und zwar sichtbar.
+   *
+   * Der Einkauf am Tisch wird auf dem Server abgebucht, das Aufstehen
+   * gutgeschrieben. Beides kam auch bisher richtig hier an, blieb aber
+   * unsichtbar: in der Kopfleiste stand weiter die alte Zahl, weil nur
+   * GK.state beschrieben wurde. Von aussen sah das aus, als wuerde beim
+   * Mehrspieler ueberhaupt nichts verrechnet.
+   *
+   * Die Zahl kommt auf zwei Wegen: Einkauf, Aufstehen und jede Aktion liefern
+   * den ganzen Spielerstand mit, die Langabfrage nur das eigene Guthaben —
+   * die kommt an einem laufenden Tisch mehrmals je Sekunde zurueck, da waere
+   * alles andere Verschwendung.
+   */
+  function konto(b) {
+    var vorher = GK.player() ? GK.player().balance : null;
+    if (b.state && GK.adoptState) GK.adoptState(b.state);
+    else if (typeof b.guthaben === 'number' && GK.player() &&
+             !(GK.net && GK.net.pending > 0)) {
+      /* Nur wenn gerade keine eigene Buchung unterwegs ist: sonst ueberschreibt
+         die Antwort der Langabfrage einen Stand, den der Server noch gar nicht
+         kennt, und der Gewinn von eben waere wieder weg. */
+      GK.player().balance = b.guthaben;
+      GK.save();
+    }
+    var jetzt = GK.player() ? GK.player().balance : null;
+    if (vorher === null || jetzt === null || jetzt === vorher) return;
+    /* Mit Differenz, damit die Zahl aufpoppt: gerade beim Einkauf soll man
+       sehen, dass die Chips vom Konto an den Tisch gewandert sind. */
+    GK.updateHUD(jetzt - vorher);
+    GK.emit('player-changed');
+  }
+
   function ruf(pfad, daten) {
     if (!GK.net || !GK.net.online) {
       return Promise.reject(new Error('Mehrspieler braucht den Casino-Server'));
@@ -67,12 +100,16 @@
       body: JSON.stringify(body)
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (b) {
-        if (b.state && GK.adoptState) GK.adoptState(b.state);
+        konto(b);
         if (!r.ok) { var e = new Error(b.error || ('HTTP ' + r.status)); e.status = r.status; throw e; }
         return b;
       });
     });
   }
+
+  /* Der Partymodus schickt seine Meldungen ueber denselben Weg — Sitzung,
+     Kontoabgleich und Fehlerbehandlung gelten dort genauso. */
+  MP._ruf = ruf;
 
   function fehler(e) {
     if (e && e.name === 'AbortError') return;
@@ -83,15 +120,23 @@
   /* ── Schleife ─────────────────────────────────────────────────────── */
 
   function schleife() {
-    if (!MP.an) return;
+    /* Auch ohne offene Mehrspieler-Ansicht weiterfragen, solange eine Party
+       laeuft: waehrend der Party sitzt man in den Einzelspielen, und die
+       Rangliste soll trotzdem frisch bleiben. */
+    if (!MP.an && !(GK.party && GK.party.id)) return;
     var wo = MP.tisch ? 'table' : 'lobby';
     var daten = { since: MP.seit };
     if (MP.tisch) daten.table = MP.tisch.id;
 
     ruf(wo, daten).then(function (b) {
-      if (!MP.an) return;
+      if (!MP.an && !(GK.party && GK.party.id)) return;
       if (b.lobby) { MP.lobby = b.lobby; MP.seit = b.lobby.v; }
       if (b.tisch) { MP.tisch = b.tisch; MP.seit = Math.max(MP.seit, b.v || b.tisch.v || 0); }
+      /* Eine Party kommt ueber denselben Kanal wie ein Tisch, ist aber etwas
+         anderes: sie laeuft weiter, waehrend man in den Einzelspielen sitzt.
+         Deshalb bekommt sie ihren Stand immer, auch wenn diese Ansicht gar
+         nicht sichtbar ist. */
+      if (b.tisch && b.tisch.art === 'party' && GK.party) GK.party.stand(b.tisch);
       /* Ob der Tisch noch steht, sagt allein der Server ueber 404 — siehe
          unten. Eine Antwort ohne Tisch heisst hier nur "nichts Neues"; wer
          daraus auf "aufgeloest" schliesst, wirft einen Spieler bei jeder
@@ -105,13 +150,15 @@
          zu vergleichen reicht deshalb nicht: der erste Tisch-Stand traegt oft
          genau die Nummer, die zuletzt fuer die Lobby gezeichnet wurde — dann
          bliebe die Uebersicht stehen, obwohl man schon am Tisch sitzt. */
-      var jetztV = MP.tisch
-        ? 't' + MP.tisch.id + ':' + (MP.tisch.v || 0)
-        : 'l:' + ((MP.lobby && MP.lobby.v) || 0);
-      if (jetztV !== gezeichnetV || !stage.firstChild) { gezeichnetV = jetztV; zeichne(); }
+      if (MP.an && stage) {
+        var jetztV = MP.tisch
+          ? 't' + MP.tisch.id + ':' + (MP.tisch.v || 0)
+          : 'l:' + ((MP.lobby && MP.lobby.v) || 0);
+        if (jetztV !== gezeichnetV || !stage.firstChild) { gezeichnetV = jetztV; zeichne(); }
+      }
       schleife();
     }).catch(function (e) {
-      if (!MP.an) return;
+      if (!MP.an && !(GK.party && GK.party.id)) return;
       /* Abgebrochen heisst: gerade ist etwas passiert, das sofort neu
          abgefragt werden soll. Ohne diesen Neustart bliebe die Schleife
          stehen und die Ansicht fror nach dem ersten eigenen Zug ein. */
@@ -124,7 +171,9 @@
         return;
       }
       // nicht sofort weiterhaemmern, wenn der Server gerade nicht mag
-      setTimeout(function () { if (MP.an) schleife(); }, 2500);
+      setTimeout(function () {
+        if (MP.an || (GK.party && GK.party.id)) schleife();
+      }, 2500);
     });
   }
 
@@ -159,6 +208,10 @@
   MP.close = function () {
     var sass = !!(MP.tisch && MP.tisch.seats && meinPlatz());
     MP.an = false;
+    /* Eine Party bleibt bestehen, wenn man die Ansicht verlaesst — genau das
+       ist ja der Sinn: gespielt wird in der Spielhalle, nicht hier. Die
+       Langabfrage laeuft dafuer weiter, siehe schleife(). */
+    if (GK.party && GK.party.id) { schleife(); return; }
     anstossen();
     if (!sass) return;
     ruf('leave', {})
@@ -373,6 +426,272 @@
     });
   }
 
+  /* ── Partymodus ───────────────────────────────────────────────────── */
+
+  /**
+   * Neue Party aufmachen.
+   *
+   * Der Gastgeber legt fest, mit wieviel alle starten, wie lange gespielt
+   * wird und welche Spiele erlaubt sind. Danach wartet die Lobby, bis alle
+   * da sind — gestartet wird von Hand, nicht automatisch: bei acht Leuten
+   * trudelt selten jemand punktgenau ein.
+   */
+  function neueParty() {
+    GK.sfx('click');
+    var p = GK.player();
+    if (!p) return;
+
+    var name = el('input', { class: 'mp-feld', type: 'text', maxlength: '24',
+                             value: p.name + 's Party' });
+    var chips = el('select', { class: 'mp-feld' });
+    [500, 1000, 2500, 5000, 10000].forEach(function (c) {
+      chips.appendChild(el('option', { value: String(c), text: GK.fmt(c) + ' Chips',
+                                       selected: c === 1000 ? 'selected' : null }));
+    });
+    var dauer = el('select', { class: 'mp-feld' });
+    [[300, '5 Minuten'], [600, '10 Minuten'], [900, '15 Minuten'], [1800, '30 Minuten']]
+      .forEach(function (d) {
+        dauer.appendChild(el('option', { value: String(d[0]), text: d[1],
+                                         selected: d[0] === 600 ? 'selected' : null }));
+      });
+
+    /* Spielauswahl: alles an, was der Gastgeber selbst freigeschaltet hat.
+       Ein Spiel, das er gar nicht kennt, kann er auch nicht sinnvoll waehlen. */
+    var kaesten = {};
+    var gitter = el('div', { class: 'party-wahl' }, GK.games.map(function (g) {
+      var box = el('input', { type: 'checkbox', checked: 'checked' });
+      kaesten[g.id] = box;
+      var k = el('label', { class: 'party-wahl-kachel' }, [
+        box,
+        el('span', { class: 'party-wahl-ic', html: GK.iconHTML(g.icon) }),
+        el('span', { class: 'party-wahl-name', text: g.name })
+      ]);
+      return k;
+    }));
+
+    var alle = el('button', { class: 'btn btn-small', text: '☑ ALLE' });
+    var keine = el('button', { class: 'btn btn-small', text: '☐ KEINE' });
+    alle.addEventListener('click', function () {
+      Object.keys(kaesten).forEach(function (k) { kaesten[k].checked = true; });
+    });
+    keine.addEventListener('click', function () {
+      Object.keys(kaesten).forEach(function (k) { kaesten[k].checked = false; });
+    });
+
+    var ok = el('button', { class: 'btn btn-gold btn-full', text: '🎉 PARTY AUFMACHEN' });
+    ok.addEventListener('click', function () {
+      var gewaehlt = Object.keys(kaesten).filter(function (k) { return kaesten[k].checked; });
+      if (!gewaehlt.length) {
+        GK.toast('Mindestens ein Spiel muss dabei sein', 'bad', '🎮');
+        GK.sfx('error');
+        return;
+      }
+      GK.closeModal();
+      tue('create', {
+        game: 'party', name: name.value,
+        startChips: parseInt(chips.value, 10),
+        dauer: parseInt(dauer.value, 10),
+        spiele: gewaehlt
+      }).then(function (b) {
+        if (b && b.party) { MP.tisch = { id: b.party }; MP.seit = 0; anstossen(); }
+      });
+    });
+
+    GK.modal({
+      icon: 'party',
+      title: 'Neue Party',
+      text: 'Bis zu acht Leute, alle mit demselben Startguthaben, alle in derselben ' +
+            'Spielhalle. Wer am Ende den dicksten Gewinn hat, gewinnt. Dein Konto ' +
+            'bleibt dabei unberührt — Partychips sind eigene Chips.',
+      nodes: [
+        el('label', { class: 'mp-label', text: 'Name' }), name,
+        el('label', { class: 'mp-label', text: 'Startchips für alle' }), chips,
+        el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
+        el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }),
+        el('div', { class: 'party-wahl-knoepfe' }, [alle, keine]),
+        gitter,
+        el('div', { style: 'height:10px' }), ok
+      ]
+    });
+  }
+
+  /** Eine Party in der Übersicht. */
+  function partyKarte(pa) {
+    var voll = pa.besetzt >= pa.max;
+    var laeuft = pa.status !== 'lobby';
+    var knopf = el('button', {
+      class: 'btn btn-small ' + (laeuft || voll ? '' : 'btn-gold'),
+      text: laeuft ? '👀 LÄUFT' : (voll ? 'VOLL' : '🎉 MITMACHEN')
+    });
+    knopf.disabled = laeuft || voll;
+    knopf.addEventListener('click', function () {
+      GK.sfx('chip');
+      tue('join', { party: pa.id }).then(function (b) {
+        if (b && b.party) { MP.tisch = { id: b.party }; MP.seit = 0; anstossen(); }
+      });
+    });
+    return el('div', { class: 'mp-tisch party-karte' }, [
+      el('div', { class: 'mp-tisch-kopf' }, [
+        el('span', { class: 'mp-tisch-name', text: pa.name }),
+        el('span', { class: 'mp-tisch-spiel', html: GK.iconHTML('party') + ' Party' })
+      ]),
+      el('div', { class: 'mp-leute' }, pa.spieler.map(function (s) {
+        return el('span', { class: 'mp-wer' + (s.online ? '' : ' fort') }, [
+          el('span', { class: 'mp-wer-av', text: s.avatar || '👤' }),
+          el('span', { text: s.name })
+        ]);
+      })),
+      el('div', { class: 'mp-tisch-fuss' }, [
+        el('span', { class: 'mp-zustand', text: laeuft ? '● läuft' : '○ wartet' }),
+        el('span', { class: 'mp-einkauf', text: GK.fmt(pa.startChips) + ' Chips · ' +
+                     Math.round(pa.dauer / 60) + ' min · ' + pa.spiele + ' Spiele' }),
+        el('span', { class: 'mp-einkauf', text: pa.besetzt + '/' + pa.max }),
+        knopf
+      ])
+    ]);
+  }
+
+  /** Die Wartelobby einer Party — mit Einstellungen für den Gastgeber. */
+  function zeichneParty() {
+    var pa = MP.tisch;
+    var wrap = el('div', { class: 'party-lobby' });
+
+    if (pa.status === 'countdown') {
+      var rest = Math.max(0, Math.ceil((pa.startAt - Date.now()) / 1000));
+      wrap.appendChild(el('div', { class: 'party-countdown' }, [
+        el('div', { class: 'party-count-zahl', id: 'party-count', text: String(rest) }),
+        el('div', { class: 'party-count-text', text: 'Gleich geht es los — alle in die Spielhalle!' })
+      ]));
+    }
+
+    if (pa.status === 'laeuft') {
+      /* Wer waehrend der Party hierher zurueckkommt, will meistens nur
+         wieder raus in die Spielhalle. */
+      var hin = el('button', { class: 'btn btn-gold btn-full', text: '🎰 ZUR SPIELHALLE' });
+      hin.addEventListener('click', function () {
+        GK.sfx('click');
+        var b = document.getElementById('btn-mp-back');
+        if (b) b.click();
+      });
+      wrap.appendChild(el('div', { class: 'party-countdown' }, [
+        el('div', { class: 'party-count-text', text: 'Die Party läuft — gespielt wird in der Spielhalle.' }),
+        el('div', { style: 'height:10px' }), hin
+      ]));
+    }
+
+    wrap.appendChild(el('p', { class: 'mp-intro', html:
+      'Alle starten mit <b>' + GK.fmt(pa.startChips) + ' Chips</b> und spielen ' +
+      '<b>' + Math.round(pa.dauer / 60) + ' Minuten</b> lang die Einzelspiele. ' +
+      'Gewonnen hat, wer am Ende den größten Gewinn gemacht hat. ' +
+      'Dein Konto bleibt unberührt.' }));
+
+    wrap.appendChild(el('h2', { class: 'section-title' },
+      [el('span', { text: '👥 DABEI (' + pa.spieler.length + '/' + pa.max + ')' })]));
+    wrap.appendChild(el('div', { class: 'party-liste' }, pa.spieler.map(function (s) {
+      return el('div', { class: 'party-teilnehmer' + (s.ich ? ' ich' : '') }, [
+        el('span', { class: 'party-av', text: s.avatar || '👤' }),
+        el('span', { class: 'party-name', text: s.name }),
+        s.id === pa.host ? el('span', { class: 'party-krone', text: '👑' }) : null,
+        el('span', { class: 'party-status', text: s.online ? 'bereit' : 'weg' })
+      ]);
+    })));
+
+    if (pa.spiele && pa.spiele.length) {
+      wrap.appendChild(el('h2', { class: 'section-title' },
+        [el('span', { text: '🎮 ERLAUBTE SPIELE (' + pa.spiele.length + ')' })]));
+      wrap.appendChild(el('div', { class: 'party-spielliste' }, pa.spiele.map(function (id) {
+        var g = GK.games.filter(function (x) { return x.id === id; })[0];
+        return el('span', { class: 'party-spiel-pille' }, [
+          el('span', { html: GK.iconHTML(g ? g.icon : 'dice') }),
+          el('span', { text: g ? g.name : id })
+        ]);
+      })));
+    }
+
+    var knoepfe = [];
+    if (pa.ichBinHost && pa.status === 'lobby') {
+      var los = el('button', { class: 'btn btn-gold btn-full', text: '🚀 PARTY STARTEN' });
+      los.addEventListener('click', function () {
+        GK.sfx('chip');
+        tue('action', { action: 'partystart' });
+      });
+      knoepfe.push(los);
+      var aendern = el('button', { class: 'btn btn-full', text: '⚙️ EINSTELLUNGEN ÄNDERN' });
+      aendern.addEventListener('click', function () { partyEinstellen(pa); });
+      knoepfe.push(aendern);
+    } else if (pa.status === 'lobby') {
+      knoepfe.push(el('p', { class: 'mp-leer', text: 'Der Gastgeber startet die Party.' }));
+    }
+    if (pa.ichBinHost && pa.status === 'ende') {
+      var neu = el('button', { class: 'btn btn-gold btn-full', text: '🔁 NOCH EINE RUNDE' });
+      neu.addEventListener('click', function () { GK.sfx('chip'); tue('action', { action: 'partyneu' }); });
+      knoepfe.push(neu);
+    }
+    var raus = el('button', { class: 'btn btn-danger btn-full', text: '🚪 PARTY VERLASSEN' });
+    raus.addEventListener('click', function () {
+      GK.sfx('click');
+      if (GK.party) GK.party.verlassen();
+      MP.tisch = null; MP.seit = 0; anstossen();
+    });
+    knoepfe.push(raus);
+    wrap.appendChild(el('div', { class: 'party-aktionen' }, knoepfe));
+    return wrap;
+  }
+
+  /** Einstellungen einer bestehenden Party ändern (nur der Gastgeber). */
+  function partyEinstellen(pa) {
+    GK.sfx('click');
+    var chips = el('select', { class: 'mp-feld' });
+    [500, 1000, 2500, 5000, 10000].forEach(function (c) {
+      chips.appendChild(el('option', { value: String(c), text: GK.fmt(c) + ' Chips',
+                                       selected: c === pa.startChips ? 'selected' : null }));
+    });
+    var dauer = el('select', { class: 'mp-feld' });
+    [[300, '5 Minuten'], [600, '10 Minuten'], [900, '15 Minuten'], [1800, '30 Minuten']]
+      .forEach(function (d) {
+        dauer.appendChild(el('option', { value: String(d[0]), text: d[1],
+                                         selected: d[0] === pa.dauer ? 'selected' : null }));
+      });
+    var kaesten = {};
+    var gitter = el('div', { class: 'party-wahl' }, GK.games.map(function (g) {
+      var box = el('input', { type: 'checkbox' });
+      box.checked = pa.spiele.indexOf(g.id) >= 0;
+      kaesten[g.id] = box;
+      return el('label', { class: 'party-wahl-kachel' }, [
+        box,
+        el('span', { class: 'party-wahl-ic', html: GK.iconHTML(g.icon) }),
+        el('span', { class: 'party-wahl-name', text: g.name })
+      ]);
+    }));
+    var ok = el('button', { class: 'btn btn-gold btn-full', text: '✅ ÜBERNEHMEN' });
+    ok.addEventListener('click', function () {
+      var gewaehlt = Object.keys(kaesten).filter(function (k) { return kaesten[k].checked; });
+      if (!gewaehlt.length) {
+        GK.toast('Mindestens ein Spiel muss dabei sein', 'bad', '🎮');
+        GK.sfx('error');
+        return;
+      }
+      GK.closeModal();
+      tue('action', {
+        action: 'partyset',
+        startChips: parseInt(chips.value, 10),
+        dauer: parseInt(dauer.value, 10),
+        spiele: gewaehlt
+      });
+    });
+    GK.modal({
+      emoji: '⚙️',
+      title: 'Party einstellen',
+      text: 'Gilt für alle — auch für die, die schon in der Lobby sitzen.',
+      nodes: [
+        el('label', { class: 'mp-label', text: 'Startchips' }), chips,
+        el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
+        el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }), gitter,
+        el('div', { style: 'height:10px' }), ok
+      ]
+    });
+  }
+
   function zeichneLobby() {
     var l = MP.lobby;
     var wrap = el('div', { class: 'mp-lobby' });
@@ -381,6 +700,32 @@
       'Hier spielst du gegen <b>echte Leute</b> statt gegen den Automaten. ' +
       'Setz dich an einen offenen Tisch oder mach einen eigenen auf — ' +
       'sobald ein zweiter Platz belegt ist, geht es los.' }));
+
+    /* Der Partymodus steht oben und nicht bei den Tischen: er funktioniert
+       ganz anders — kein Platznehmen, kein Einkauf, sondern die gewohnte
+       Spielhalle fuer alle gleichzeitig. */
+    var partyNeu = el('button', { class: 'btn btn-gold btn-small', text: '+ PARTY' });
+    partyNeu.addEventListener('click', neueParty);
+    wrap.appendChild(el('div', { class: 'mp-spiel party-werbung' }, [
+      el('div', { class: 'mp-spiel-ic', html: GK.iconHTML('party') }),
+      el('div', { class: 'mp-spiel-text' }, [
+        el('h3', { text: 'Partymodus' }),
+        el('p', { text: 'Bis zu acht Leute, dieselbe Spielhalle, dasselbe Startguthaben ' +
+                        'und dieselbe Uhr. Wer den größten Gewinn macht, gewinnt.' }),
+        el('div', { class: 'mp-zahlen' }, [
+          el('span', { html: '<b>' + ((l.partys || []).length) + '</b> ' +
+                             ((l.partys || []).length === 1 ? 'Party' : 'Partys') }),
+          el('span', { class: 'mp-namen', text: (l.partys || []).length
+            ? (l.partys || []).map(function (x) { return x.name; }).join(', ')
+            : 'gerade keine' })
+        ])
+      ]),
+      partyNeu
+    ]));
+
+    if ((l.partys || []).length) {
+      wrap.appendChild(el('div', { class: 'mp-tische' }, l.partys.map(partyKarte)));
+    }
 
     var spiele = el('div', { class: 'mp-spiele' }, l.spiele.map(function (g) {
       var neu = el('button', { class: 'btn btn-gold btn-small', text: '+ TISCH' });
@@ -936,7 +1281,9 @@
     if (!stage || !MP.an) return;
     neueKarten = 0;
     stage.innerHTML = '';
-    stage.appendChild(MP.tisch && MP.tisch.seats ? zeichneTisch() : zeichneLobby());
+    stage.appendChild(
+      MP.tisch && MP.tisch.art === 'party' ? zeichneParty()
+        : (MP.tisch && MP.tisch.seats ? zeichneTisch() : zeichneLobby()));
 
     if (ersterAufbau) ersterAufbau = false;
     else kartenKlang(neueKarten);
@@ -950,6 +1297,11 @@
     /* Die Restzeit laeuft ohne neue Serverantwort weiter. */
     if (uhrTimer) clearInterval(uhrTimer);
     uhrTimer = setInterval(function () {
+      /* Der Party-Countdown laeuft ohne neue Serverantwort weiter. */
+      var c = stage && stage.querySelector('#party-count');
+      if (c && MP.tisch && MP.tisch.startAt) {
+        c.textContent = String(Math.max(0, Math.ceil((MP.tisch.startAt - Date.now()) / 1000)));
+      }
       var u = stage && stage.querySelector('.mp-uhr');
       if (!u || !MP.tisch || !MP.tisch.hand || !MP.tisch.hand.deadline) return;
       var rest = Math.max(0, Math.round((MP.tisch.hand.deadline - Date.now()) / 1000));
