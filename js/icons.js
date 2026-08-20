@@ -424,7 +424,7 @@
   var SYMBOLS = ('baccarat bar bear bear2 bell candles cards cherry chest chip clover club coins crab crown ' +
     'diamondsuit dice dices dragon dragonhead fish flame fortune gem gift heart horse1 horse2 horse3 horse4 horse5 ' +
     'horsehead horseshoe iceberg kelp melon moneybag octopus pearl penguin penguin2 ' +
-    'plinko plum poker reeffish rocket roulettewheel seven shark shell shield slotmachine spade star ticket trident trophy ' +
+    'party plinko plum poker reeffish rocket roulettewheel seven shark shell shield slotmachine spade star ticket trident trophy ' +
     'floe').split(' ');
 
   var SYMBOL_IMGS = {};
@@ -454,7 +454,10 @@
          werden. Bei den gemalten Symbolen kappt ein runder Zuschnitt die
          Ecken — der Raketenspitze fehlte so die Nase. */
       var round = DRAGON_IMGS[name] ? ' gk-round' : '';
-      return '<img class="gk-ic' + round + ' ' + (cls || '') + '" src="' + img + '" alt="" draggable="false">';
+      /* Fehlt die Datei noch, blendet sich das Bild aus statt als kaputtes
+         Symbol stehenzubleiben — ein leerer Platz faellt weniger auf. */
+      return '<img class="gk-ic' + round + ' ' + (cls || '') + '" src="' + img +
+             '" alt="" draggable="false" onerror="this.style.display=\'none\'">';
     }
     var body = I[name];
     if (!body) return '';

@@ -628,7 +628,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Sechs Techno-Loops, live im Browser erzeugt — vom schleppenden Dub-Keller über Melodic und Trance bis zur Industrial-Stahlplatte. Keine Downloads, jederzeit abschaltbar.',
+      text: 'Vier Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und ein Acid-Rausch. Keine Downloads, jederzeit abschaltbar.',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),

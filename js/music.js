@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════
    GAMBAKING — Hintergrundmusik
-   Sechs Techno-Loops, komplett per Web Audio erzeugt. Jeder Track hat
+   Vier Techno-Loops, komplett per Web Audio erzeugt. Jeder Track hat
    seine eigene Besetzung, sein eigenes Schlagzeug und sein eigenes
-   Tempo — vom schleppenden Dub-Keller bis zur Industrial-Stahlplatte.
+   Tempo — vom schleppenden Dub-Keller bis zum Acid-Rausch.
    Keine Audio-Dateien, kein Nachladen, jederzeit abschaltbar.
 
    Ein Loop, der sich alle vier Takte wörtlich wiederholt, wird nach
@@ -322,91 +322,64 @@
       }
     },
     {
-      id: 'neon', name: 'Neonflucht', mood: 'Melodic Techno · Fünfer-Arpeggio & Sog',
-      bpm: 128, swing: 0, cut: 4800,
+      id: 'nebel', name: 'Nebelkammer', mood: 'Dub-Techno · Rhodes-Wolke & Bandecho',
+      bpm: 116, swing: 0, cut: 2000,
+      /* Der zweite Dub-Track, und bewusst anders gebaut als der erste:
+         langsamer, der Akkord kommt aus einer FM-Stimme statt aus Sägezähnen,
+         das Echo steht auf punktierten Vierteln statt auf Achteln, und die
+         Betonung liegt auf der Drei statt auf zwei und vier. Zwei Stücke mit
+         demselben Handgriff wären zwei Mal dasselbe Stück. */
       chords: [
-        [45, [0, 3, 7, 10]], [50, [0, 3, 7, 10]], [43, [0, 4, 7, 11]], [48, [0, 3, 7, 10]],
-        [45, [0, 3, 7, 10]], [50, [0, 3, 7, 10]], [46, [0, 4, 7, 10]], [41, [0, 3, 7, 10]]
-      ],
-      /* Fünf Töne gegen sechzehn Schritte: das Arpeggio steht erst nach fünf
-         Takten wieder auf der Eins. Dieselben Töne, nie dieselbe Betonung. */
-      arp: [0, 7, 12, 3, 10],
-      mel: [
-        [], [],
-        [[0, 15, 6], [6, 12, 4], [10, 10, 6]],
-        [[2, 19, 6], [10, 15, 6]],
-        [], [],
-        [[0, 22, 4], [4, 19, 4], [8, 15, 8]],
-        [[0, 12, 16]]
+        [45, [0, 3, 7, 10, 14]], [45, [0, 3, 7, 10, 14]],
+        [43, [0, 4, 7, 11, 14]], [50, [0, 3, 7, 10, 14]],
+        [48, [0, 3, 7, 10, 14]], [46, [0, 4, 7, 10, 14]],
+        [41, [0, 3, 7, 10, 17]], [43, [0, 3, 7, 10, 14]]
       ],
       step: function (x) {
-        if (x.s % 4 === 0) kick(x.t, 0.27, 'punch');
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.1, 'clap');
-        // Offbeat: Bass und offene Hi-Hat schieben zwischen die Kicks
-        if (x.s % 4 === 2) {
-          hat(x.t, 0.04, 'open');
-          voice(midi(x.root - 12), x.t, x.beat * 0.24,
-                { type: 'sawtooth', vol: 0.17, cut: 780, atk: 0.004 });
+        /* Zwei Atmungen übereinander, mit unterschiedlicher Länge: so trifft
+           dieselbe Kombination erst nach vielen Takten wieder zusammen. */
+        var weit = 0.5 + 0.5 * Math.sin(x.step / 173);
+        var eng = 0.5 + 0.5 * Math.sin(x.step / 61);
+
+        if (x.s % 4 === 0) kick(x.t, 0.29, 'boom');
+        /* Sub liegt lang und legt sich unter zwei Schläge. */
+        if (x.s === 0) voice(midi(x.root - 24), x.t, x.beat * 2.2,
+                             { type: 'sine', vol: 0.21, atk: 0.03 });
+        if (x.s === 11) voice(midi(x.root - 24 + 5), x.t, x.beat * 0.7,
+                              { type: 'sine', vol: 0.12, atk: 0.02 });
+
+        /* Betonung auf der Drei — nicht auf zwei und vier wie üblich. */
+        if (x.s === 8) snare(x.t, 0.05, 'rim');
+        /* Besen in Siebenern, mit einem lauteren Schlag alle elf Schritte. */
+        if (x.step % 7 === 2) hat(x.t, 0.018, 'brush');
+        if (x.step % 11 === 5) hat(x.t, 0.03, 'brush');
+
+        /* Die Rhodes-Wolke: ein FM-Akkord und drei Wiederholungen im Abstand
+           einer punktierten Viertel. Das Echo trägt weiter als der Akkord
+           selbst und wandert dabei von links nach rechts. */
+        if ((x.bar % 2 === 1 && x.s === 4) || (x.bar === 6 && x.s === 12)) {
+          for (var e = 0; e < 4; e++) {
+            chordFm(x.t + e * x.beat * 1.5, x.root + 12, x.ivs, x.beat * (1.1 + e * 0.35), {
+              ratio: 2, index: 1.1 + eng * 1.6,
+              vol: 0.085 * Math.pow(0.6, e), atk: 0.02,
+              pan: e % 2 ? 0.55 : -0.55
+            });
+          }
         }
-        if (x.s % 2 === 1) hat(x.t, 0.014, 'closed');
-        // Pad legt sich unter den ganzen Takt
-        if (x.s === 0) {
-          chord(x.t, x.root, x.ivs, x.beat * 3.9, {
-            type: 'sawtooth', vol: 0.05, detune: 12, atk: x.beat * 0.9, cut: 1400, q: 1.5
+        /* Ein einzelner Ton der Melodica, weit oben, alle vier Takte. */
+        if (x.bar % 4 === 3 && x.s === 6) {
+          fm(midi(x.root + 24 + x.ivs[3]), x.t, x.beat * 2.4, {
+            ratio: 3, index: 1.4, vol: 0.05, atk: 0.12, pan: 0.25
           });
         }
-        /* Das Arpeggio wandert alle zwei Takte eine Oktave höher und wieder
-           zurück — der Sog, der das Stück trägt. */
-        var okt = 12 * (Math.floor(x.step / 32) % 2);
-        voice(midi(x.root + 12 + okt + this.arp[x.step % this.arp.length]), x.t, 0.12, {
-          type: 'sawtooth', vol: 0.06, detune: 10, cut: 2600 + (x.step % 64) * 45,
-          atk: 0.004, pan: (x.step % this.arp.length) / 2.5 - 0.8
-        });
-        // Die Melodie kommt erst in der zweiten Hälfte der Phrase dazu
-        var m = melNote(this.mel, x.bar, x.s);
-        if (m) {
-          voice(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.22, {
-            type: 'sawtooth', vol: 0.075, detune: 8, cut: 3800,
-            vib: 10, vibRate: 4.5, atk: 0.04
+        /* Bandrauschen: die ganze Zeit da, aber nur zu ahnen. Es folgt der
+           langsamen Atmung, damit es nicht als gleichmäßiges Zischen auffällt. */
+        if (x.s % 8 === 0) {
+          noise(x.t, x.beat * 2.1, {
+            vol: 0.006 + weit * 0.008, filter: 'bandpass',
+            freq: 1800 + weit * 2600, q: 0.6, atk: x.beat
           });
         }
-        if (x.last && x.s >= 10) riser(x.t, x.beat * 0.8, 0.035);
-      }
-    },
-    {
-      id: 'jackpot', name: 'Jackpot-Fieber', mood: 'Trance-Hymne · Supersaw & Münzregen',
-      bpm: 132, swing: 0, cut: 7000,
-      chords: [[53, [0, 4, 7, 11]], [55, [0, 4, 7, 10]], [57, [0, 3, 7, 10]], [60, [0, 4, 7, 11]]],
-      mel: [
-        [[0, 19, 6], [6, 17, 4], [10, 16, 6]],
-        [[0, 17, 4], [4, 19, 8], [12, 21, 4]],
-        [[0, 24, 4], [4, 21, 4], [8, 19, 4], [12, 17, 4]],
-        [[0, 16, 8], [8, 19, 8]]
-      ],
-      step: function (x) {
-        if (x.s % 4 === 0) {
-          kick(x.t, 0.28, 'punch');
-          voice(midi(x.root - 24), x.t, x.beat * 0.5, { type: 'sine', vol: 0.16 });
-        }
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.11, 'clap');
-        // Offbeat-Bass und offene Hi-Hat — das Trance-Fundament
-        if (x.s % 4 === 2) {
-          hat(x.t, 0.045, 'open');
-          voice(midi(x.root - 12), x.t, x.beat * 0.22, { type: 'sawtooth', vol: 0.18, cut: 900, atk: 0.004 });
-        }
-        // Zupf-Arpeggio auf jedem Sechzehntel, oktavweise nach oben
-        var n = x.ivs[x.step % x.ivs.length] + 12 * (Math.floor(x.step / x.ivs.length) % 2);
-        voice(midi(x.root + 12 + n), x.t, 0.13,
-              { type: 'sawtooth', vol: 0.055, detune: 14, cut: 3600, atk: 0.004 });
-        // die große Hymne darüber
-        var m = melNote(this.mel, x.bar, x.s);
-        if (m) voice(midi(x.root + 12 + m[1]), x.t, x.beat * m[2] * 0.24, {
-          type: 'sawtooth', vol: 0.085, detune: 11, cut: 5000, vib: 14, vibRate: 5, atk: 0.03
-        });
-        if (x.bar === 0 && x.s === 0) bell(x.t, 1046, 0.085, 1.1);
-        // Snare-Wirbel und Münzregen als Übergang in die nächste Runde
-        if (x.last && x.s >= 8) snare(x.t, 0.045 + (x.s - 8) * 0.012, 'snare');
-        if (x.last && x.s >= 12) coin(x.t, 0.05, 1200 + (x.s - 12) * 260);
       }
     },
     {
@@ -478,61 +451,6 @@
         if (x.last && x.s >= 12) riser(x.t, x.beat, 0.045);
       }
     },
-    {
-      id: 'strobo', name: 'Stroboskop', mood: 'Industrial · Stahlplatte & Blechhall',
-      bpm: 142, swing: 0, cut: 6400,
-      chords: [[41, [0, 3, 7]], [41, [0, 3, 7]], [44, [0, 3, 7]], [39, [0, 4, 7]]],
-      step: function (x) {
-        /* Das Stück läuft in zwei Gesichtern, jedes vier Takte lang: erst
-           stur und trocken, dann rollend und offen. Danach von vorn. */
-        var teil = Math.floor(x.step / 64) % 2;
-
-        /* Der Gabber-Kick läuft durch den Verzerrer, und der macht aus 0.26
-           schon fast Vollausschlag — tanh(0.26 · 4) ist 0.78. Was hier klein
-           aussieht, ist in Wahrheit der lauteste Klang des ganzen Stücks. */
-        if (x.s % 4 === 0) kick(x.t, 0.11, 'gabber');
-        // in der zweiten Hälfte kommt ein Doppelschlag vor jeder Eins dazu
-        if (teil === 1 && x.s === 14) kick(x.t, 0.07, 'gabber');
-        if (x.s === 4 || x.s === 12) snare(x.t, 0.13, 'clap');
-        if (teil === 1 && x.s === 14) snare(x.t, 0.06, 'clap');
-
-        if (x.s % 2 === 1) hat(x.t, teil ? 0.024 : 0.014, 'closed');
-        if (teil === 1 && x.s % 4 === 2) hat(x.t, 0.035, 'open');
-
-        /* Der Bass ist gegattert: jeder dritte Schritt fällt weg. Weil drei
-           und sechzehn nichts gemeinsam haben, sitzt das Loch in jedem Takt
-           woanders.
-
-           Die Lautstärke muss hier niedriger stehen als anderswo: der Bass
-           läuft auf zwei Dritteln aller Sechzehntel mit, und mit dem Wert der
-           übrigen Stücke stapelte er sich mit dem verzerrten Kick bis über
-           die Aussteuerungsgrenze. */
-        if (x.step % 3 !== 0) {
-          voice(midi(x.root - 12), x.t, x.beat * 0.18, {
-            type: 'sawtooth', vol: 0.105, cut: 300 + (x.step % 48) * 60, q: 8, atk: 0.003
-          });
-        }
-        /* Stahlplatte: schepperndes FM mit krummem Verhältnis, springt quer
-           durch das Stereobild. */
-        if (x.step % 4 === 1 || x.step % 9 === 5) {
-          fm(midi(x.root + 24), x.t, 0.11, {
-            ratio: 5.7, index: 7, vol: 0.07, atk: 0.002,
-            pan: ((x.step % 5) / 2) - 1
-          });
-        }
-        // ein trockener Stich auf der Drei, aber nur im harten Teil
-        if (teil === 0 && x.s === 8) {
-          chord(x.t, x.root + 12, x.ivs, x.beat * 0.18, {
-            type: 'square', vol: 0.07, cut: 2200, atk: 0.003
-          });
-        }
-        // Blechhall: alle acht Takte fegt ein Rauschen durch
-        if (x.step % 128 === 112) {
-          noise(x.t, x.beat * 4, { vol: 0.05, filter: 'bandpass', freq: 700, sweep: 8000, q: 1.4, atk: x.beat * 3 });
-        }
-        if (x.last && x.s >= 8 && x.s % 2 === 0) tom(x.t, 0.1, 150 + (x.s - 8) * 30);
-      }
-    }
   ];
 
   var Music = GK.music = {

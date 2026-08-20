@@ -129,7 +129,7 @@
     });
     var sieger = (d.spieler || [])[0];
     GK.modal({
-      emoji: '🏆',
+      icon: 'party',
       title: 'Party vorbei',
       text: sieger
         ? sieger.name + ' macht den dicksten Gewinn: ' + GK.fmtSigned(sieger.gewinn) + ' Chips. ' +
@@ -166,7 +166,8 @@
 
     tafel = el('aside', { class: 'party-tafel', id: 'party-tafel' }, [
       el('div', { class: 'party-tafel-kopf' }, [
-        el('span', { class: 'party-tafel-titel', text: '🏆 PARTY' }),
+        el('span', { class: 'party-tafel-titel',
+                     html: GK.iconHTML('party', 'party-ic') + '<span>PARTY</span>' }),
         el('span', { class: 'party-uhr', id: 'party-uhr', text: '' }),
         raus
       ]),
