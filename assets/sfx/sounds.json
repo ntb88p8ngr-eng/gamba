@@ -21,7 +21,7 @@
     "coin":      { "files": ["ui/coin.mp3"], "volume": 0.2, "rateJitter": 0.06 },
     "cash":      { "files": ["ui/cash.mp3"], "volume": 0.6, "rateJitter": 0.06 },
     "win":       { "files": ["ui/win.mp3"], "volume": 0.6, "rateJitter": 0.06 },
-    "bigwin":    { "files": [] },
+    "bigwin":    { "files": ["ui/bigwin.mp3"], "volume": 0.6, "rateJitter": 0.06 },
     "jackpot":   { "files": ["ui/jackpot.mp3"], "volume": 0.8, "rateJitter": 0.06 },
     "lose":      { "files": ["ui/lose.mp3"], "volume": 0.7, "rateJitter": 0.06 },
     "error":     { "files": ["ui/error.mp3"], "volume": 0.8, "rateJitter": 0.06 },
