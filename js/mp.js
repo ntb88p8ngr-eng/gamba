@@ -469,6 +469,19 @@
       return k;
     }));
 
+    /* Stufensperre. In einer Party mit acht Leuten hat jeder einen anderen
+       Stand — deshalb standardmaessig aus. */
+    var frei = el('input', { type: 'checkbox', checked: 'checked' });
+    var freiZeile = el('label', { class: 'party-schalter' }, [
+      frei,
+      el('span', {}, [
+        el('b', { text: 'Alle Spiele offen' }),
+        el('span', { class: 'party-schalter-was',
+                     text: 'Auch die, die jemand noch nicht freigespielt hat. ' +
+                           'Aus heisst: es zaehlt die eigene Stufe.' })
+      ])
+    ]);
+
     var alle = el('button', { class: 'btn btn-small', text: '☑ ALLE' });
     var keine = el('button', { class: 'btn btn-small', text: '☐ KEINE' });
     alle.addEventListener('click', function () {
@@ -491,6 +504,7 @@
         game: 'party', name: name.value,
         startChips: parseInt(chips.value, 10),
         dauer: parseInt(dauer.value, 10),
+        alleFrei: frei.checked,
         spiele: gewaehlt
       }).then(function (b) {
         if (b && b.party) { MP.tisch = { id: b.party }; MP.seit = 0; anstossen(); }
@@ -507,6 +521,7 @@
         el('label', { class: 'mp-label', text: 'Name' }), name,
         el('label', { class: 'mp-label', text: 'Startchips für alle' }), chips,
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
+        freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }),
         el('div', { class: 'party-wahl-knoepfe' }, [alle, keine]),
         gitter,
@@ -583,7 +598,10 @@
       'Alle starten mit <b>' + GK.fmt(pa.startChips) + ' Chips</b> und spielen ' +
       '<b>' + Math.round(pa.dauer / 60) + ' Minuten</b> lang die Einzelspiele. ' +
       'Gewonnen hat, wer am Ende den größten Gewinn gemacht hat. ' +
-      'Dein Konto bleibt unberührt.' }));
+      'Dein Konto bleibt unberührt. ' +
+      (pa.alleFrei
+        ? 'Alle ausgewählten Spiele sind <b>offen</b>, auch noch nicht freigespielte.'
+        : 'Es gilt die <b>eigene Stufe</b> — wer ein Spiel noch nicht freigespielt hat, kann es nicht öffnen.') }));
 
     wrap.appendChild(el('h2', { class: 'section-title' },
       [el('span', { text: '👥 DABEI (' + pa.spieler.length + '/' + pa.max + ')' })]));
@@ -652,6 +670,17 @@
         dauer.appendChild(el('option', { value: String(d[0]), text: d[1],
                                          selected: d[0] === pa.dauer ? 'selected' : null }));
       });
+    var frei = el('input', { type: 'checkbox' });
+    frei.checked = !!pa.alleFrei;
+    var freiZeile = el('label', { class: 'party-schalter' }, [
+      frei,
+      el('span', {}, [
+        el('b', { text: 'Alle Spiele offen' }),
+        el('span', { class: 'party-schalter-was',
+                     text: 'Auch die, die jemand noch nicht freigespielt hat.' })
+      ])
+    ]);
+
     var kaesten = {};
     var gitter = el('div', { class: 'party-wahl' }, GK.games.map(function (g) {
       var box = el('input', { type: 'checkbox' });
@@ -676,6 +705,7 @@
         action: 'partyset',
         startChips: parseInt(chips.value, 10),
         dauer: parseInt(dauer.value, 10),
+        alleFrei: frei.checked,
         spiele: gewaehlt
       });
     });
@@ -686,6 +716,7 @@
       nodes: [
         el('label', { class: 'mp-label', text: 'Startchips' }), chips,
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
+        freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }), gitter,
         el('div', { style: 'height:10px' }), ok
       ]

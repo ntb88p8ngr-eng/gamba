@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    GAMBAKING — Hintergrundmusik
-   Vier Techno-Loops, komplett per Web Audio erzeugt. Jeder Track hat
+   Fuenf Techno-Loops, komplett per Web Audio erzeugt. Jeder Track hat
    seine eigene Besetzung, sein eigenes Schlagzeug und sein eigenes
    Tempo — vom schleppenden Dub-Keller bis zum Acid-Rausch.
    Keine Audio-Dateien, kein Nachladen, jederzeit abschaltbar.
@@ -449,6 +449,64 @@
         // metallischer Klick wie die Kugel im Roulettekessel
         if (x.s === 3 || x.s === 11) hat(x.t, 0.05, 'tick');
         if (x.last && x.s >= 12) riser(x.t, x.beat, 0.045);
+      }
+    },
+    {
+      id: 'saeure', name: 'Säurebad', mood: 'Acid-Techno · Zwei 303 im Wechsel',
+      bpm: 130, swing: 0, cut: 5200,
+      chords: [
+        [49, [0, 3, 7]], [49, [0, 3, 7]], [47, [0, 4, 7]], [54, [0, 3, 7]],
+        [49, [0, 3, 7]], [52, [0, 3, 7]], [45, [0, 4, 7]], [47, [0, 3, 7]]
+      ],
+      /* Die Linie als Tabelle statt als Formel: [Halbton, Betonung, Bindung],
+         null ist eine Pause. Genau die Pausen unterscheiden dieses Stück vom
+         Turbo-Rausch — dort läuft die 303 durch, hier atmet sie. Eine
+         gebundene Note klingt länger und lässt das Filter weiter wandern,
+         das ist das typische Rutschen einer 303. */
+      linie: [
+        [0, 1, 0], null, [0, 0, 0], [12, 0, 1],
+        [10, 0, 0], null, [0, 1, 0], [3, 0, 1],
+        [0, 0, 0], [7, 0, 0], null, [12, 1, 0],
+        [10, 0, 1], [0, 0, 0], null, [15, 1, 1]
+      ],
+      step: function (x) {
+        /* Das Filter folgt einer eigenen, langsamen Welle statt der Taktzahl.
+           Über sechsundzwanzig Takte hinweg öffnet und schließt es sich einmal
+           — im Turbo-Rausch springt es dagegen bei jedem Taktwechsel. */
+        var welle = 0.5 + 0.5 * Math.sin(x.step / 67);
+
+        if (x.s % 4 === 0) kick(x.t, 0.3, 'hard');
+        /* Ein zusätzlicher Schlag vor der Eins, aber nur in der zweiten
+           Hälfte der Phrase. */
+        if (x.bar >= 4 && x.s === 14) kick(x.t, 0.19, 'hard');
+        if (x.s === 4 || x.s === 12) snare(x.t, 0.09, 'rim');
+        if (x.s % 2 === 1) hat(x.t, x.s % 4 === 3 ? 0.034 : 0.017, 'closed');
+        if (x.step % 6 === 4) hat(x.t, 0.04, 'open');
+        if (x.step % 9 === 2) hat(x.t, 0.04, 'tick');
+
+        var n = this.linie[x.s];
+        if (n) {
+          /* Erste Hälfte tief, zweite Hälfte eine Oktave höher: dieselbe
+             Linie, anderer Charakter — die beiden 303 im Wechselgespräch. */
+          var hoch = x.bar >= 4;
+          var laenge = x.beat * (n[2] ? 0.62 : 0.2);
+          var basis = 240 + welle * 1500 + (n[1] ? 1100 : 0) + (hoch ? 700 : 0);
+          voice(midi(x.root - 12 + n[0] + (hoch ? 12 : 0)), x.t, laenge, {
+            type: 'sawtooth', vol: n[1] ? 0.22 : 0.125, atk: 0.004,
+            cut: basis, sweep: 200 + welle * 900, q: 13
+          });
+        }
+        /* Kurzes Kreischen ganz oben — selten und nie auf derselben Zählzeit. */
+        if (x.step % 47 === 11) {
+          voice(midi(x.root + 24), x.t, x.beat * 0.5, {
+            type: 'sawtooth', vol: 0.055, atk: 0.006,
+            cut: 2600 + welle * 3000, sweep: 700, q: 16, pan: 0.4
+          });
+        }
+        if (x.bar === 3 && x.s === 0) {
+          noise(x.t, 0.55, { vol: 0.04, filter: 'highpass', freq: 5400 });   // Crash
+        }
+        if (x.last && x.s >= 10) riser(x.t, x.beat * 0.9, 0.04);
       }
     },
   ];

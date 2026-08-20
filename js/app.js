@@ -30,7 +30,7 @@
       GK.sfx('error');
       return;
     }
-    if (!GK.isUnlocked(g)) {
+    if (!spielbar(g)) {
       GK.toast(g.name + ' ist noch gesperrt — ab Level ' + g.minLevel, 'bad', '🔒');
       GK.sfx('error');
       return;
@@ -76,13 +76,18 @@
     GK.sfx('whoosh');
   }
 
-  function closeGame() {
+  function closeGame(zwingend) {
     if (currentCleanup) { try { currentCleanup(); } catch (e) {} }
     currentCleanup = null;
     /* Die Aufraeumfunktion des Spiels hatte gerade Gelegenheit, ihren Stand
        zu sichern. Ist keiner da, war die Runde nicht fortsetzbar — dann
-       kommt der Einsatz zurueck, statt im Nichts zu verschwinden. */
-    refundOpenStake();
+       kommt der Einsatz zurueck, statt im Nichts zu verschwinden.
+
+       zwingend heisst: auch ein gesicherter Stand wird aufgeloest. Das
+       braucht das Ende einer Party — dort gibt es kein Spaeter, und eine
+       offen gebliebene Runde wuerde im normalen Casino aufs Konto
+       verrechnet, obwohl ihr Einsatz aus der Party-Kasse kam. */
+    refundOpenStake(zwingend);
     GK.currentGame = null;
     $('#game-stage').innerHTML = '';
   }
@@ -90,8 +95,8 @@
   /* Beim Verlassen und beim Start: liegengebliebene Runde aufloesen. Stand
      der Ausgang schon fest, wird zu Ende gespielt statt erstattet — sonst
      koennte man einen sich abzeichnenden Verlust durch Rausgehen umgehen. */
-  function refundOpenStake() {
-    var r = GK.resolveOpenStake();
+  function refundOpenStake(zwingend) {
+    var r = GK.resolveOpenStake(null, zwingend);
     if (!r) return;
     if (r.settled) {
       var netto = r.chips - r.stake;
@@ -118,6 +123,18 @@
     });
   }
 
+  /**
+   * Darf dieses Spiel gerade gespielt werden?
+   *
+   * Sonst entscheidet allein die Stufe. In einer Party kann der Gastgeber
+   * die Sperre aufheben — er sucht die Spiele fuer alle aus und kann nicht
+   * wissen, wer welches schon freigespielt hat.
+   */
+  function spielbar(g) {
+    if (GK.party && GK.party.an && GK.party.alleFrei()) return true;
+    return GK.isUnlocked(g);
+  }
+
   /* ─────────────── LOBBY ─────────────── */
   /* Level, mit dem die Kacheln zuletzt gezeichnet wurden — damit die Schlösser
      auch dann verschwinden, wenn die XP vom Server kommen (Admin-Geschenk auf
@@ -136,7 +153,7 @@
       ? GK.games.filter(function (g) { return GK.party.erlaubt(g.id); })
       : GK.games;
     liste.forEach(function (g, i) {
-      var open = GK.isUnlocked(g);
+      var open = spielbar(g);
       var kids = [
         el('span', { class: 'game-badge', text: g.badge }),
         el('span', { class: 'game-emoji', html: g.icon ? GK.iconHTML(g.icon) : '' }),
@@ -157,7 +174,7 @@
       }, kids);
 
       card.addEventListener('click', function () {
-        if (!GK.isUnlocked(g)) {
+        if (!spielbar(g)) {
           var info = GK.levelInfo();
           GK.sfx('error');
           GK.shake(card);
@@ -253,7 +270,9 @@
     var lines = [
       '👑 GAMBAKING — DAS FANTASY CASINO',
       '💸 KEIN ECHTGELD · NUR EHRE',
-      '🎰 13 SPIELE · 1 KRONE',
+      /* Die Zahl kommt aus der Registry, nicht aus dem Text — sonst steht
+         hier nach dem nächsten neuen Spiel wieder eine veraltete. */
+      '🎰 ' + GK.games.length + ' SPIELE · 1 KRONE',
       '🔥 WER TRAUT SICH ALL IN?',
       '⭐ LEVEL STEIGEN · SPIELE FREISCHALTEN',
       '🃏 HAUS GEWINNT? NICHT HEUTE',
@@ -628,7 +647,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Vier Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und ein Acid-Rausch. Keine Downloads, jederzeit abschaltbar.',
+      text: 'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Keine Downloads, jederzeit abschaltbar.',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),
@@ -1140,6 +1159,16 @@
        sich die Stufe geaendert hat — hier aendert sich aber die Auswahl. */
     GK.on('party-start', function () {
       showView('view-lobby'); renderGames(); renderGameCount(); renderHero(); renderAll();
+    });
+    /* Party vorbei: erst raus aus dem Spiel, dann raeumt party.js die Kasse
+       ab. Die Reihenfolge ist wichtig — siehe beenden() in js/party.js. */
+    GK.on('party-schliessen', function () {
+      /* Nur wer gerade in einem Spiel sitzt, wird herausgeholt. Wer die Party
+         von der Mehrspieler-Seite aus verlaesst, soll dort bleiben — sonst
+         landet er ohne Grund in der Spielhalle. */
+      var imSpiel = $('#view-game').classList.contains('active');
+      closeGame(true);
+      if (imSpiel) showView('view-lobby');
     });
     GK.on('party-ende', function () {
       renderGames(); renderGameCount(); renderHero(); renderAll();

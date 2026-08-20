@@ -1557,6 +1557,16 @@ body.party-an::before{
 .party-wahl-ic svg,.party-wahl-ic img{width:17px;height:17px}
 .party-wahl-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .party-wahl-knoepfe{display:flex;gap:7px;margin-bottom:7px}
+/* Schalter mit Erklaerung darunter — eine Zeile Text spart eine Rueckfrage. */
+.party-schalter{
+  display:flex;align-items:flex-start;gap:9px;padding:9px 11px;margin:10px 0 4px;
+  border-radius:12px;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)
+}
+.party-schalter:has(input:checked){border-color:var(--lime);background:rgba(124,255,59,.1)}
+.party-schalter input{margin-top:2px}
+.party-schalter b{display:block;font-size:.82rem}
+.party-schalter-was{display:block;font-size:.72rem;opacity:.7;line-height:1.3;margin-top:2px}
 
 /* ── Endstand ── */
 .party-ergebnis{display:flex;flex-direction:column;gap:6px}

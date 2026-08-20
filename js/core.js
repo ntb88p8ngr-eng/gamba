@@ -230,11 +230,18 @@
    * @returns {{chips:number, settled:boolean, stake:number}|null}
    *   settled=true heisst: zu Ende gespielt. settled=false: erstattet.
    */
-  GK.resolveOpenStake = function (gameId) {
+  GK.resolveOpenStake = function (gameId, zwingend) {
     var cur = openStakeGet();
     if (!cur || !cur.amount) return null;
     if (gameId && cur.game !== gameId) return null;
-    if (GK.hasGameState(cur.game)) return null;   // wird fortgesetzt
+    if (GK.hasGameState(cur.game)) {
+      /* Normalerweise laeuft die Runde spaeter weiter. Am Ende einer Party
+         gibt es aber kein Spaeter: der Einsatz kam aus der Party-Kasse, und
+         die wird gleich abgeraeumt. Ein gesicherter Stand wuerde die Runde
+         ins normale Casino tragen und dort aufs Konto verrechnet. */
+      if (!zwingend) return null;
+      GK.clearGameState(cur.game);
+    }
 
     var p = GK.player();
     if (!p) return null;

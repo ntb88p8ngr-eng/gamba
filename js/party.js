@@ -106,6 +106,16 @@
   function beenden(d) {
     if (!Party.an) return;
     Party.an = false;
+
+    /* Zuerst das laufende Spiel schliessen — und zwar solange die Party-Kasse
+       noch steht.
+       Wer beim Zeitablauf mitten in einer Runde sitzt, hat einen offenen
+       Einsatz aus Partychips. Wird die Kasse vorher abgeraeumt, bleibt die
+       Runde offen und loest sich spaeter im normalen Casino auf: dann faellt
+       ein Partygewinn aufs echte Konto. Bei der Rakete war das gut zu sehen,
+       weil sie nach dem Ende einfach weiterflog. */
+    GK.emit('party-schliessen');
+
     var k = GK.partyKasse();
     var gewinn = k ? k.chips - k.start : 0;
     GK.partyKasse(null);
@@ -309,6 +319,19 @@
   Party.erlaubt = function (id) {
     var s = Party.spiele();
     return !s || s.indexOf(id) >= 0;
+  };
+
+  /**
+   * Gilt in dieser Party die Stufensperre?
+   *
+   * Standardmaessig nicht: in einer Party mit acht Leuten hat jeder einen
+   * anderen Stand, und der Gastgeber kann nicht wissen, wer welches Spiel
+   * schon freigespielt hat. Ohne diese Ausnahme saesse die Haelfte vor
+   * verschlossenen Kacheln. Wer will, kann sie in den Einstellungen wieder
+   * einschalten — dann zaehlt die eigene Stufe wie sonst auch.
+   */
+  Party.alleFrei = function () {
+    return !!(Party.daten && Party.daten.alleFrei);
   };
 
   /** Party ganz verlassen (auch aus dem Spielbetrieb heraus). */
