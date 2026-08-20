@@ -770,6 +770,19 @@ function handleRequest(req, res) {
         });
       }
 
+      /* Aufloesen ist die einzige Sache hier, die nicht der eigenen Sitzung
+         gehoert — deshalb haengt sie am Admin-Token und nicht am Spieler. */
+      if (teil === 'aufloesen') {
+        if (!validToken(body.token)) {
+          return sendJSON(res, 403, { error: 'Nur der Admin darf das' });
+        }
+        var weg = mp.aufloesen(body.table, 'Vom Admin aufgelöst');
+        if (weg.error) return sendJSON(res, weg.code || 400, { error: weg.error });
+        pushFeed('👑 ADMIN: ' + (weg.art === 'party' ? 'Party' : 'Tisch') + ' "' +
+                 weg.name + '" aufgelöst', 'admin');
+        return sendJSON(res, 200, Object.assign({ state: publicState() }, weg));
+      }
+
       var out;
       if (teil === 'create') out = mp.create(me, body);
       else if (teil === 'join') out = mp.join(me, body);

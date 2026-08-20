@@ -191,6 +191,8 @@ function createMP(deps) {
       maxBuy: bb * 200,
       seats: new Array(g.seats).fill(null),
       createdAt: now(),
+      /* Wann sich zuletzt etwas getan hat — daran haengt die Leerlauf-Frist. */
+      stillSeit: now(),
       v: seq + 1,
       hand: null,
       naechste: 0,
@@ -255,6 +257,7 @@ function createMP(deps) {
       stack: einkauf, buyIn: einkauf,
       at: now(), bereit: true, weg: 0
     };
+    t.stillSeit = now();
     touch(id);
     log(t, p.name + ' setzt sich mit ' + einkauf + ' Chips an den Tisch' +
         (t.hand && !t.hand.ende ? ' — ab der nächsten Hand dabei' : ''));
@@ -306,6 +309,7 @@ function createMP(deps) {
   function stufeVon(s) { return BOT_STUFEN[s && s.level] || BOT_STUFEN.mittel; }
 
   function addBot(t, opts) {
+    t.stillSeit = now();
     var frei = t.seats.indexOf(null);
     if (frei < 0) return { error: 'Der Tisch ist voll', code: 409 };
     if (t.game === 'coinflip') return { error: 'Beim Münzduell spielst du gegen echte Leute', code: 400 };
@@ -427,12 +431,81 @@ function createMP(deps) {
     return out.error;
   }
 
+  /* ── Aufloesen ──────────────────────────────────────────────────────
+     Ein Tisch oder eine Party wird abgeraeumt und alle gehen leer aus — mit
+     ihren Chips, versteht sich. Zwei Wege fuehren hierher: der Admin raeumt
+     von Hand auf, oder eine Runde kommt gar nicht erst in Gang. */
+
+  /* So lange darf eine Lobby stehen, ohne dass etwas passiert. Gemessen wird
+     ab der letzten Aenderung, nicht ab dem Aufmachen: wer nach zwei Minuten
+     dazukommt, verlaengert die Frist fuer alle. Sonst loeste sich ein Tisch
+     genau in dem Moment auf, in dem er endlich voll wird. */
+  var LEER_MS = 3 * 60000;
+
+  /**
+   * Tisch oder Party aufloesen.
+   *
+   * Bei einem Tisch muss jeder Stapel zurueck aufs Konto — deshalb geht das
+   * ueber leave() je Platz und nicht ueber ein blosses Loeschen aus der
+   * Sammlung. Bots haben kein Konto, die fallen einfach weg.
+   */
+  function aufloesen(id, grund) {
+    var t = tables.get(String(id || ''));
+    if (t) {
+      log(t, grund || 'Tisch aufgelöst');
+      t.seats.slice().forEach(function (sitz) {
+        if (sitz && !sitz.bot) leave(sitz.id, grund || 'Tisch aufgelöst');
+      });
+      tables.delete(t.id);
+      deps.save();
+      bump(null);
+      return { ok: true, art: 'tisch', name: t.name };
+    }
+    var pa = partys.get(String(id || ''));
+    if (pa) {
+      /* In einer Party liegen keine Chips vom Konto — die Partykasse gehoert
+         der Party. Es reicht, sie wegzunehmen; die Browser merken es an der
+         404 und raeumen ihre Kasse selbst ab. */
+      partys.delete(pa.id);
+      bump(null);
+      return { ok: true, art: 'party', name: pa.name };
+    }
+    return { error: 'Diesen Tisch gibt es nicht mehr', code: 404 };
+  }
+
+  /** Wann hat sich an dieser Lobby zuletzt etwas getan? */
+  function ruehrung(t) {
+    return t.stillSeit || t.createdAt || now();
+  }
+
+  /**
+   * Lobbys aufraeumen, in denen nichts in Gang kommt.
+   *
+   * Ein Tisch, an dem seit drei Minuten niemand mehr dazugekommen ist und
+   * der immer noch keine Hand gespielt hat, steht nur im Weg — er belegt
+   * einen Platz in der Uebersicht und haelt die Chips seiner Wartenden fest.
+   * Dasselbe gilt fuer eine Party, die nie gestartet wird.
+   */
+  function leerlauf(jetzt) {
+    tables.forEach(function (t) {
+      if (t.hand) return;                       // laeuft, oder lief schon
+      if (jetzt - ruehrung(t) < LEER_MS) return;
+      aufloesen(t.id, 'Niemand hat gespielt — Tisch aufgelöst');
+    });
+    partys.forEach(function (pa) {
+      if (pa.status !== 'lobby') return;
+      if (jetzt - ruehrung(pa) < LEER_MS) return;
+      aufloesen(pa.id, 'Party nicht gestartet');
+    });
+  }
+
   /** Aufstehen. Der Stapel geht zurueck aufs Konto. */
   function leave(id, grund) {
     var raus = leaveParty(id);
     if (raus) return raus;
     var t = tableOf(id);
     if (!t) return { ok: true };
+    t.stillSeit = now();
     var i = seatOf(t, id);
     var s = t.seats[i];
     var p = deps.players()[id];
@@ -524,6 +597,7 @@ function createMP(deps) {
     var etwas = false;
 
     partyTick(jetzt);
+    leerlauf(jetzt);
 
     tables.forEach(function (t) {
       // wer lange nicht mehr da war, wird vom Tisch genommen
@@ -742,10 +816,18 @@ function createMP(deps) {
          Haelfte vor verschlossenen Kacheln, weil der Gastgeber ein Spiel
          ausgesucht hat, das erst ab Stufe sieben aufgeht. */
       alleFrei: opts.alleFrei !== false,
+      /* Nachschub: wer alles verspielt hat, bekommt diesen Betrag geschenkt
+         und spielt weiter. 0 heisst aus — dann sitzt der Pleitegeier bis zum
+         Ende daneben. Der Nachschub zaehlt gegen den Gewinn (siehe
+         sichtParty), sonst gewaenne die Rangliste, wer am oeftesten pleite
+         geht. */
+      nachschub: opts.nachschub === undefined ? 250 : clamp(int(opts.nachschub), 0, 100000),
       spieler: [],
       startAt: 0,
       endeAt: 0,
       meldungen: [],
+      createdAt: now(),
+      stillSeit: now(),
       v: seq + 1
     };
     partys.set(pa.id, pa);
@@ -779,8 +861,9 @@ function createMP(deps) {
     pa.spieler.push({
       id: id, name: p.name, avatar: p.avatar,
       chips: pa.startChips, start: pa.startChips,
-      besterWin: 0, runden: 0, at: now()
+      nachschub: 0, besterWin: 0, runden: 0, at: now()
     });
+    pa.stillSeit = now();
     touch(id);
     bumpParty(pa);
     return { ok: true, party: pa.id };
@@ -798,6 +881,7 @@ function createMP(deps) {
     /* Geht der Gastgeber, uebernimmt der Naechste — sonst haengt eine Party
        ohne jemanden, der sie starten darf. */
     if (pa.host === id) pa.host = pa.spieler[0].id;
+    pa.stillSeit = now();
     bumpParty(pa);
     return { ok: true };
   }
@@ -833,9 +917,13 @@ function createMP(deps) {
       if (op.dauer !== undefined) pa.dauer = clamp(int(op.dauer), 60, 3600);
       if (op.spiele !== undefined) pa.spiele = reinigeSpiele(op.spiele);
       if (op.alleFrei !== undefined) pa.alleFrei = !!op.alleFrei;
+      if (op.nachschub !== undefined) pa.nachschub = clamp(int(op.nachschub), 0, 100000);
       if (op.name !== undefined) pa.name = String(op.name).slice(0, 24) || pa.name;
       /* Das Startguthaben gilt fuer alle, auch fuer die, die schon da sind. */
-      pa.spieler.forEach(function (s) { s.chips = pa.startChips; s.start = pa.startChips; });
+      pa.spieler.forEach(function (s) {
+        s.chips = pa.startChips; s.start = pa.startChips; s.nachschub = 0;
+      });
+      pa.stillSeit = now();
       bumpParty(pa);
       return { ok: true };
     }
@@ -848,7 +936,8 @@ function createMP(deps) {
       pa.startAt = now() + P_COUNTDOWN;
       pa.endeAt = pa.startAt + pa.dauer * 1000;
       pa.spieler.forEach(function (s) {
-        s.chips = pa.startChips; s.start = pa.startChips; s.besterWin = 0; s.runden = 0;
+        s.chips = pa.startChips; s.start = pa.startChips;
+        s.nachschub = 0; s.besterWin = 0; s.runden = 0;
       });
       pa.meldungen = [];
       bumpParty(pa);
@@ -864,6 +953,9 @@ function createMP(deps) {
       var hoechst = pa.startChips * 1000;
       mich.chips = clamp(int(op.chips), 0, hoechst);
       mich.runden = clamp(int(op.runden), 0, 1000000);
+      /* Wieviel geschenkter Nachschub bisher drinsteckt. Der Browser zaehlt
+         mit, der Server nimmt es entgegen — und zieht es vom Gewinn ab. */
+      if (op.nachschub !== undefined) mich.nachschub = clamp(int(op.nachschub), 0, hoechst);
       mich.at = now();
       if (int(op.besterWin) > mich.besterWin) {
         mich.besterWin = clamp(int(op.besterWin), 0, hoechst);
@@ -897,7 +989,8 @@ function createMP(deps) {
       pa.status = 'lobby';
       pa.startAt = 0; pa.endeAt = 0; pa.meldungen = [];
       pa.spieler.forEach(function (s) {
-        s.chips = pa.startChips; s.start = pa.startChips; s.besterWin = 0; s.runden = 0;
+        s.chips = pa.startChips; s.start = pa.startChips;
+        s.nachschub = 0; s.besterWin = 0; s.runden = 0;
       });
       bumpParty(pa);
       return { ok: true };
@@ -933,8 +1026,12 @@ function createMP(deps) {
   }
 
   function sichtParty(pa, viewer) {
+    /* Gewinn heisst: was am Ende dasteht, minus Startguthaben, minus allem
+       geschenkten Nachschub. Ohne den Abzug fuehrte die Rangliste an, wer am
+       oeftesten pleite ging — jede Gratisgabe wuerde als Gewinn zaehlen. */
+    function gewinn(s) { return s.chips - s.start - (s.nachschub || 0); }
     var rang = pa.spieler.slice().sort(function (a, b) {
-      return (b.chips - b.start) - (a.chips - a.start) || b.chips - a.chips;
+      return gewinn(b) - gewinn(a) || b.chips - a.chips;
     });
     return {
       art: 'party',
@@ -951,6 +1048,7 @@ function createMP(deps) {
       dauer: pa.dauer,
       spiele: pa.spiele.slice(),
       alleFrei: !!pa.alleFrei,
+      nachschub: pa.nachschub || 0,
       max: P_MAX,
       startAt: pa.startAt,
       endeAt: pa.endeAt,
@@ -959,7 +1057,8 @@ function createMP(deps) {
       spieler: rang.map(function (s) {
         return {
           id: s.id, name: s.name, avatar: s.avatar,
-          chips: s.chips, gewinn: s.chips - s.start, runden: s.runden,
+          chips: s.chips, gewinn: gewinn(s), runden: s.runden,
+          nachschub: s.nachschub || 0,
           besterWin: s.besterWin, online: isOnline(s.id), ich: s.id === viewer
         };
       })
@@ -1873,7 +1972,7 @@ function createMP(deps) {
       partyListe.push({
         id: pa.id, name: pa.name, status: pa.status,
         startChips: pa.startChips, dauer: pa.dauer,
-        spiele: pa.spiele.length, max: P_MAX,
+        spiele: pa.spiele.length, max: P_MAX, nachschub: pa.nachschub || 0,
         besetzt: pa.spieler.length,
         spieler: pa.spieler.map(function (s) {
           return { name: s.name, avatar: s.avatar, online: isOnline(s.id) };
@@ -1975,6 +2074,7 @@ function createMP(deps) {
     shutdown: shutdown,
     touch: touch,
     lobby: lobby,
+    aufloesen: aufloesen,
     wait: wait,
     seq: function () { return seq; },
     create: createTable,
