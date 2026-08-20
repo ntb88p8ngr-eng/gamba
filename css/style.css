@@ -655,6 +655,50 @@ select.input option{background:#1a0138}
 .range-row{display:flex;align-items:center;gap:12px}
 input[type=range]{flex:1;accent-color:var(--pink)}
 
+/* ── Admin-Panel: Abschnitte ──
+   Auf dem Handy bleibt alles wie gehabt untereinander, in der Breite des
+   normalen Dialogs. Erst auf dem Rechner (ab 900 px) wird der Dialog breit
+   und die Abschnitte stehen als Karten nebeneinander. */
+.admin-gitter{display:flex;flex-direction:column;gap:16px}
+.admin-feld{min-width:0}
+
+/* Quoten je Spiel */
+.quoten-liste{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto}
+.quote-zeile{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:11px;background:rgba(255,255,255,.04)}
+.quote-zeile.aus{opacity:.45}
+.quote-ic{width:22px;height:22px;flex:0 0 auto;display:grid;place-items:center}
+.quote-ic img,.quote-ic svg{width:100%;height:100%;object-fit:contain}
+.quote-name{flex:0 0 38%;min-width:0;font-size:.76rem;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quote-zeile input[type=range]{flex:1;min-width:60px}
+.quote-wert{flex:0 0 52px;text-align:right;font-family:'Bungee',sans-serif;font-size:.68rem;color:var(--gold)}
+.quote-zeile.hoch .quote-wert{color:var(--lime)}
+.quote-zeile.tief .quote-wert{color:var(--red)}
+
+@media (min-width:900px){
+  .modal.weit{width:min(1180px,96vw);max-height:92vh}
+  .modal.weit .admin-gitter{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px;align-items:start
+  }
+  .modal.weit .admin-feld{
+    background:rgba(0,0,0,.26);border:2px solid var(--line);border-radius:18px;padding:14px 16px
+  }
+  .modal.weit .admin-feld--breit{grid-column:1/-1}
+  .modal.weit .admin-players{max-height:320px}
+  /* Die Spielliste selbst noch einmal zweispaltig — sonst waere die Karte
+     ueber die volle Breite eine sehr lange Schlange. */
+  .modal.weit .quoten-liste{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 20px;max-height:none;overflow:visible
+  }
+}
+@media (min-width:1280px){
+  .modal.weit .admin-gitter{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+/* Drei Spalten Quoten erst, wenn eine Zeile auch den ganzen Spielnamen
+   fasst — sonst steht dort ueberall "Drachenmü…". */
+@media (min-width:1600px){
+  .modal.weit .quoten-liste{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
 /* ═══════════ FOOTER ═══════════ */
 .footer{
   border-top:2px solid var(--line);margin-top:40px;padding:26px clamp(12px,4vw,30px) 40px;

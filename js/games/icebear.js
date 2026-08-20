@@ -166,8 +166,8 @@
         var broke = t === cracks[s];
 
         // Admin-Luck darf einen Fehltritt gnädig umleiten
-        var pl = GK.player();
-        if (broke && pl && pl.luck > 50 && Math.random() < ((pl.luck - 50) / 50) * 0.45) {
+        var lk = GK.luckOf('icebear');
+        if (broke && lk > 50 && Math.random() < ((lk - 50) / 50) * 0.45) {
           cracks[s] = (t + 1) % MODES[mode].tiles;
           broke = false;
         }

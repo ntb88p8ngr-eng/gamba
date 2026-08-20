@@ -71,12 +71,27 @@
   };
   var TIER_FACTOR = { outer: 1, mid: 1.4, inner: 2.2 };
 
-  function rollItem(tier) {
+  function roheWahl(tier) {
     var table = ITEM_WEIGHTS[tier];
     var total = table.reduce(function (s, x) { return s + x[1]; }, 0) + 100; // Rest = leer
     var r = Math.random() * total;
     for (var i = 0; i < table.length; i++) { r -= table[i][1]; if (r <= 0) return table[i][0]; }
     return null;
+  }
+
+  /**
+   * Der Glücks-Regler würfelt eine Kachel noch einmal aus: bei Glück eine
+   * Falle oder Feuerkammer, bei Pech einen Fund. Ein zweiter Wurf ist ein
+   * Schubs, keine Garantie — er kann genauso gut wieder dasselbe bringen.
+   */
+  function rollItem(tier) {
+    var w = roheWahl(tier);
+    var l = GK.luckOf('smaugcave');
+    if (l === 50) return w;
+    var def = w && ITEM_DEFS[w];
+    if (l > 50 && def && def.danger && Math.random() < ((l - 50) / 50) * 0.5) return roheWahl(tier);
+    if (l < 50 && def && !def.danger && Math.random() < ((50 - l) / 50) * 0.4) return roheWahl(tier);
+    return w;
   }
 
   var STAGES = [

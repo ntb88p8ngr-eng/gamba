@@ -61,6 +61,8 @@
       currentId: null,
       players: {},
       feed: [],
+      /* Quote je Spiel, 0..100 mit 50 als neutral. Was fehlt, laeuft neutral. */
+      spielLuck: {},
       settings: { sound: true, volume: 50, adminPin: '1337', chaos: true, cardTheme: 'eerie' },
       admin: false
     };
@@ -97,6 +99,7 @@
         var parsed = JSON.parse(raw);
         state.players = parsed.players || {};
         state.feed = parsed.feed || [];
+        state.spielLuck = parsed.spielLuck || {};
         state.settings = Object.assign(state.settings, parsed.settings || {});
       }
     } catch (e) { /* korrupte Daten -> frischer Start */ }
@@ -104,7 +107,7 @@
   function saveLocal() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
-        players: state.players, feed: state.feed,
+        players: state.players, feed: state.feed, spielLuck: state.spielLuck,
         settings: { adminPin: state.settings.adminPin }
       }));
     } catch (e) { /* z.B. privater Modus */ }
@@ -274,12 +277,13 @@
   /** Serverstand übernehmen. Gibt zurück, ob sich etwas geändert hat. */
   GK.adoptState = function (s) {
     if (!s || !s.players) return false;
-    var before = JSON.stringify([state.players, state.feed]);
+    var before = JSON.stringify([state.players, state.feed, state.spielLuck]);
     state.players = s.players;
     state.feed = s.feed || [];
+    state.spielLuck = s.spielLuck || {};
     if (state.currentId && !state.players[state.currentId]) state.currentId = null;
     GK.save();
-    return JSON.stringify([state.players, state.feed]) !== before;
+    return JSON.stringify([state.players, state.feed, state.spielLuck]) !== before;
   };
 
   /**
@@ -681,17 +685,56 @@
 
   /* ─────────────────────────── LUCK ─────────────────────────── */
 
+  /**
+   * Zwei Regler wirken auf dasselbe Glueck:
+   *
+   *   - der persoenliche (p.luck) — er verschiebt einen einzelnen Spieler,
+   *   - die Quote je Spiel (state.spielLuck) — sie verschiebt ein Spiel fuer
+   *     alle, damit sich einzelne Spiele nachjustieren lassen, ohne jedem
+   *     Spieler einzeln am Glueck zu drehen.
+   *
+   * Beide zaehlen als Abweichung von 50 und werden addiert: ein Spieler auf
+   * 60 in einem Spiel auf 60 landet bei 70.
+   */
+  GK.gameLuck = function (id) {
+    var w = state.spielLuck ? state.spielLuck[id || GK.currentGame] : undefined;
+    return w === undefined ? 50 : w;
+  };
+
+  /** Quote eines Spiels setzen (nur Admin). 50 heisst neutral. */
+  GK.setGameLuck = function (id, wert) {
+    if (!id) return Promise.resolve(null);
+    state.spielLuck = state.spielLuck || {};
+    wert = Math.max(0, Math.min(100, Math.round(Number(wert) || 0)));
+    if (wert === 50) delete state.spielLuck[id];
+    else state.spielLuck[id] = wert;
+    return GK.commit('gameLuck', { game: id, luck: wert });
+  };
+
+  /** Alle Spiele zurueck auf neutral. */
+  GK.resetGameLuck = function () {
+    state.spielLuck = {};
+    return GK.commit('gameLuck', { alle: true });
+  };
+
+  /** Das Glueck, das gerade wirklich zaehlt — 0..100, 50 ist neutral. */
+  GK.luckOf = function (gameId) {
+    var pl = GK.player();
+    var eigen = (pl && pl.luck !== undefined) ? pl.luck : 50;
+    return Math.max(0, Math.min(100, eigen + (GK.gameLuck(gameId) - 50)));
+  };
+
   /** Biegt eine Wahrscheinlichkeit anhand des Luck-Werts (50 = neutral). */
-  GK.luckify = function (p) {
+  GK.luckify = function (p, gameId) {
     var pl = GK.player();
     if (!pl) return p;
-    var l = (pl.luck === undefined ? 50 : pl.luck);
+    var l = GK.luckOf(gameId);
     var bias = (l - 50) / 50; // -1 .. +1
     if (bias === 0) return p;
     if (bias > 0) return p + (1 - p) * bias * 0.6;
     return p * (1 + bias * 0.6);
   };
-  GK.luckRoll = function (prob) { return Math.random() < GK.luckify(prob); };
+  GK.luckRoll = function (prob, gameId) { return Math.random() < GK.luckify(prob, gameId); };
 
 
 
@@ -1117,6 +1160,10 @@
     if (opts.title) content.appendChild(GK.el('h3', { text: opts.title }));
     if (opts.text) content.appendChild(GK.el('p', { html: opts.text }));
     (opts.nodes || []).forEach(function (n) { content.appendChild(n); });
+    /* weit: breiter Dialog fuer Panels mit vielen Reglern. Auf dem Handy
+       aendert die Klasse nichts — dort greift sie erst ab 900 px. */
+    var kasten = root.querySelector('.modal');
+    if (kasten) kasten.classList.toggle('weit', !!opts.weit);
     root.hidden = false;
     root.querySelector('.modal-x').style.display = opts.locked ? 'none' : '';
     $$('[data-close]', root).forEach(function (b) { b.style.pointerEvents = opts.locked ? 'none' : ''; });

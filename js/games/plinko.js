@@ -193,9 +193,9 @@
       function nextDir(b) {
         // leichter Drall Richtung Rand, wenn der Admin dem Spieler Glück geschenkt hat
         var p = 0.5;
-        var pl = GK.player();
-        if (pl && pl.luck > 50) {
-          var pull = ((pl.luck - 50) / 50) * 0.22;
+        var lk = GK.luckOf('plinko');
+        if (lk > 50) {
+          var pull = ((lk - 50) / 50) * 0.22;
           p = b.k > b.row / 2 ? 0.5 + pull : 0.5 - pull;
         }
         return Math.random() < p ? 1 : 0;
