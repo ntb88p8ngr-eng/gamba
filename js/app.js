@@ -1166,6 +1166,180 @@
       GK.toast('Alle Quoten stehen wieder neutral', 'gold', '⚖️');
     });
 
+    /* ── Statistik ──
+       Der Server rechnet die Zahlen aus (siehe /api/stats), hier werden sie
+       nur gezeichnet. Umschaltbar sind Zeitraum, Reihe und Zuschnitt — alles
+       drei sind einfache Knopfreihen, damit man mit einem Blick sieht, was
+       gerade gezeigt wird. */
+    var statSpanne = 12 * 3600000;      // 12 Stunden
+    var statReihe = 'netto';
+    var statSpieler = '';               // leer = alle
+    var statSpiel = '';                 // leer = alle
+    var statDaten = null;
+    var statLaeuft = false;
+
+    var statCanvas = el('canvas', { class: 'stat-canvas', width: '900', height: '260' });
+    var statKopf = el('div', { class: 'stat-kopf' });
+    var statTabelle = el('div', { class: 'stat-tabelle' });
+
+    var SPANNEN = [['1 Std', 3600000], ['12 Std', 12 * 3600000], ['24 Std', 86400000],
+                   ['7 Tage', 7 * 86400000], ['30 Tage', 30 * 86400000], ['Gesamt', 0]];
+    var REIHEN = [['Netto Spieler', 'netto'], ['Einsätze', 'einsatz'],
+                  ['Auszahlungen', 'gewinn'], ['Runden', 'runden'], ['Logins', 'logins']];
+
+    function knopfReihe(paare, holen, setzen) {
+      var box = el('div', { class: 'stat-knoepfe' });
+      var knoepfe = paare.map(function (pa) {
+        var b = el('button', { class: 'chip-btn', text: pa[0] });
+        b.addEventListener('click', function () {
+          setzen(pa[1]);
+          GK.sfx('click');
+          knoepfe.forEach(function (o) { o.b.classList.toggle('sel', o.wert === holen()); });
+        });
+        box.appendChild(b);
+        return { b: b, wert: pa[1] };
+      });
+      knoepfe.forEach(function (o) { o.b.classList.toggle('sel', o.wert === holen()); });
+      return box;
+    }
+
+    var spannenReihe = knopfReihe(SPANNEN, function () { return statSpanne; },
+      function (v) { statSpanne = v; statHolen(); });
+    var reihenReihe = knopfReihe(REIHEN, function () { return statReihe; },
+      function (v) { statReihe = v; statZeichnen(); });
+
+    var spielerWahl = el('select', { class: 'mp-feld' });
+    var spielWahl = el('select', { class: 'mp-feld' });
+    function wahlenFuellen() {
+      spielerWahl.innerHTML = '';
+      spielerWahl.appendChild(el('option', { value: '', text: 'Alle Spieler' }));
+      GK.playerList().slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
+        .forEach(function (p) {
+          spielerWahl.appendChild(el('option', { value: p.id, text: p.name,
+                                                 selected: p.id === statSpieler ? 'selected' : null }));
+        });
+      spielWahl.innerHTML = '';
+      spielWahl.appendChild(el('option', { value: '', text: 'Alle Spiele' }));
+      GK.games.forEach(function (g) {
+        spielWahl.appendChild(el('option', { value: g.id, text: g.name,
+                                             selected: g.id === statSpiel ? 'selected' : null }));
+      });
+    }
+    spielerWahl.addEventListener('change', function () { statSpieler = spielerWahl.value; statHolen(); });
+    spielWahl.addEventListener('change', function () { statSpiel = spielWahl.value; statHolen(); });
+
+    function statHolen() {
+      if (statLaeuft || !GK.net || !GK.net.stats) return;
+      statLaeuft = true;
+      statKopf.textContent = 'Lade…';
+      GK.net.stats({ spanne: statSpanne, spieler: statSpieler, spiel: statSpiel })
+        .then(function (d) {
+          statLaeuft = false;
+          statDaten = d;
+          statZeichnen();
+        }).catch(function (e) {
+          statLaeuft = false;
+          statKopf.textContent = 'Statistik nicht erreichbar' + (e && e.message ? ': ' + e.message : '');
+        });
+    }
+
+    function statZeichnen() {
+      var d = statDaten;
+      if (!d) return;
+      var g = d.gesamt;
+      statKopf.innerHTML =
+        '<span><b>' + GK.fmt(g.runden) + '</b> Runden</span>' +
+        '<span><b>' + GK.fmt(g.einsatz) + '</b> gesetzt</span>' +
+        '<span><b>' + GK.fmt(g.gewinn) + '</b> ausgezahlt</span>' +
+        '<span class="' + (g.netto >= 0 ? 'plus' : 'minus') + '"><b>' + GK.fmtSigned(g.netto) +
+          '</b> für die Spieler</span>' +
+        '<span><b>' + (g.einsatz ? Math.round(g.quote * 1000) / 10 : 0) + ' %</b> Quote</span>' +
+        '<span><b>' + GK.fmt(g.logins) + '</b> Logins</span>' +
+        '<span><b>' + GK.fmt(g.aktive) + '</b> aktive von ' + GK.fmt(g.spieler) + '</span>';
+
+      /* ── Kurve ── */
+      var c = statCanvas, ctx = c.getContext('2d');
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      var br = c.clientWidth || 900, ho = 260;
+      c.width = Math.round(br * dpr); c.height = Math.round(ho * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, br, ho);
+
+      var werte = d.punkte.map(function (p) {
+        if (statReihe === 'netto') return p.gewinn - p.einsatz;
+        return p[statReihe] || 0;
+      });
+      var max = Math.max(1, Math.max.apply(null, werte.map(Math.abs)));
+      var null0 = statReihe === 'netto' ? ho / 2 : ho - 26;
+      var hoch = statReihe === 'netto' ? (ho / 2 - 18) : (ho - 46);
+      var bx = br / werte.length;
+
+      // Gitter
+      ctx.strokeStyle = 'rgba(255,255,255,.09)';
+      ctx.lineWidth = 1;
+      for (var i = 0; i <= 4; i++) {
+        var y = 10 + i * (ho - 36) / 4;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(br, y); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,.28)';
+      ctx.beginPath(); ctx.moveTo(0, null0); ctx.lineTo(br, null0); ctx.stroke();
+
+      // Balken
+      werte.forEach(function (w, i) {
+        var h = (Math.abs(w) / max) * hoch;
+        var x = i * bx + 1.5;
+        var oben = w >= 0 ? null0 - h : null0;
+        ctx.fillStyle = statReihe === 'netto'
+          ? (w >= 0 ? 'rgba(124,255,59,.75)' : 'rgba(255,59,107,.75)')
+          : 'rgba(0,229,255,.7)';
+        ctx.fillRect(x, oben, Math.max(1, bx - 3), Math.max(1, h));
+      });
+
+      // Beschriftung: Anfang, Mitte, Ende
+      ctx.fillStyle = 'rgba(255,255,255,.6)';
+      ctx.font = '11px system-ui, sans-serif';
+      var f = function (t) {
+        var dt = new Date(t);
+        return d.bis - d.von > 2 * 86400000
+          ? dt.getDate() + '.' + (dt.getMonth() + 1) + '.'
+          : ('0' + dt.getHours()).slice(-2) + ':' + ('0' + dt.getMinutes()).slice(-2);
+      };
+      ctx.textAlign = 'left'; ctx.fillText(f(d.von), 2, ho - 6);
+      ctx.textAlign = 'center'; ctx.fillText(f((d.von + d.bis) / 2), br / 2, ho - 6);
+      ctx.textAlign = 'right'; ctx.fillText(f(d.bis), br - 2, ho - 6);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      ctx.fillText('max ' + GK.fmt(Math.round(max)), 2, 12);
+
+      /* ── Tabelle: welche Spiele zahlen für die Spieler positiv? ── */
+      statTabelle.innerHTML = '';
+      var reihen = (d.spiele || []).slice(0, 30);
+      if (!reihen.length) {
+        statTabelle.appendChild(el('div', { class: 'feed-empty', text: 'In diesem Zeitraum wurde nicht gespielt.' }));
+      } else {
+        statTabelle.appendChild(el('div', { class: 'stat-zeile kopf' }, [
+          el('span', { class: 'nm', text: 'Spiel' }),
+          el('span', { text: 'Runden' }),
+          el('span', { text: 'Einsatz' }),
+          el('span', { text: 'Quote' }),
+          el('span', { text: 'Netto Spieler' })
+        ]));
+        reihen.forEach(function (r) {
+          var sp = GK.gameById(r.id);
+          statTabelle.appendChild(el('div', { class: 'stat-zeile' + (r.netto >= 0 ? ' plus' : '') }, [
+            el('span', { class: 'nm', text: sp ? sp.name : (r.id || '—') }),
+            el('span', { text: GK.fmt(r.runden) }),
+            el('span', { text: GK.fmt(r.einsatz) }),
+            el('span', { text: (Math.round(r.quote * 1000) / 10) + ' %' }),
+            el('span', { class: r.netto >= 0 ? 'plus' : 'minus', text: GK.fmtSigned(r.netto) })
+          ]));
+        });
+      }
+    }
+
+    var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
+    statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
+
     /* ── Nächster Wipe ──
        Datum wählen, Haken für die Stufen setzen, fertig. Um Mitternacht
        dieses Tages setzt der Server alle Konten zurück — er sieht dafür
@@ -1219,6 +1393,8 @@
     renderList();
     renderMP();
     renderQuoten();
+    wahlenFuellen();
+    statHolen();
     wipeSync();
     syncLuck();
 
@@ -1273,6 +1449,21 @@
             el('div', { style: 'height:8px' }),
             el('div', { class: 'modal-actions' }, [quotenNeutral]),
             el('p', { class: 'hint', text: '50 ist neutral, Zehntel sind möglich — 50,5 ist ein Hauch gnädiger. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat stehen nicht in der Liste: dort werden echte Karten ausgeteilt, da gibt es nichts zu schieben.' })
+          ], true),
+
+          feld('STATISTIK', [
+            el('div', { class: 'stat-waehler' }, [spielerWahl, spielWahl]),
+            el('div', { style: 'height:8px' }),
+            spannenReihe,
+            reihenReihe,
+            el('div', { style: 'height:8px' }),
+            statKopf,
+            el('div', { class: 'stat-rahmen' }, [statCanvas]),
+            el('div', { style: 'height:8px' }),
+            statTabelle,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [statNeu]),
+            el('p', { class: 'hint', text: 'Netto ist aus Sicht der Spieler: positiv heißt, das Spiel hat in diesem Zeitraum mehr ausgezahlt als eingenommen. Aufgezeichnet werden die letzten 31 Tage.' })
           ], true),
 
           feld('OFFENE TISCHE & PARTYS', [

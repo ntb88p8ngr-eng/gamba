@@ -75,6 +75,12 @@ function emptyDB() {
   return {
     players: {},
     feed: [],
+    /* Statistik: jede abgerechnete Runde und jede Anmeldung mit Zeitstempel.
+       Aus diesen zwei Listen rechnet /api/stats alles aus, was das
+       Admin-Panel zeigt — Durchschnitte, Verläufe, welches Spiel für die
+       Spieler positiv läuft. Gekürzt wird nach Alter und nach Anzahl. */
+    runden: [],
+    logins: [],
     /* spielLuck: Feinjustierung je Spiel, 0..100 mit 50 als neutral. Was
        nicht drinsteht, laeuft neutral — deshalb ein leeres Objekt und keine
        Liste aller Spiele: welche es gibt, weiss der Browser. */
@@ -95,6 +101,8 @@ function loadDB() {
     var db = JSON.parse(raw);
     db.players = db.players || {};
     db.feed = db.feed || [];
+    db.runden = Array.isArray(db.runden) ? db.runden : [];
+    db.logins = Array.isArray(db.logins) ? db.logins : [];
     db.settings = Object.assign(emptyDB().settings, db.settings || {});
     if (!db.settings.spielLuck || typeof db.settings.spielLuck !== 'object') db.settings.spielLuck = {};
     return db;
@@ -384,6 +392,30 @@ var wipeUhr = setInterval(wipeFaellig, 30000);
 if (wipeUhr.unref) wipeUhr.unref();
 wipeFaellig();
 
+/* So lange und so viel wird aufgehoben. 30 Tage sind die längste Spanne,
+   die das Panel anbietet; die Obergrenze schützt die Datei, wenn an einem
+   Abend zehntausend Runden zusammenkommen. */
+var STAT_TAGE = 31 * 86400000;
+var STAT_MAX = 60000;
+
+function statKuerzen(liste) {
+  var grenze = Date.now() - STAT_TAGE;
+  while (liste.length && liste[0].t < grenze) liste.shift();
+  if (liste.length > STAT_MAX) liste.splice(0, liste.length - STAT_MAX);
+}
+
+/** Eine abgerechnete Runde ins Protokoll. */
+function statRunde(spieler, spiel, einsatz, gewinn) {
+  db.runden.push({ t: Date.now(), p: spieler, g: clean(spiel, 24), e: einsatz, w: gewinn });
+  statKuerzen(db.runden);
+}
+
+/** Eine Anmeldung ins Protokoll — auch die frische Registrierung zählt. */
+function statLogin(spieler) {
+  db.logins.push({ t: Date.now(), p: spieler });
+  statKuerzen(db.logins);
+}
+
 function nameTaken(name) {
   var n = String(name).trim().toLowerCase();
   return Object.keys(db.players).some(function (k) {
@@ -458,6 +490,7 @@ function applyOp(op) {
     case 'payout': {
       var win = clamp(int(op.amount), 0, 1e9);
       var stake = clamp(int(op.stake), 0, 1e9);
+      statRunde(p.id, op.game, stake, win);
       if (win > 0) {
         p.balance += win;
         p.returned += win;
@@ -742,6 +775,7 @@ function handleRequest(req, res) {
       var np = newPlayer(name, body.avatar);
       np.pw = hashPw(pw);
       db.players[np.id] = np;
+      statLogin(np.id);
       pushFeed(np.name + ' betritt das Casino mit ' + START_BALANCE + ' Chips', 'admin');
       saveDB();
       sendJSON(res, 200, { session: newSession(np.id), playerId: np.id, state: publicState() });
@@ -764,7 +798,98 @@ function handleRequest(req, res) {
         return sendJSON(res, 401, { error: 'Name oder Passwort stimmt nicht' });
       }
       loginOk(key);
+      statLogin(p.id);
+      saveDB();
       sendJSON(res, 200, { session: newSession(p.id), playerId: p.id, state: publicState() });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Statistik fuer das Admin-Panel ──
+     Ausgewertet wird auf dem Server: der Browser bekaeme sonst bis zu
+     60.000 Einzelrunden geschickt, nur um daraus vierzig Punkte zu malen. */
+  if (url === '/api/stats' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      if (!validToken(body.token)) return sendJSON(res, 403, { error: 'Nur der Admin darf das' });
+
+      var jetzt = Date.now();
+      var spanne = Math.max(0, int(body.spanne));          // 0 = alles
+      var von = spanne ? jetzt - spanne : 0;
+      var nurSpieler = clean(body.spieler, 40);
+      var nurSpiel = clean(body.spiel, 24);
+
+      var runden = db.runden.filter(function (r) {
+        if (r.t < von) return false;
+        if (nurSpieler && r.p !== nurSpieler) return false;
+        if (nurSpiel && r.g !== nurSpiel) return false;
+        return true;
+      });
+      var logins = db.logins.filter(function (l) {
+        return l.t >= von && (!nurSpieler || l.p === nurSpieler);
+      });
+
+      /* Zeitachse in 40 gleich breite Eimer. Ohne Spanne spannt sie vom
+         ersten Ereignis bis jetzt. */
+      var anfang = von;
+      if (!anfang) {
+        anfang = jetzt - 3600000;
+        if (runden.length) anfang = Math.min(anfang, runden[0].t);
+        if (logins.length) anfang = Math.min(anfang, logins[0].t);
+      }
+      var EIMER = 40;
+      var breite = Math.max(60000, Math.ceil((jetzt - anfang) / EIMER));
+      var punkte = [];
+      for (var i = 0; i < EIMER; i++) {
+        punkte.push({ t: anfang + i * breite, einsatz: 0, gewinn: 0, runden: 0, logins: 0 });
+      }
+      function eimer(t) {
+        var i = Math.floor((t - anfang) / breite);
+        return punkte[i < 0 ? 0 : (i >= EIMER ? EIMER - 1 : i)];
+      }
+
+      var proSpiel = {}, proSpieler = {};
+      var einsatzGes = 0, gewinnGes = 0;
+      runden.forEach(function (r) {
+        var b = eimer(r.t);
+        b.einsatz += r.e; b.gewinn += r.w; b.runden++;
+        einsatzGes += r.e; gewinnGes += r.w;
+
+        var g = proSpiel[r.g] || (proSpiel[r.g] = { id: r.g, einsatz: 0, gewinn: 0, runden: 0 });
+        g.einsatz += r.e; g.gewinn += r.w; g.runden++;
+
+        var sp = proSpieler[r.p] || (proSpieler[r.p] = { id: r.p, einsatz: 0, gewinn: 0, runden: 0 });
+        sp.einsatz += r.e; sp.gewinn += r.w; sp.runden++;
+      });
+      logins.forEach(function (l) { eimer(l.t).logins++; });
+
+      function liste(obj, mitName) {
+        return Object.keys(obj).map(function (k) {
+          var x = obj[k];
+          x.netto = x.gewinn - x.einsatz;                     // aus Sicht der Spieler
+          x.quote = x.einsatz ? x.gewinn / x.einsatz : 0;
+          if (mitName) x.name = db.players[k] ? db.players[k].name : '—';
+          return x;
+        }).sort(function (a, b) { return b.einsatz - a.einsatz; });
+      }
+
+      var wach = {};
+      runden.forEach(function (r) { wach[r.p] = 1; });
+
+      sendJSON(res, 200, {
+        von: anfang, bis: jetzt, breite: breite,
+        punkte: punkte,
+        spiele: liste(proSpiel, false),
+        spieler: liste(proSpieler, true),
+        gesamt: {
+          runden: runden.length,
+          einsatz: einsatzGes,
+          gewinn: gewinnGes,
+          netto: gewinnGes - einsatzGes,
+          quote: einsatzGes ? gewinnGes / einsatzGes : 0,
+          logins: logins.length,
+          aktive: Object.keys(wach).length,
+          spieler: Object.keys(db.players).length
+        }
+      });
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 

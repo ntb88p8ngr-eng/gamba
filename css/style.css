@@ -276,6 +276,28 @@ img{max-width:100%}
 .sound-box.muted .vol-slider{filter:grayscale(1);opacity:.4}
 @media(max-width:760px){.vol-slider{display:none}.sound-box{border:2px solid var(--line);padding:0}}
 
+/* ── Statistik im Admin-Panel ── */
+.stat-waehler{display:flex;gap:8px;flex-wrap:wrap}
+.stat-waehler .mp-feld{flex:1;min-width:130px}
+.stat-knoepfe{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.stat-knoepfe .chip-btn{font-size:.68rem;padding:5px 9px}
+.stat-knoepfe .chip-btn.sel{border-color:var(--lime);color:var(--lime);background:rgba(124,255,59,.14)}
+.stat-kopf{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.74rem;color:var(--muted);margin:8px 0}
+.stat-kopf b{color:#fff;font-family:'Bungee',sans-serif;font-size:.78rem}
+.stat-kopf .plus b{color:var(--lime)}
+.stat-kopf .minus b{color:var(--red)}
+.stat-rahmen{background:rgba(0,0,0,.32);border:2px solid var(--line);border-radius:14px;padding:6px}
+.stat-canvas{width:100%;height:260px;display:block}
+.stat-tabelle{display:flex;flex-direction:column;gap:3px;max-height:240px;overflow-y:auto}
+.stat-zeile{
+  display:grid;grid-template-columns:1fr 62px 78px 60px 92px;gap:6px;align-items:center;
+  padding:5px 8px;border-radius:9px;background:rgba(255,255,255,.04);font-size:.72rem;text-align:right
+}
+.stat-zeile .nm{text-align:left;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat-zeile.kopf{background:none;color:var(--muted);font-family:'Bungee',sans-serif;font-size:.62rem}
+.stat-zeile .plus{color:var(--lime)}
+.stat-zeile .minus{color:var(--red)}
+
 /* Countdown bis zum naechsten Wipe — steht nur da, wenn einer geplant ist. */
 .wipe-uhr{
   max-width:520px;margin:0 auto 14px;padding:9px 14px;border-radius:14px;
