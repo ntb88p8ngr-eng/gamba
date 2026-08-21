@@ -78,7 +78,14 @@ function emptyDB() {
     /* spielLuck: Feinjustierung je Spiel, 0..100 mit 50 als neutral. Was
        nicht drinsteht, laeuft neutral — deshalb ein leeres Objekt und keine
        Liste aller Spiele: welche es gibt, weiss der Browser. */
-    settings: { adminPin: process.env.GAMBAKING_PIN || '1337', spielLuck: {} }
+    settings: {
+      adminPin: process.env.GAMBAKING_PIN || '1337',
+      spielLuck: {},
+      /* Naechster Wipe: Zeitpunkt in Millisekunden, 0 = keiner geplant.
+         wipeXp sagt, ob dabei auch die Stufen fallen. */
+      wipeAt: 0,
+      wipeXp: false
+    }
   };
 }
 
@@ -330,9 +337,52 @@ function publicState() {
   });
   return {
     players: safe, feed: db.feed, startBalance: START_BALANCE,
-    spielLuck: db.settings.spielLuck || {}
+    spielLuck: db.settings.spielLuck || {},
+    wipeAt: db.settings.wipeAt || 0,
+    wipeXp: !!db.settings.wipeXp
   };
 }
+
+/**
+ * Alle Spieler auf Anfang.
+ *
+ * mitXp sagt, ob auch Stufen und Erfahrung fallen. Ohne das bleibt der
+ * Fortschritt stehen und nur die Chips gehen zurueck auf den Startwert —
+ * das ist die uebliche Wahl fuer eine neue Runde unter Freunden.
+ */
+function alleZuruecksetzen(mitXp) {
+  Object.keys(db.players).forEach(function (k) {
+    var x = db.players[k];
+    x.balance = START_BALANCE;
+    x.granted = 0; x.wagered = 0; x.returned = 0;
+    x.plays = 0; x.wins = 0; x.losses = 0;
+    x.biggestWin = 0; x.biggestWinGame = ''; x.peak = START_BALANCE;
+    x.lastBailout = 0;
+    if (mitXp) { x.xp = 0; x.claimedLevel = 1; }
+  });
+}
+
+/**
+ * Geplanter Wipe.
+ *
+ * Der Zeitpunkt steht in den Einstellungen; jede Minute wird nachgesehen.
+ * Faellt der Server aus und laeuft erst spaeter wieder an, holt er den
+ * verpassten Wipe beim naechsten Blick nach — deshalb "<=" und nicht ein
+ * genaues Zeitfenster.
+ */
+function wipeFaellig() {
+  var w = db.settings.wipeAt || 0;
+  if (!w || Date.now() < w) return;
+  db.settings.wipeAt = 0;
+  alleZuruecksetzen(!!db.settings.wipeXp);
+  pushFeed('🧹 Grosser Wipe: alle zurueck auf ' + START_BALANCE + ' Chips' +
+           (db.settings.wipeXp ? ' und Stufe 1' : ''), 'admin');
+  saveDB();
+  console.log('[gambaking] Geplanter Wipe ausgefuehrt.');
+}
+var wipeUhr = setInterval(wipeFaellig, 30000);
+if (wipeUhr.unref) wipeUhr.unref();
+wipeFaellig();
 
 function nameTaken(name) {
   var n = String(name).trim().toLowerCase();
@@ -368,7 +418,7 @@ var mp = require('./mp.js')({
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, wipe: 1, resetPassword: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, setWipe: 1, wipe: 1, resetPassword: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -510,15 +560,15 @@ function applyOp(op) {
     }
 
     case 'resetAll': {
-      Object.keys(db.players).forEach(function (k) {
-        var x = db.players[k];
-        x.balance = START_BALANCE;
-        x.granted = 0; x.wagered = 0; x.returned = 0;
-        x.plays = 0; x.wins = 0; x.losses = 0;
-        x.biggestWin = 0; x.peak = START_BALANCE;
-        x.xp = 0; x.claimedLevel = 1;
-        x.lastBailout = 0;
-      });
+      alleZuruecksetzen(true);
+      break;
+    }
+
+    /* Naechsten Wipe planen oder absagen. */
+    case 'setWipe': {
+      var wann = Number(op.at) || 0;
+      db.settings.wipeAt = wann > Date.now() ? Math.floor(wann) : 0;
+      db.settings.wipeXp = !!op.xp;
       break;
     }
 

@@ -388,6 +388,7 @@
     if ((me ? GK.levelOf(me.xp) : null) !== drawnLevel) renderGames();
     renderBoard();
     renderFeed();
+    renderWipe();
     renderMarquee();
     renderLevel();
     GK.updateHUD();
@@ -1165,9 +1166,60 @@
       GK.toast('Alle Quoten stehen wieder neutral', 'gold', '⚖️');
     });
 
+    /* ── Nächster Wipe ──
+       Datum wählen, Haken für die Stufen setzen, fertig. Um Mitternacht
+       dieses Tages setzt der Server alle Konten zurück — er sieht dafür
+       jede halbe Minute nach und holt einen verpassten Termin nach, falls
+       er zu dem Zeitpunkt gerade nicht lief. */
+    var wipeDatum = el('input', { class: 'input', type: 'date' });
+    var wipeXpBox = el('input', { type: 'checkbox' });
+    var wipeStand = el('p', { class: 'hint' });
+    var wipeSetzen = el('button', { class: 'btn btn-gold btn-small', text: '🧹 WIPE PLANEN' });
+    var wipeAus = el('button', { class: 'btn btn-ghost btn-small', text: '✖ ABSAGEN' });
+
+    function wipeSync() {
+      var at = GK.wipeAt ? GK.wipeAt() : 0;
+      if (at) {
+        var d = new Date(at);
+        wipeStand.textContent = 'Geplant: ' + d.toLocaleDateString('de-DE') + ' um ' +
+          d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) +
+          (GK.wipeXp() ? ' — mit Stufen' : ' — nur Chips');
+        var iso = new Date(at - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        if (!wipeDatum.value) wipeDatum.value = iso;
+        wipeXpBox.checked = GK.wipeXp();
+      } else {
+        wipeStand.textContent = 'Kein Wipe geplant. Ohne Termin bleibt die Anzeige im Hauptmenü aus.';
+      }
+      wipeAus.disabled = !at;
+    }
+
+    wipeSetzen.addEventListener('click', function () {
+      if (!wipeDatum.value) { GK.toast('Erst ein Datum wählen', 'bad', '📅'); return; }
+      /* Mitternacht des gewählten Tages in der Zeit dieses Geräts. */
+      var teile = wipeDatum.value.split('-');
+      var ziel = new Date(Number(teile[0]), Number(teile[1]) - 1, Number(teile[2]), 0, 0, 0, 0).getTime();
+      if (ziel <= Date.now()) { GK.toast('Das Datum liegt schon hinter uns', 'bad', '📅'); return; }
+      GK.setWipe(ziel, wipeXpBox.checked).then(function () {
+        GK.logFeed('👑 ADMIN: Wipe geplant für ' + new Date(ziel).toLocaleDateString('de-DE'), 'admin');
+        GK.toast('Wipe geplant', 'gold', '🧹');
+        GK.sfx('cash');
+        wipeSync();
+        renderWipe();
+      });
+    });
+    wipeAus.addEventListener('click', function () {
+      GK.setWipe(0, false).then(function () {
+        GK.toast('Wipe abgesagt', 'gold', '✖');
+        GK.sfx('click');
+        wipeSync();
+        renderWipe();
+      });
+    });
+
     renderList();
     renderMP();
     renderQuoten();
+    wipeSync();
     syncLuck();
 
     /* Jeder Abschnitt ist eine eigene Karte. Auf dem Handy stehen sie
@@ -1241,6 +1293,21 @@
             el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
           ]),
 
+          feld('NÄCHSTER WIPE', [
+            el('div', { class: 'field' }, [el('label', { text: 'DATUM (0 UHR)' }), wipeDatum]),
+            el('label', { class: 'party-schalter' }, [
+              wipeXpBox,
+              el('span', {}, [
+                el('b', { text: 'Stufen mit zurücksetzen' }),
+                el('span', { class: 'party-schalter-was',
+                             text: 'Ohne Haken bleiben XP und Level stehen, nur die Chips gehen zurück.' })
+              ])
+            ]),
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [wipeSetzen, wipeAus]),
+            wipeStand
+          ]),
+
           feld('GEFAHRENZONE', [
             el('div', { class: 'admin-note', html: '⚠️ Löscht alle Spieler, Chips und Statistiken — für alle, auf dem Server. Nicht rückgängig zu machen.' }),
             el('div', { class: 'modal-actions' }, [wipeBtn])
@@ -1280,6 +1347,29 @@
    * gilt gerade nicht: die Party hat ihr eigenes Guthaben, und gespielt wird
    * nur, was ausgewaehlt wurde.
    */
+  /**
+   * Countdown bis zum naechsten Wipe.
+   *
+   * Steht keiner an, bleibt die Zeile ausgeblendet — sie soll nur dann Platz
+   * kosten, wenn es wirklich etwas zu wissen gibt.
+   */
+  function renderWipe() {
+    var box = $('#wipe-uhr');
+    if (!box) return;
+    var ziel = GK.wipeAt ? GK.wipeAt() : 0;
+    var rest = ziel - Date.now();
+    if (!ziel || rest <= 0) { box.hidden = true; return; }
+    var tage = Math.floor(rest / 86400000);
+    var std = Math.floor(rest / 3600000) % 24;
+    var min = Math.floor(rest / 60000) % 60;
+    var sek = Math.floor(rest / 1000) % 60;
+    var txt = tage > 0 ? tage + ' T ' + std + ' Std ' + min + ' Min'
+      : (std > 0 ? std + ' Std ' + min + ' Min ' + sek + ' Sek' : min + ' Min ' + sek + ' Sek');
+    box.hidden = false;
+    box.innerHTML = '🧹 <span>Nächster Wipe in</span> <b>' + txt + '</b> <span>· alle zurück auf ' +
+      GK.fmt(GK.START_BALANCE) + ' Chips' + (GK.wipeXp && GK.wipeXp() ? ' und Stufe 1' : '') + '</span>';
+  }
+
   function renderHero() {
     var sub = $('.hero-sub'), card = $('#level-card');
     var d = GK.party && GK.party.an && GK.party.daten;
@@ -1456,6 +1546,8 @@
 
     // Feed-Zeiten frisch halten
     setInterval(renderFeed, 60000);
+    // Der Wipe-Countdown laeuft sekundengenau
+    setInterval(renderWipe, 1000);
 
     // Regelmäßig den Stand der anderen holen, solange die Lobby offen ist
     GK.net.startPolling(function () {

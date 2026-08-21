@@ -1527,7 +1527,8 @@ body.party-an::before{
   box-shadow:0 10px 30px rgba(0,0,0,.6);backdrop-filter:blur(8px);
   font-size:.78rem;overflow:hidden
 }
-.party-tafel-kopf{
+/* Der Kopf ist der Griff zum Verschieben. */
+.party-tafel-kopf{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
   display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:8px 11px;background:rgba(255,209,46,.14);cursor:pointer;
   font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--gold)
@@ -1550,6 +1551,8 @@ body.party-an::before{
 .party-raus:hover{background:rgba(255,60,90,.2)}
 .party-uhr.knapp{color:#ff6b8a;animation:pulse 1s ease-in-out infinite}
 .party-rang{padding:6px 8px;display:flex;flex-direction:column;gap:3px}
+.party-tafel.zieht{cursor:grabbing;opacity:.92;box-shadow:0 16px 40px rgba(0,0,0,.7)}
+.party-tafel.zieht .party-tafel-kopf{cursor:grabbing}
 .party-tafel.klein .party-rang,.party-tafel.klein .party-meldungen{display:none}
 .party-zeile{
   display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:8px;
@@ -1655,10 +1658,13 @@ body.party-an::before{
 @media(max-width:900px){
   /* Auf schmalen Schirmen wuerde die Tafel ueber dem Spiel liegen — dort
      sitzt sie schmaler am Rand und laesst sich zusammenklappen. */
-  .party-tafel{width:170px;top:66px;left:6px;font-size:.72rem}
+  /* Auf dem Handy war die Tafel mit 170 px so schmal, dass Namen und Gewinn
+     kaum lesbar waren. Jetzt nimmt sie gut zwei Drittel der Breite — und wer
+     sie im Weg findet, zieht sie am Kopf einfach woanders hin. */
+  .party-tafel{width:min(68vw,236px);top:66px;left:6px;font-size:.76rem}
   .party-count-zahl{font-size:3.2rem}
 }
 @media(max-width:560px){
-  .party-tafel{width:150px}
+  .party-tafel{width:min(74vw,220px)}
   .party-name{font-size:.7rem}
 }

@@ -276,6 +276,16 @@ img{max-width:100%}
 .sound-box.muted .vol-slider{filter:grayscale(1);opacity:.4}
 @media(max-width:760px){.vol-slider{display:none}.sound-box{border:2px solid var(--line);padding:0}}
 
+/* Countdown bis zum naechsten Wipe — steht nur da, wenn einer geplant ist. */
+.wipe-uhr{
+  max-width:520px;margin:0 auto 14px;padding:9px 14px;border-radius:14px;
+  background:rgba(255,59,107,.12);border:2px solid rgba(255,59,107,.5);
+  color:#ffd7e0;font-size:.86rem;display:flex;align-items:center;justify-content:center;gap:8px
+}
+/* display:flex aus der Regel oben schlaegt das eingebaute [hidden] des
+   Browsers — ohne diese Zeile stuende die Uhr auch ohne geplanten Wipe da. */
+.wipe-uhr[hidden]{display:none}
+.wipe-uhr b{font-family:'Bungee',sans-serif;color:var(--gold);font-size:.95rem}
 .level-card{
   max-width:520px;margin:0 auto 20px;padding:14px 18px;border-radius:18px;
   background:rgba(0,0,0,.34);border:2px solid var(--line);text-align:left

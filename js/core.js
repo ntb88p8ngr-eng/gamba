@@ -63,6 +63,9 @@
       feed: [],
       /* Quote je Spiel, 0..100 mit 50 als neutral. Was fehlt, laeuft neutral. */
       spielLuck: {},
+      /* Naechster geplanter Wipe (ms seit 1970, 0 = keiner). */
+      wipeAt: 0,
+      wipeXp: false,
       settings: { sound: true, volume: 50, adminPin: '1337', chaos: true, cardTheme: 'eerie' },
       admin: false
     };
@@ -277,13 +280,15 @@
   /** Serverstand übernehmen. Gibt zurück, ob sich etwas geändert hat. */
   GK.adoptState = function (s) {
     if (!s || !s.players) return false;
-    var before = JSON.stringify([state.players, state.feed, state.spielLuck]);
+    var before = JSON.stringify([state.players, state.feed, state.spielLuck, state.wipeAt]);
     state.players = s.players;
     state.feed = s.feed || [];
     state.spielLuck = s.spielLuck || {};
+    state.wipeAt = s.wipeAt || 0;
+    state.wipeXp = !!s.wipeXp;
     if (state.currentId && !state.players[state.currentId]) state.currentId = null;
     GK.save();
-    return JSON.stringify([state.players, state.feed, state.spielLuck]) !== before;
+    return JSON.stringify([state.players, state.feed, state.spielLuck, state.wipeAt]) !== before;
   };
 
   /**
@@ -728,6 +733,15 @@
     if (wert === 50) delete state.spielLuck[id];
     else state.spielLuck[id] = wert;
     return GK.commit('gameLuck', { game: id, luck: wert });
+  };
+
+  /** Naechster Wipe: Zeitpunkt in ms, 0 heisst keiner geplant. */
+  GK.wipeAt = function () { return state.wipeAt || 0; };
+  GK.wipeXp = function () { return !!state.wipeXp; };
+  GK.setWipe = function (at, mitXp) {
+    state.wipeAt = at ? Math.floor(at) : 0;
+    state.wipeXp = !!mitXp;
+    return GK.commit('setWipe', { at: state.wipeAt, xp: state.wipeXp });
   };
 
   /** Alle Spiele zurueck auf neutral. */
