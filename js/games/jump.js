@@ -71,7 +71,10 @@
      Stelle unpassierbar. */
   function abstand(stufe) { return Math.min(138, 82 + 2.6 * stufe); }
   function broeckelAnteil(stufe) { return Math.min(0.42, 0.04 + 0.022 * stufe); }
-  /* So lange hält eine angeknackste Plattform noch, bevor sie zerfällt. */
+  /* So lange hält eine angeknackste Plattform noch, bevor sie zerfällt. In
+     dieser Zeit wackelt sie sichtbar — das ist die Warnung. Getreten wird sie
+     genau so lange: sobald das Wackeln in den Absturz übergeht, trägt sie
+     nicht mehr, und das sieht man auch. */
   var BROECKEL_WARTEN = 1.0;
   function wanderAnteil(stufe) { return Math.min(0.40, 0.05 + 0.02 * stufe); }
   function mausDichte(stufe) { return Math.min(0.55, Math.max(0, (stufe - 1) * 0.05)); }
@@ -193,7 +196,7 @@
         var feder = art !== 'broeckel' && Math.random() < 0.09;
         return {
           x: 20 + Math.random() * (W - PLATTE_B - 40),
-          y: y, art: art, feder: feder, weg: false, bruch: 0,
+          y: y, art: art, feder: feder, weg: false, bruch: 0, ausgeloest: false, warten: 0,
           vx: art === 'wander' ? (Math.random() < 0.5 ? -1 : 1) * (44 + Math.random() * 46) : 0
         };
       }
@@ -214,7 +217,8 @@
         kamera = 0;
         /* Die unterste Plattform liegt fest unter dem Helden — der erste
            Sprung soll nicht vom Zufall abhängen. */
-        platten.push({ x: W / 2 - PLATTE_B / 2, y: H - 90, art: 'fest', feder: false, weg: false, bruch: 0, vx: 0 });
+        platten.push({ x: W / 2 - PLATTE_B / 2, y: H - 90, art: 'fest', feder: false, weg: false,
+                       bruch: 0, ausgeloest: false, warten: 0, vx: 0 });
         var y = H - 90;
         while (y > -H) {
           y -= abstand(0) + Math.random() * 26;
@@ -254,9 +258,18 @@
 
       function plattenBild(p) {
         if (p.art !== 'broeckel') return da('platte-1');
-        /* Rissig, solange sie noch trägt — zerbrochen erst, wenn sie
-           tatsächlich zerfällt. */
-        return da(p.bruch > 0.02 ? 'platte-3' : 'platte-2');
+        /* Rissig, solange sie unberührt daliegt — zerbrochen, sobald sie
+           angeknackst ist und zu wackeln anfängt. */
+        return da(p.ausgeloest ? 'platte-3' : 'platte-2');
+      }
+
+      /* Das Wackeln vor dem Absturz: Ausschlag und Takt nehmen zu, je näher
+         der Einsturz rückt. Bei 0 steht die Insel ruhig, bei 1 zittert sie
+         deutlich. */
+      function wackelAusschlag(p) {
+        if (!p.ausgeloest || p.bruch > 0) return 0;
+        var t = Math.min(1, p.warten / BROECKEL_WARTEN);
+        return Math.sin(p.warten * (26 + 22 * t)) * (1.4 + 5.4 * t * t);
       }
 
       function zeichnen() {
@@ -290,15 +303,30 @@
           var y = p.y - kamera;
           if (y < -60 || y > H + 60) return;
           var b = plattenBild(p);
+          var wack = wackelAusschlag(p);
           if (b) {
             var ho = PLATTE_B * (b.height / b.width);
             ctx.save();
-            if (p.bruch) { ctx.globalAlpha = Math.max(0, 1 - p.bruch); ctx.translate(0, p.bruch * 60); }
+            if (wack) {
+              /* Verschieben und ein wenig kippen — das liest sich aus dem
+                 Augenwinkel als „gleich bricht sie". */
+              ctx.translate(wack, Math.abs(wack) * 0.28);
+              ctx.translate(p.x + PLATTE_B / 2, y);
+              ctx.rotate(wack * 0.007);
+              ctx.translate(-(p.x + PLATTE_B / 2), -y);
+            }
+            if (p.bruch) {
+              ctx.globalAlpha = Math.max(0, 1 - p.bruch);
+              /* Wegbrechen: sie sackt weg und kippt dabei zur Seite. */
+              ctx.translate(p.x + PLATTE_B / 2, y + p.bruch * 66);
+              ctx.rotate(p.bruch * 0.34);
+              ctx.translate(-(p.x + PLATTE_B / 2), -y);
+            }
             ctx.drawImage(b, p.x, y - ho * 0.18, PLATTE_B, ho);
             ctx.restore();
           } else {
             ctx.fillStyle = p.art === 'broeckel' ? '#b08968' : '#7cc36a';
-            ctx.fillRect(p.x, y, PLATTE_B, PLATTE_H);
+            ctx.fillRect(p.x + wack, y + Math.abs(wack) * 0.28, PLATTE_B, PLATTE_H);
           }
           if (p.feder && !p.bruch) {
             var f = da('feder');
@@ -558,18 +586,24 @@
               if (p.x < 8) { p.x = 8; p.vx = -p.vx; }
               if (p.x > W - PLATTE_B - 8) { p.x = W - PLATTE_B - 8; p.vx = -p.vx; }
             }
-            /* Bröckeln mit Verzögerung: erst steht die Plattform noch eine
-               Sekunde, dann bricht sie weg. Sofort zu zerfallen sah aus, als
-               wäre der Absprung schuld — und man konnte den Sprung nicht mehr
-               ansetzen, weil der Boden schon im Fallen war. */
-            if (p.bruch) {
-              p.warten = (p.warten || 0) + dt;
+            /* Bröckeln in zwei Schritten: erst wackelt die Insel eine Sekunde
+               lang immer heftiger, dann bricht sie weg. Sofort zu zerfallen
+               sah aus, als wäre der Absprung schuld — und man konnte den
+               Sprung nicht mehr ansetzen, weil der Boden schon fiel. */
+            if (p.ausgeloest) {
+              p.warten += dt;
               if (p.warten > BROECKEL_WARTEN) {
+                /* Im Moment des Wegbrechens ein paar Brocken — damit man
+                   auch bei weggedrehtem Blick mitbekommt, was passiert ist. */
+                if (!p.bruch) funken(p.x + PLATTE_B / 2, p.y, '#b08968');
                 p.bruch += dt * 1.6;
                 if (p.bruch > 1.4) p.weg = true;
               }
             }
-            if (p.weg || held.vy <= 0) return;
+            /* Solange sie nur wackelt, trägt sie. Mit dem ersten Stück Absturz
+               ist die Trittfläche weg — Bild und Hitbox enden im selben
+               Bildschritt. */
+            if (p.weg || p.bruch > 0 || held.vy <= 0) return;
             var fuesse = held.y + HELD_R;
             var vorher = fuesse - held.vy * dt;
             /* Landung nur, wenn die Füße in diesem Schritt die Oberkante
@@ -586,7 +620,7 @@
                 held.vy = ABSPRUNG;
                 GK.sfx('plop');
               }
-              if (p.art === 'broeckel' && !p.bruch) { p.bruch = 0.01; p.warten = 0; }
+              if (p.art === 'broeckel' && !p.ausgeloest) { p.ausgeloest = true; p.warten = 0; }
             }
           });
 
