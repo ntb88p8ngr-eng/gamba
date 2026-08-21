@@ -312,7 +312,11 @@
       var profit = GK.profitOf(p);
       var val, sub;
       if (boardSort === 'profit') { val = GK.fmtSigned(profit); sub = GK.fmt(p.balance) + ' Chips'; }
-      else if (boardSort === 'biggestWin') { val = '+' + GK.fmt(p.biggestWin); sub = 'bester Einzelwin'; }
+      else if (boardSort === 'biggestWin') {
+        val = '+' + GK.fmt(p.biggestWin);
+        var wo = p.biggestWinGame && GK.gameById(p.biggestWinGame);
+        sub = wo ? 'bester Win · ' + wo.name : 'bester Einzelwin';
+      }
       else if (boardSort === 'plays') { val = GK.fmt(p.plays); sub = p.wins + 'W / ' + p.losses + 'L'; }
       else { val = GK.fmt(p.balance); sub = GK.fmtSigned(profit) + ' Profit'; }
 
@@ -542,7 +546,11 @@
       el('div', { class: 'info-grid' }, [
         el('div', { class: 'info-box' }, [el('b', { text: GK.fmt(p.plays) }), el('span', { text: 'Spiele' })]),
         el('div', { class: 'info-box' }, [el('b', { text: GK.fmtSigned(GK.profitOf(p)) }), el('span', { text: 'Profit' })]),
-        el('div', { class: 'info-box' }, [el('b', { text: '+' + GK.fmt(p.biggestWin) }), el('span', { text: 'Bester Win' })])
+        el('div', { class: 'info-box' }, [el('b', { text: '+' + GK.fmt(p.biggestWin) }),
+          el('span', { text: (function () {
+            var w = p.biggestWinGame && GK.gameById(p.biggestWinGame);
+            return w ? 'Bester Win · ' + w.name : 'Bester Win';
+          })() })])
       ]),
       el('div', { style: 'height:14px' })
     ];
@@ -1356,7 +1364,15 @@
     // Lobby-Aktionen
     $('#btn-play-random').addEventListener('click', function () {
       GK.sfx('click');
-      openGame(GK.pick(GK.unlockedGames()).id);
+      /* In der Party stehen nur die Spiele zur Wahl, die der Gastgeber
+         freigegeben hat — sonst landet der Zufall auf einer Kachel, die es
+         dort gar nicht gibt. */
+      var topf = GK.games.filter(function (g) {
+        if (GK.party && GK.party.an && !GK.party.erlaubt(g.id)) return false;
+        return spielbar(g);
+      });
+      if (!topf.length) { GK.toast('Kein Spiel verfügbar', 'bad', '🎲'); return; }
+      openGame(GK.pick(topf).id);
     });
     $('#btn-multiplayer').addEventListener('click', function () { GK.sfx('click'); openMP(); });
     $('#btn-mp-back').addEventListener('click', function () {

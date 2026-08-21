@@ -184,6 +184,16 @@
 
       var goBtn = el('button', { class: 'btn btn-gold btn-full', text: '🕯️ RITUAL BEGINNEN' });
 
+      /* Auto-Ritual: dieselbe Idee wie der Auto-Spin bei den Walzen. Eine Zahl
+         wählen, und die Rituale laufen von selbst weiter, bis sie abgezählt
+         sind, die Chips nicht mehr reichen oder man von Hand stoppt. */
+      var autoLeft = 0;
+      var autoWahl = el('select', { class: 'mp-feld' });
+      [10, 25, 50, 100].forEach(function (n) {
+        autoWahl.appendChild(el('option', { value: String(n), text: n + '× automatisch' }));
+      });
+      var autoBtn = el('button', { class: 'btn btn-full', text: '🔁 AUTO-RITUAL' });
+
       var stage = el('div', { class: 'stage split' }, [
         GK.panel([scene, el('div', { style: 'height:10px' }), stepInfo]),
         GK.panel([
@@ -200,6 +210,8 @@
           resultBox,
           el('div', { style: 'height:12px' }),
           goBtn,
+          el('div', { style: 'height:8px' }),
+          el('div', { class: 'bet-row' }, [autoWahl, autoBtn]),
           el('div', { style: 'height:12px' }),
           el('p', { class: 'hint', html: '💡 Es zählt die <b>Summe</b> aller Seelen. Jede neue Seele stellt die drei Kerzen zurück — lange Ketten sind der eigentliche Gewinn.' })
         ])
@@ -302,6 +314,7 @@
         goBtn.disabled = false;
         bet.disable(false);
         modeBtns.forEach(function (o) { o.b.disabled = false; });
+        naechstesAuto();
 
         var win = Math.floor(stake * res.total);
         GK.payout(win, { stake: stake });
@@ -339,11 +352,43 @@
         }
       }
 
-      goBtn.addEventListener('click', function () { GK.sfx('click'); start(); });
+      function autoSync() {
+        autoBtn.textContent = autoLeft > 0 ? '⏹ STOPP (' + autoLeft + ')' : '🔁 AUTO-RITUAL';
+        autoBtn.classList.toggle('btn-danger', autoLeft > 0);
+        autoWahl.disabled = autoLeft > 0;
+      }
+
+      function autoStop() { autoLeft = 0; autoSync(); }
+
+      /* Erst wenn das Ritual wirklich vorbei ist, kommt das nächste — sonst
+         liefen zwei Beschwörungen übereinander. */
+      function naechstesAuto() {
+        if (autoLeft <= 0 || stopped) { autoSync(); return; }
+        autoLeft--;
+        autoSync();
+        if (!GK.canBet(bet.value())) {
+          autoStop();
+          GK.toast('Auto-Ritual gestoppt — Chips reichen nicht mehr', 'bad', '🪙');
+          return;
+        }
+        var t = setTimeout(function () { if (!stopped && !running) start(); }, 900);
+        timers.push(t);
+      }
+
+      autoBtn.addEventListener('click', function () {
+        GK.sfx('click');
+        if (autoLeft > 0) { autoStop(); return; }
+        autoLeft = parseInt(autoWahl.value, 10) || 10;
+        autoSync();
+        if (!running) naechstesAuto();
+      });
+
+      goBtn.addEventListener('click', function () { GK.sfx('click'); autoStop(); start(); });
 
       clearAltar();
       return function () {
         stopped = true;
+        autoLeft = 0;
         timers.forEach(clearTimeout);
       };
     }

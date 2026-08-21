@@ -256,6 +256,7 @@ function newPlayer(name, avatar, id) {
     wins: 0,
     losses: 0,
     biggestWin: 0,
+    biggestWinGame: '',
     peak: START_BALANCE,
     luck: 50,
     xp: 0,
@@ -411,7 +412,10 @@ function applyOp(op) {
         p.balance += win;
         p.returned += win;
         p.peak = Math.max(p.peak, p.balance);
-        p.biggestWin = Math.max(p.biggestWin, win - stake);
+        if (win - stake > p.biggestWin) {
+          p.biggestWin = win - stake;
+          p.biggestWinGame = clean(op.game, 24);
+        }
         p.wins++;
       } else {
         p.losses++;

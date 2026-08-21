@@ -110,10 +110,26 @@
         return HORSES[0];
       }
 
+      /** Bahnen zurück auf Anfang — nach dem Rennen und vor jedem neuen. */
+      var aufraeumen = null;
+
+      function zuruecksetzen() {
+        lanes.forEach(function (l) { l.style.transform = 'translateX(0)'; l.classList.remove('galloping'); });
+        bars.forEach(function (l) { l.classList.remove('winner-lane'); });
+      }
+
       function start() {
         if (racing || stopped) return;
         var stake = bet.value();
         if (!GK.wager(stake, 'Pferderennen')) return;
+
+        /* Das Aufräumen des vorigen Rennens steht noch aus, wenn schnell
+           hintereinander gestartet wird. Feuert es mitten im neuen Rennen,
+           nimmt es den Bahnen die Klasse "galloping" — die Pferde stehen dann
+           still auf der Stelle, bis das nächste Rennen beginnt. Deshalb: den
+           Nachzügler abbestellen und sofort selbst aufräumen. */
+        if (aufraeumen) { clearTimeout(aufraeumen); aufraeumen = null; }
+        zuruecksetzen();
 
         racing = true;
         goBtn.disabled = true;
@@ -219,10 +235,10 @@
         goBtn.disabled = false;
         bet.disable(false);
 
-        setTimeout(function () {
+        aufraeumen = setTimeout(function () {
+          aufraeumen = null;
           if (stopped) return;
-          lanes.forEach(function (l) { l.style.transform = 'translateX(0)'; l.classList.remove('galloping'); });
-          bars.forEach(function (l) { l.classList.remove('winner-lane'); });
+          zuruecksetzen();
         }, 2600);
       }
 
@@ -236,6 +252,7 @@
 
       return function () {
         stopped = true;
+        if (aufraeumen) clearTimeout(aufraeumen);
         if (raf) cancelAnimationFrame(raf);
         window.removeEventListener('resize', onResize);
       };

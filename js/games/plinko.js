@@ -26,6 +26,9 @@
     blurb: 'Kugel rein, Nerven raus. 12 Reihen Chaos entscheiden, wo dein Einsatz landet.',
     badge: 'BIS 40×',
     color: '#ff8a00',
+    /* Plinko bucht je Kugel einen eigenen Einsatz — mit voller XP-Quote
+       sammelt eine Runde mit fünf Kugeln das Fünffache der anderen Spiele. */
+    xpFaktor: 0.3,
     rules: [
       'Die Kugel fällt durch <b>12 Reihen</b> Pins und landet in einem der 13 Fächer.',
       'Der Multiplikator des Fachs wird mit deinem Einsatz verrechnet.',
