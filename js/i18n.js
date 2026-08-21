@@ -263,6 +263,37 @@
     /* ── Meldungen aus dem Spielbetrieb ──
        Was ohne Zahlen darin auskommt, steht hier; alles mit eingesetzten
        Werten läuft unten über die Muster. */
+    /* ── Knöpfe in den Spielen ──
+       Sie tragen ihr Symbol im selben Text — deshalb steht es im Schlüssel
+       mit drin, sonst greift das Wörterbuch nicht. */
+    '🎰 SPIN': '🎰 SPIN', '🔁 AUTO 10': '🔁 AUTO 10', '♾️ ENDLOS': '♾️ ENDLESS',
+    '↩ LETZTEN ZURÜCK': '↩ UNDO LAST', '🗑 TISCH RÄUMEN': '🗑 CLEAR TABLE',
+    '🎡 DREH DAS RAD': '🎡 SPIN THE WHEEL', '🎡 SCHICKSAL DREHEN': '🎡 SPIN FATE',
+    '🃏 KARTEN GEBEN': '🃏 DEAL CARDS', '🎴 KARTEN GEBEN': '🎴 DEAL CARDS',
+    '💰 DOPPELN': '💰 DOUBLE', 'KRONE': 'CROWN', 'DRACHE': 'DRAGON',
+    '🪙 MÜNZE WERFEN': '🪙 TOSS THE COIN', '🎲 WÜRFELN': '🎲 ROLL THE DICE',
+    '🤖 AUTO AUS': '🤖 AUTO OFF', '🤖 AUTO AN': '🤖 AUTO ON',
+    '🚀 RAKETE STARTEN': '🚀 LAUNCH ROCKET',
+    '⛏️ HÖHLE BETRETEN': '⛏️ ENTER THE CAVE', '🗝️ HÖHLE BETRETEN': '🗝️ ENTER THE CAVE',
+    '💰 AUSZAHLEN': '💰 CASH OUT', '💰 AUSSTEIGEN': '💰 CASH OUT',
+    '🤯 Irre': '🤯 Insane', '🔻 KUGEL FALLEN LASSEN': '🔻 DROP THE BALL',
+    '🎫 LOS KAUFEN': '🎫 BUY A TICKET', '💠 LOS KAUFEN': '💠 BUY A TICKET',
+    '👁 ALLES AUFDECKEN': '👁 REVEAL EVERYTHING',
+    '🏇 RENNEN STARTEN': '🏇 START THE RACE',
+    '🧊 Dickes Eis': '🧊 Thick ice', '❄️ Dünnes Eis': '❄️ Thin ice',
+    '💀 Todeseis': '💀 Death ice', '🐻‍❄️ LOSMARSCHIEREN': '🐻‍❄️ SET OFF',
+    '🌊 ABTAUCHEN': '🌊 DIVE',
+    '🃏 EINE HAND': '🃏 ONE HAND', '🃏🃏 ZWEI HÄNDE': '🃏🃏 TWO HANDS',
+    '♠️ NEUE HAND': '♠️ NEW HAND', '🏳️ PASSEN': '🏳️ FOLD',
+    '✔️ CHECK / MITGEHEN': '✔️ CHECK / CALL', '🔥 ERHÖHEN': '🔥 RAISE',
+    '✔️ CHECK': '✔️ CHECK', '📞 MITGEHEN': '📞 CALL',
+    '🐧 LOSSPRINGEN': '🐧 START HOPPING', '🦘 LOSSPRINGEN': '🦘 START JUMPING',
+    '➡️ WEITER': '➡️ CONTINUE',
+    '🕯️ RITUAL BEGINNEN': '🕯️ BEGIN THE RITUAL', '🔁 AUTO-RITUAL': '🔁 AUTO RITUAL',
+    '🐦 LOSFLIEGEN': '🐦 TAKE OFF',
+    '⟳ DREHEN': '⟳ TURN', '🏃 FLIEHEN & SICHERN': '🏃 FLEE & BANK IT',
+    '1 Drache': '1 dragon',
+
     'Viel Glück!': 'Good luck!',
     'Rot': 'Red', 'Schwarz': 'Black', 'Gerade': 'Even', 'Ungerade': 'Odd',
     /* Symbole aus den Walzenspielen und den Rubbellosen */
@@ -457,6 +488,15 @@
        Die Ersetzung darf auch eine Funktion sein: dann lässt sich ein Name
        aus der Mitte noch einmal durchs Wörterbuch schicken (Pferde, Gegner
        am Pokertisch), statt ihn deutsch stehen zu lassen. */
+    /* Knöpfe, die eine Zahl mittragen */
+    [/^➡️ WEITER \((.+)\)$/, '➡️ CONTINUE ($1)'],
+    [/^📞 MITGEHEN \((.+)\)$/, '📞 CALL ($1)'],
+    [/^🔥 ERHÖHEN \((.+)\)$/, '🔥 RAISE ($1)'],
+    [/^💰 AUSSTEIGEN \((.+)\)$/, '💰 CASH OUT ($1)'],
+    [/^🏃 FLIEHEN \((.+)\)$/, '🏃 FLEE ($1)'],
+    [/^(\d+)× automatisch$/, '$1× automatic'],
+    [/^(\d+) Drachen$/, '$1 dragons'],
+    [/^max (.+)$/, 'max $1'],
     /* Freispiele und Treffermeldungen der Walzenspiele */
     [/^\+(\d+) Freispiele — die Serie geht weiter!$/, '+$1 free spins — the run continues!'],
     [/^(\d+) Freispiele! Jeder Gewinn zählt (.+)$/, '$1 free spins! Every win counts $2'],
