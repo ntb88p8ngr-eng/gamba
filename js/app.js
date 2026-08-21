@@ -1606,6 +1606,95 @@
       statHover = -1; statTip.hidden = true; kurveZeichnen();
     });
 
+    /* ── Protokoll der Partys ──
+       Eine Party lebt nur, solange sie läuft; danach ist sie weg. Der
+       Server hebt deshalb je Sitzung einen Abzug auf, und hier lässt sich
+       eine davon auswählen und nachlesen. */
+    var partyWahl = el('select', { class: 'mp-feld' });
+    var partyBox = el('div', { class: 'party-log' });
+    var partyListe = [];
+
+    function partyLogHolen() {
+      if (!GK.net || !GK.net.partys) return;
+      partyBox.innerHTML = '';
+      partyBox.appendChild(el('p', { class: 'hint', text: 'Lade…' }));
+      GK.net.partys().then(function (d) {
+        partyListe = (d && d.liste) || [];
+        partyWahl.innerHTML = '';
+        if (!partyListe.length) {
+          partyWahl.appendChild(el('option', { value: '', text: 'Noch keine Party gespielt' }));
+          partyBox.innerHTML = '';
+          partyBox.appendChild(el('p', { class: 'hint', text: 'Sobald eine Party zu Ende gespielt ist, steht sie hier.' }));
+          return;
+        }
+        partyListe.forEach(function (x) {
+          var d1 = new Date(x.von);
+          partyWahl.appendChild(el('option', { value: x.id, text:
+            d1.getDate() + '.' + (d1.getMonth() + 1) + '. ' +
+            ('0' + d1.getHours()).slice(-2) + ':' + ('0' + d1.getMinutes()).slice(-2) +
+            ' · ' + x.name + ' · ' + x.leute + (x.eigeneChips ? ' · Buy-in' : '') }));
+        });
+        partyZeigen(partyListe[0].id);
+      }).catch(function (e) {
+        partyBox.innerHTML = '';
+        partyBox.appendChild(el('p', { class: 'hint', text: 'Protokoll nicht erreichbar' +
+          (e && e.message ? ': ' + e.message : '') }));
+      });
+    }
+
+    function partyZeigen(id) {
+      if (!id) return;
+      GK.net.partys(id).then(function (d) {
+        var pa = d && d.party;
+        partyBox.innerHTML = '';
+        if (!pa) { partyBox.appendChild(el('p', { class: 'hint', text: 'Nichts gefunden.' })); return; }
+        var von = new Date(pa.von), bis = new Date(pa.bis);
+        var uhr = function (t) { return ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2); };
+        var lief = Math.max(1, Math.round((pa.bis - pa.von) / 60000));
+        partyBox.appendChild(el('div', { class: 'party-log-kopf' }, [
+          el('span', { class: 'chip-marke ' + (pa.eigeneChips ? 'marke-eigen' : 'marke-frei'),
+                       text: pa.eigeneChips ? '💰 YOUR CHIPS' : '🎁 FREE CHIPS' }),
+          el('span', { text: von.getDate() + '.' + (von.getMonth() + 1) + '. ' +
+                             uhr(von) + '–' + uhr(bis) + ' (' + lief + ' min)' }),
+          el('span', { text: GK.fmt(pa.startChips) + ' Startchips' }),
+          el('span', { text: pa.nachschub ? 'Nachschub ' + GK.fmt(pa.nachschub) : 'kein Nachschub' }),
+          el('span', { text: (pa.minBet || pa.maxBet)
+            ? 'Einsatz ' + (pa.minBet || 1) + '–' + (pa.maxBet || '∞')
+            : 'Einsatz frei' }),
+          el('span', { text: (pa.spiele || []).length + ' Spiele' })
+        ]));
+        partyBox.appendChild(el('div', { class: 'stat-zeile kopf party-log-zeile' }, [
+          el('span', { class: 'nm', text: 'Spieler' }),
+          el('span', { text: 'Runden' }),
+          el('span', { text: 'Bester Win' }),
+          el('span', { text: 'Endstand' }),
+          el('span', { text: pa.eigeneChips ? 'Aufs Konto' : 'Gewinn' })
+        ]));
+        (pa.spieler || []).forEach(function (s, i) {
+          partyBox.appendChild(el('div', { class: 'stat-zeile party-log-zeile' + (s.gewinn >= 0 ? ' plus' : '') }, [
+            el('span', { class: 'nm', text: (i + 1) + '. ' + (s.avatar || '👤') + ' ' + s.name +
+                                            (s.nachschub ? ' 🎁' : '') }),
+            el('span', { text: GK.fmt(s.runden) }),
+            el('span', { text: '+' + GK.fmt(s.besterWin) }),
+            el('span', { text: GK.fmt(s.chips) }),
+            el('span', { class: s.gewinn >= 0 ? 'plus' : 'minus',
+                         text: pa.eigeneChips ? GK.fmt(s.ausgezahlt) : GK.fmtSigned(s.gewinn) })
+          ]));
+        });
+        if (pa.eigeneChips) {
+          partyBox.appendChild(el('p', { class: 'hint', text:
+            'Buy-in: jeder hat ' + GK.fmt(pa.startChips) + ' Chips eingezahlt. Der Sieger nimmt ' +
+            'die Gewinne aller mit — „Aufs Konto" ist, was tatsächlich zurückging.' }));
+        }
+      }).catch(function () {
+        partyBox.innerHTML = '';
+        partyBox.appendChild(el('p', { class: 'hint', text: 'Nicht erreichbar.' }));
+      });
+    }
+    partyWahl.addEventListener('change', function () { GK.sfx('click'); partyZeigen(partyWahl.value); });
+    var partyNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
+    partyNeu.addEventListener('click', function () { GK.sfx('click'); partyLogHolen(); });
+
     var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
     statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
 
@@ -1663,6 +1752,7 @@
     renderMP();
     renderQuoten();
     renderRegeln();
+    partyLogHolen();
     wahlenFuellen();
     statHolen();
     wipeSync();
@@ -1719,6 +1809,15 @@
             el('div', { style: 'height:8px' }),
             el('div', { class: 'modal-actions' }, [quotenNeutral]),
             el('p', { class: 'hint', text: '50 ist neutral, Zehntel sind möglich — 50,5 ist ein Hauch gnädiger. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat stehen nicht in der Liste: dort werden echte Karten ausgeteilt, da gibt es nichts zu schieben.' })
+          ], true),
+
+          feld('PARTY-PROTOKOLL', [
+            partyWahl,
+            el('div', { style: 'height:8px' }),
+            partyBox,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [partyNeu]),
+            el('p', { class: 'hint', text: 'Jede zu Ende gespielte Party landet hier mit ihren Einstellungen und dem Endstand — die letzten 120 Sitzungen.' })
           ], true),
 
           feld('SPIELE & EINSÄTZE', [

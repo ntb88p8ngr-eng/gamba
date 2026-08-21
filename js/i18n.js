@@ -177,6 +177,15 @@
     '24 Std': '24 hrs', '7 Tage': '7 days', '30 Tage': '30 days',
     '📊 Balken': '📊 Bars', '📈 Linie': '📈 Line',
     'OFFENE TISCHE & PARTYS': 'OPEN TABLES & PARTIES', 'AKTUALISIEREN': 'REFRESH',
+    'PARTY-PROTOKOLL': 'PARTY LOG', 'SPIELE & EINSÄTZE': 'GAMES & BETS',
+    'Noch keine Party gespielt': 'No party played yet',
+    'Sobald eine Party zu Ende gespielt ist, steht sie hier.':
+      'As soon as a party is played out it shows up here.',
+    'Protokoll nicht erreichbar': 'Party log unreachable',
+    'Nichts gefunden.': 'Nothing found.', 'Nicht erreichbar.': 'Unreachable.',
+    'Endstand': 'Final', 'Aufs Konto': 'To the account', 'Gewinn': 'Profit',
+    'kein Nachschub': 'no top-up', 'Einsatz frei': 'bets unrestricted',
+    'Lade…': 'Loading…',
     'NÄCHSTER WIPE': 'NEXT WIPE', 'DATUM (0 UHR)': 'DATE (MIDNIGHT)',
     'WIPE PLANEN': 'SCHEDULE WIPE', 'ABSAGEN': 'CANCEL',
     'Stufen mit zurücksetzen': 'Reset levels too',
@@ -490,6 +499,12 @@
        Die Ersetzung darf auch eine Funktion sein: dann lässt sich ein Name
        aus der Mitte noch einmal durchs Wörterbuch schicken (Pferde, Gegner
        am Pokertisch), statt ihn deutsch stehen zu lassen. */
+    /* Party-Protokoll: Kopfzeile und Auswahl */
+    [/^(.+) Startchips$/, '$1 starting chips'],
+    [/^Nachschub (.+)$/, 'Top-up $1'],
+    [/^Einsatz (\d+)–(.+)$/, 'Bets $1–$2'],
+    [/^(\d+) Spiele$/, '$1 games'],
+    [/^(.+) · (.+) · (\d+) · Buy-in$/, '$1 · $2 · $3 · buy-in'],
     /* Die Zeile im Statistik-Hinweis unter dem Zeiger */
     [/^(.+) Runden · (.+) gesetzt · (.+) ausgezahlt · (.+) Logins$/,
       '$1 rounds · $2 staked · $3 paid out · $4 logins'],

@@ -91,6 +91,22 @@
     return api('api/stats', { method: 'POST', body: JSON.stringify(body) });
   };
 
+  /**
+   * Protokoll beendeter Partys (nur Admin).
+   *
+   * Ohne `id` kommt die schlanke Liste, mit `id` der ganze Datensatz —
+   * geht wie die Statistik am Schreibvorgang vorbei, weil nichts geändert
+   * wird.
+   */
+  Net.partys = function (id) {
+    if (!Net.online) return Promise.resolve(null);
+    var body = {};
+    if (id) body.id = id;
+    if (Net.token) body.token = Net.token;
+    if (Net.session) body.session = Net.session;
+    return api('api/partys', { method: 'POST', body: JSON.stringify(body) });
+  };
+
   Net.op = function (type, payload) {
     if (!Net.online) return Promise.resolve(null);
     var body = Object.assign({ type: type }, payload || {});

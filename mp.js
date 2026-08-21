@@ -468,6 +468,7 @@ function createMP(deps) {
          an der 404 und raeumen ihre Kasse selbst ab. Bei einer Buy-in-Party
          steht dagegen echtes Guthaben drin: das wird vorher abgerechnet. */
       partyAbrechnen(pa);
+      partyProtokoll(pa);
       partys.delete(pa.id);
       bump(null);
       return { ok: true, art: 'party', name: pa.name };
@@ -898,6 +899,50 @@ function createMP(deps) {
     return { ok: true, party: pa.id };
   }
 
+  /* So viele beendete Partys bleiben im Protokoll stehen. */
+  var P_LOG_MAX = 120;
+
+  /**
+   * Eine beendete Party ins Protokoll schreiben.
+   *
+   * Eine Party lebt nur im Arbeitsspeicher und ist nach dem Aufraeumen weg —
+   * damit auch die Frage „wer hat gestern abend eigentlich gewonnen?". Also
+   * wird zum Schluss ein Abzug festgehalten: Einstellungen, Endstand, wer
+   * was ausgezahlt bekam.
+   *
+   * Einmal je Party, `geloggt` ist der Merker. Eine Party, die nie gestartet
+   * wurde, kommt nicht ins Protokoll — da gaebe es nichts zu berichten.
+   */
+  function partyProtokoll(pa) {
+    if (pa.geloggt || !pa.startAt) return;
+    pa.geloggt = true;
+    var datenbank = deps.db && deps.db();
+    if (!datenbank) return;
+    if (!Array.isArray(datenbank.partyLog)) datenbank.partyLog = [];
+    function gewinn(s) { return s.chips - s.start - (s.nachschub || 0); }
+    var rang = pa.spieler.slice().sort(function (a, b) {
+      return gewinn(b) - gewinn(a) || b.chips - a.chips;
+    });
+    datenbank.partyLog.unshift({
+      id: pa.id, name: pa.name, host: pa.host,
+      von: pa.startAt, bis: pa.endeAt || now(),
+      dauer: pa.dauer, startChips: pa.startChips,
+      eigeneChips: !!pa.eigeneChips, nachschub: pa.nachschub || 0,
+      minBet: pa.minBet || 0, maxBet: pa.maxBet || 0,
+      spiele: pa.spiele.slice(), topf: pa.topf || 0,
+      spieler: rang.map(function (s) {
+        return {
+          id: s.id, name: s.name, avatar: s.avatar,
+          chips: s.chips, gewinn: gewinn(s), nachschub: s.nachschub || 0,
+          runden: s.runden || 0, besterWin: s.besterWin || 0,
+          ausgezahlt: s.ausgezahlt || 0
+        };
+      })
+    });
+    if (datenbank.partyLog.length > P_LOG_MAX) datenbank.partyLog.length = P_LOG_MAX;
+    deps.save();
+  }
+
   /** Einen Anteil aufs Konto zurueckbuchen. `bezahlt` ist danach zu. */
   function partyAuszahlen(pa, s, betrag) {
     var p = deps.players()[s.id];
@@ -1118,6 +1163,8 @@ function createMP(deps) {
       /* Noch eine Runde heisst bei Buy-in: erst die alte auszahlen, dann
          beim naechsten Start neu einzahlen. */
       partyAbrechnen(pa);
+      partyProtokoll(pa);
+      pa.geloggt = false;          // die naechste Runde ist eine eigene Sitzung
       pa.status = 'lobby';
       pa.startAt = 0; pa.endeAt = 0; pa.meldungen = []; pa.topf = 0;
       pa.spieler.forEach(function (s) {
@@ -1144,9 +1191,11 @@ function createMP(deps) {
         pa.abrechnenAb = jetzt + P_SCHLUSSFRIST;
         bumpParty(pa);
       }
-      /* Buy-in auszahlen, sobald die Schlussfrist um ist. */
-      if (pa.status === 'ende' && pa.eigeneChips && jetzt >= (pa.abrechnenAb || 0)) {
-        if (partyAbrechnen(pa)) bumpParty(pa);
+      /* Schlussfrist um: auszahlen (bei Buy-in) und ins Protokoll schreiben.
+         Erst jetzt, damit die letzten gemeldeten Staende noch drinstehen. */
+      if (pa.status === 'ende' && jetzt >= (pa.abrechnenAb || 0)) {
+        if (pa.eigeneChips && partyAbrechnen(pa)) bumpParty(pa);
+        partyProtokoll(pa);
       }
       /* Eine Party, in der seit einer Viertelstunde niemand mehr war,
          raeumt sich selbst weg. */
@@ -1157,6 +1206,7 @@ function createMP(deps) {
       });
       if (letzte && jetzt - letzte > 15 * 60000) {
         partyAbrechnen(pa);
+        partyProtokoll(pa);
         partys.delete(pa.id);
         bump(null);
       }

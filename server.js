@@ -81,6 +81,9 @@ function emptyDB() {
        Spieler positiv läuft. Gekürzt wird nach Alter und nach Anzahl. */
     runden: [],
     logins: [],
+    /* Protokoll beendeter Partys: Einstellungen, Endstand und Auszahlung
+       je Sitzung. Geschrieben wird es von mp.js, gelesen ueber /api/partys. */
+    partyLog: [],
     /* spielLuck: Feinjustierung je Spiel, 0..100 mit 50 als neutral. Was
        nicht drinsteht, laeuft neutral — deshalb ein leeres Objekt und keine
        Liste aller Spiele: welche es gibt, weiss der Browser. */
@@ -108,6 +111,7 @@ function loadDB() {
     db.feed = db.feed || [];
     db.runden = Array.isArray(db.runden) ? db.runden : [];
     db.logins = Array.isArray(db.logins) ? db.logins : [];
+    db.partyLog = Array.isArray(db.partyLog) ? db.partyLog : [];
     db.settings = Object.assign(emptyDB().settings, db.settings || {});
     if (!db.settings.spielLuck || typeof db.settings.spielLuck !== 'object') db.settings.spielLuck = {};
     if (!db.settings.spielRegel || typeof db.settings.spielRegel !== 'object') db.settings.spielRegel = {};
@@ -830,6 +834,32 @@ function handleRequest(req, res) {
       statLogin(p.id);
       saveDB();
       sendJSON(res, 200, { session: newSession(p.id), playerId: p.id, state: publicState() });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Protokoll der Partys ──
+     Die Liste kommt schlank: Name, Zeitraum, Art und Teilnehmerzahl. Erst
+     wenn eine Sitzung ausgewaehlt wird, geht der ganze Datensatz raus. */
+  if (url === '/api/partys' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      if (!validToken(body.token)) return sendJSON(res, 403, { error: 'Nur der Admin darf das' });
+      var log = Array.isArray(db.partyLog) ? db.partyLog : [];
+      var id = clean(body.id, 40).trim();
+      if (id) {
+        var eine = log.filter(function (x) { return x.id === id; })[0];
+        if (!eine) return sendJSON(res, 404, { error: 'Diese Party steht nicht im Protokoll' });
+        return sendJSON(res, 200, { party: eine });
+      }
+      sendJSON(res, 200, {
+        liste: log.map(function (x) {
+          return {
+            id: x.id, name: x.name, von: x.von, bis: x.bis,
+            eigeneChips: !!x.eigeneChips, startChips: x.startChips,
+            leute: (x.spieler || []).length,
+            sieger: (x.spieler || [])[0] ? x.spieler[0].name : ''
+          };
+        })
+      });
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 

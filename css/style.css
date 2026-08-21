@@ -345,6 +345,12 @@ img{max-width:100%}
 .stat-tip-reihe{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .stat-tip-zeit{font-size:.68rem;color:#fff;margin-top:3px}
 .stat-tip-mehr{font-size:.64rem;color:var(--muted)}
+
+/* Party-Protokoll: Kopfzeile mit den Einstellungen, darunter der Endstand */
+.party-log{max-height:340px;overflow-y:auto}
+.party-log-kopf{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;
+  font-size:.7rem;color:var(--muted);margin-bottom:8px}
+.party-log-zeile{grid-template-columns:1fr 62px 82px 82px 92px}
 .stat-tabelle{display:flex;flex-direction:column;gap:3px;max-height:240px;overflow-y:auto}
 .stat-zeile{
   display:grid;grid-template-columns:1fr 62px 78px 60px 92px;gap:6px;align-items:center;
