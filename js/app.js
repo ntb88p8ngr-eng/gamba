@@ -1296,15 +1296,22 @@
     var statSpiel = '';                 // leer = alle
     var statDaten = null;
     var statLaeuft = false;
+    var statTyp = 'balken';   // 'balken' oder 'linie'
+    /* Trefferflächen der zuletzt gezeichneten Kurve — daran hängt der
+       Zeiger-Hinweis. Ein Eintrag je Eimer: Mitte, Breite, Wert, Zeit. */
+    var statGeo = [];
+    var statHover = -1;
 
     var statCanvas = el('canvas', { class: 'stat-canvas', width: '900', height: '260' });
     var statKopf = el('div', { class: 'stat-kopf' });
     var statTabelle = el('div', { class: 'stat-tabelle' });
 
-    var SPANNEN = [['1 Std', 3600000], ['12 Std', 12 * 3600000], ['24 Std', 86400000],
+    var SPANNEN = [['1 Std', 3600000], ['3 Std', 3 * 3600000], ['6 Std', 6 * 3600000],
+                   ['12 Std', 12 * 3600000], ['24 Std', 86400000],
                    ['7 Tage', 7 * 86400000], ['30 Tage', 30 * 86400000], ['Gesamt', 0]];
     var REIHEN = [['Netto Spieler', 'netto'], ['Einsätze', 'einsatz'],
                   ['Auszahlungen', 'gewinn'], ['Runden', 'runden'], ['Logins', 'logins']];
+    var TYPEN = [['📊 Balken', 'balken'], ['📈 Linie', 'linie']];
 
     function knopfReihe(paare, holen, setzen) {
       var box = el('div', { class: 'stat-knoepfe' });
@@ -1326,6 +1333,8 @@
       function (v) { statSpanne = v; statHolen(); });
     var reihenReihe = knopfReihe(REIHEN, function () { return statReihe; },
       function (v) { statReihe = v; statZeichnen(); });
+    var typReihe = knopfReihe(TYPEN, function () { return statTyp; },
+      function (v) { statTyp = v; statZeichnen(); });
 
     var spielerWahl = el('select', { class: 'mp-feld' });
     var spielWahl = el('select', { class: 'mp-feld' });
@@ -1376,7 +1385,55 @@
         '<span><b>' + GK.fmt(g.logins) + '</b> Logins</span>' +
         '<span><b>' + GK.fmt(g.aktive) + '</b> aktive von ' + GK.fmt(g.spieler) + '</span>';
 
-      /* ── Kurve ── */
+      statTabelleZeichnen(d);
+      kurveZeichnen();
+    }
+
+    /** Die Tabelle darunter: welche Spiele zahlen für die Spieler positiv? */
+    function statTabelleZeichnen(d) {
+      statTabelle.innerHTML = '';
+      var reihen = (d.spiele || []).slice(0, 30);
+      if (!reihen.length) {
+        statTabelle.appendChild(el('div', { class: 'feed-empty', text: 'In diesem Zeitraum wurde nicht gespielt.' }));
+        return;
+      }
+      statTabelle.appendChild(el('div', { class: 'stat-zeile kopf' }, [
+        el('span', { class: 'nm', text: 'Spiel' }),
+        el('span', { text: 'Runden' }),
+        el('span', { text: 'Einsatz' }),
+        el('span', { text: 'Quote' }),
+        el('span', { text: 'Netto Spieler' })
+      ]));
+      reihen.forEach(function (r) {
+        var sp = GK.gameById(r.id);
+        statTabelle.appendChild(el('div', { class: 'stat-zeile' + (r.netto >= 0 ? ' plus' : '') }, [
+          el('span', { class: 'nm', text: sp ? sp.name : (r.id || '—') }),
+          el('span', { text: GK.fmt(r.runden) }),
+          el('span', { text: GK.fmt(r.einsatz) }),
+          el('span', { text: (Math.round(r.quote * 1000) / 10) + ' %' }),
+          el('span', { class: r.netto >= 0 ? 'plus' : 'minus', text: GK.fmtSigned(r.netto) })
+        ]));
+      });
+    }
+
+    /** Zeitstempel für die Achse — bei langen Zeiträumen das Datum. */
+    function statZeit(t, lang) {
+      var dt = new Date(t);
+      var uhr = ('0' + dt.getHours()).slice(-2) + ':' + ('0' + dt.getMinutes()).slice(-2);
+      if (!lang) return uhr;
+      return dt.getDate() + '.' + (dt.getMonth() + 1) + '. ' + uhr;
+    }
+
+    /**
+     * Die Kurve zeichnen — als Balken oder als Linie mit Punkten.
+     *
+     * Nebenbei füllt sie statGeo: je Eimer eine Trefferfläche mit Mitte,
+     * Wert und Zeit. Daran hängt der Hinweis unter dem Zeiger, ohne dass
+     * dafür noch einmal gerechnet werden müsste.
+     */
+    function kurveZeichnen() {
+      var d = statDaten;
+      if (!d) return;
       var c = statCanvas, ctx = c.getContext('2d');
       var dpr = Math.min(2, window.devicePixelRatio || 1);
       var br = c.clientWidth || 900, ho = 260;
@@ -1389,72 +1446,165 @@
         return p[statReihe] || 0;
       });
       var max = Math.max(1, Math.max.apply(null, werte.map(Math.abs)));
-      var null0 = statReihe === 'netto' ? ho / 2 : ho - 26;
-      var hoch = statReihe === 'netto' ? (ho / 2 - 18) : (ho - 46);
-      var bx = br / werte.length;
+      /* Auf eine runde Zahl aufrunden: eine Achse, die bei 3.847 endet,
+         liest sich schlecht. */
+      var stufe = Math.pow(10, Math.floor(Math.log(max) / Math.LN10));
+      max = Math.ceil(max / (stufe / 2)) * (stufe / 2);
 
-      // Gitter
-      ctx.strokeStyle = 'rgba(255,255,255,.09)';
-      ctx.lineWidth = 1;
-      for (var i = 0; i <= 4; i++) {
-        var y = 10 + i * (ho - 36) / 4;
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(br, y); ctx.stroke();
-      }
-      ctx.strokeStyle = 'rgba(255,255,255,.28)';
-      ctx.beginPath(); ctx.moveTo(0, null0); ctx.lineTo(br, null0); ctx.stroke();
+      var LINKS = 52;                       // Platz für die Wertachse
+      var UNTEN = 22;                       // Platz für die Zeitachse
+      var feldB = br - LINKS - 6, feldH = ho - UNTEN - 14;
+      var minus = statReihe === 'netto';
+      var null0 = 14 + (minus ? feldH / 2 : feldH);
+      var hoch = minus ? feldH / 2 : feldH;
+      var bx = feldB / werte.length;
+      function yVon(w) { return null0 - (w / max) * hoch; }
 
-      // Balken
-      werte.forEach(function (w, i) {
-        var h = (Math.abs(w) / max) * hoch;
-        var x = i * bx + 1.5;
-        var oben = w >= 0 ? null0 - h : null0;
-        ctx.fillStyle = statReihe === 'netto'
-          ? (w >= 0 ? 'rgba(124,255,59,.75)' : 'rgba(255,59,107,.75)')
-          : 'rgba(0,229,255,.7)';
-        ctx.fillRect(x, oben, Math.max(1, bx - 3), Math.max(1, h));
+      /* ── Wertachse: waagerechte Linien mit ihrer Zahl daneben ── */
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textBaseline = 'middle';
+      var stufenListe = minus ? [1, 0.5, 0, -0.5, -1] : [1, 0.75, 0.5, 0.25, 0];
+      stufenListe.forEach(function (f) {
+        var w = f * max, y = yVon(w);
+        ctx.strokeStyle = f === 0 ? 'rgba(255,255,255,.34)' : 'rgba(255,255,255,.09)';
+        ctx.beginPath(); ctx.moveTo(LINKS, y); ctx.lineTo(br - 4, y); ctx.stroke();
+        ctx.fillStyle = f === 0 ? 'rgba(255,255,255,.7)' : 'rgba(255,255,255,.5)';
+        ctx.textAlign = 'right';
+        ctx.fillText(GK.fmt(Math.round(w)), LINKS - 6, y);
+      });
+      /* Die Achse selbst */
+      ctx.strokeStyle = 'rgba(255,255,255,.22)';
+      ctx.beginPath(); ctx.moveTo(LINKS, 8); ctx.lineTo(LINKS, ho - UNTEN + 2); ctx.stroke();
+
+      /* ── Trefferflächen ── */
+      statGeo = werte.map(function (w, i) {
+        return { x: LINKS + i * bx, b: bx, mitte: LINKS + i * bx + bx / 2,
+                 y: yVon(w), wert: w, t: d.punkte[i].t, punkt: d.punkte[i] };
       });
 
-      // Beschriftung: Anfang, Mitte, Ende
-      ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.font = '11px system-ui, sans-serif';
-      var f = function (t) {
-        var dt = new Date(t);
-        return d.bis - d.von > 2 * 86400000
-          ? dt.getDate() + '.' + (dt.getMonth() + 1) + '.'
-          : ('0' + dt.getHours()).slice(-2) + ':' + ('0' + dt.getMinutes()).slice(-2);
-      };
-      ctx.textAlign = 'left'; ctx.fillText(f(d.von), 2, ho - 6);
-      ctx.textAlign = 'center'; ctx.fillText(f((d.von + d.bis) / 2), br / 2, ho - 6);
-      ctx.textAlign = 'right'; ctx.fillText(f(d.bis), br - 2, ho - 6);
-      ctx.textAlign = 'left';
-      ctx.fillStyle = 'rgba(255,255,255,.75)';
-      ctx.fillText('max ' + GK.fmt(Math.round(max)), 2, 12);
+      /* ── Senkrechte Marke unter dem Zeiger ── */
+      if (statHover >= 0 && statGeo[statHover]) {
+        var gz = statGeo[statHover];
+        ctx.fillStyle = 'rgba(255,255,255,.07)';
+        ctx.fillRect(gz.x, 8, bx, ho - UNTEN - 6);
+        ctx.strokeStyle = 'rgba(255,209,46,.85)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(gz.mitte, 8); ctx.lineTo(gz.mitte, ho - UNTEN + 2); ctx.stroke();
+        ctx.lineWidth = 1;
+      }
 
-      /* ── Tabelle: welche Spiele zahlen für die Spieler positiv? ── */
-      statTabelle.innerHTML = '';
-      var reihen = (d.spiele || []).slice(0, 30);
-      if (!reihen.length) {
-        statTabelle.appendChild(el('div', { class: 'feed-empty', text: 'In diesem Zeitraum wurde nicht gespielt.' }));
+      var farbe = function (w) {
+        return statReihe === 'netto'
+          ? (w >= 0 ? 'rgba(124,255,59,.85)' : 'rgba(255,59,107,.85)')
+          : 'rgba(0,229,255,.8)';
+      };
+
+      if (statTyp === 'balken') {
+        werte.forEach(function (w, i) {
+          var y = yVon(w);
+          var oben = Math.min(y, null0), h = Math.max(1, Math.abs(null0 - y));
+          ctx.fillStyle = farbe(w);
+          if (i === statHover) ctx.fillStyle = w >= 0 || statReihe !== 'netto' ? '#fff' : '#ffb3c4';
+          ctx.fillRect(LINKS + i * bx + 1.5, oben, Math.max(1, bx - 3), h);
+        });
       } else {
-        statTabelle.appendChild(el('div', { class: 'stat-zeile kopf' }, [
-          el('span', { class: 'nm', text: 'Spiel' }),
-          el('span', { text: 'Runden' }),
-          el('span', { text: 'Einsatz' }),
-          el('span', { text: 'Quote' }),
-          el('span', { text: 'Netto Spieler' })
-        ]));
-        reihen.forEach(function (r) {
-          var sp = GK.gameById(r.id);
-          statTabelle.appendChild(el('div', { class: 'stat-zeile' + (r.netto >= 0 ? ' plus' : '') }, [
-            el('span', { class: 'nm', text: sp ? sp.name : (r.id || '—') }),
-            el('span', { text: GK.fmt(r.runden) }),
-            el('span', { text: GK.fmt(r.einsatz) }),
-            el('span', { text: (Math.round(r.quote * 1000) / 10) + ' %' }),
-            el('span', { class: r.netto >= 0 ? 'plus' : 'minus', text: GK.fmtSigned(r.netto) })
-          ]));
+        /* Linie mit Punkten: die Fläche darunter ganz zart, damit die
+           Richtung auch bei flachen Kurven ins Auge fällt. */
+        ctx.beginPath();
+        werte.forEach(function (w, i) {
+          var x = LINKS + i * bx + bx / 2, y = yVon(w);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = statReihe === 'netto' ? 'rgba(255,209,46,.9)' : 'rgba(0,229,255,.9)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.lineTo(LINKS + (werte.length - 1) * bx + bx / 2, null0);
+        ctx.lineTo(LINKS + bx / 2, null0);
+        ctx.closePath();
+        ctx.fillStyle = statReihe === 'netto' ? 'rgba(255,209,46,.10)' : 'rgba(0,229,255,.10)';
+        ctx.fill();
+        ctx.lineWidth = 1;
+        werte.forEach(function (w, i) {
+          var x = LINKS + i * bx + bx / 2, y = yVon(w);
+          ctx.beginPath();
+          ctx.arc(x, y, i === statHover ? 5 : 3, 0, Math.PI * 2);
+          ctx.fillStyle = i === statHover ? '#fff' : farbe(w);
+          ctx.fill();
         });
       }
+
+      /* ── Zeitachse ── */
+      ctx.fillStyle = 'rgba(255,255,255,.6)';
+      ctx.textBaseline = 'alphabetic';
+      var lang = d.bis - d.von > 2 * 86400000;
+      var f = function (t) {
+        var dt = new Date(t);
+        return lang ? dt.getDate() + '.' + (dt.getMonth() + 1) + '.' : statZeit(t);
+      };
+      ctx.textAlign = 'left'; ctx.fillText(f(d.von), LINKS, ho - 6);
+      ctx.textAlign = 'center'; ctx.fillText(f((d.von + d.bis) / 2), LINKS + feldB / 2, ho - 6);
+      ctx.textAlign = 'right'; ctx.fillText(f(d.bis), br - 4, ho - 6);
+      ctx.textAlign = 'left';
     }
+
+    /* ── Hinweis unter dem Zeiger ──
+       Er hängt im Rahmen über dem Canvas und zeigt Zeitpunkt und Zahl des
+       Eimers, auf dem der Zeiger gerade steht. Am Handy tut es ein Tipp:
+       dieselbe Behandlung, nur mit pointerdown. */
+    var statTip = el('div', { class: 'stat-tip', hidden: 'hidden' });
+    var statRahmen = el('div', { class: 'stat-rahmen' }, [statCanvas, statTip]);
+
+    function statTreffer(ev) {
+      if (!statGeo.length) return -1;
+      var r = statCanvas.getBoundingClientRect();
+      var x = ev.clientX - r.left;
+      /* Der nächstliegende Eimer, nicht der genau getroffene: bei vierzig
+         schmalen Balken trifft man sonst ständig daneben. */
+      var best = -1, dist = 1e9;
+      for (var i = 0; i < statGeo.length; i++) {
+        var dd = Math.abs(statGeo[i].mitte - x);
+        if (dd < dist) { dist = dd; best = i; }
+      }
+      return dist <= Math.max(14, statGeo[0].b) ? best : -1;
+    }
+
+    function statTipZeigen(i, ev) {
+      var g = statGeo[i];
+      if (!g) { statTip.hidden = true; return; }
+      var p = g.punkt;
+      var lang = statDaten && (statDaten.bis - statDaten.von) > 2 * 86400000;
+      var reihenName = (REIHEN.filter(function (x) { return x[1] === statReihe; })[0] || ['', ''])[0];
+      statTip.innerHTML =
+        '<b>' + GK.fmtSigned(Math.round(g.wert)) + '</b>' +
+        '<span class="stat-tip-reihe">' + reihenName + '</span>' +
+        '<span class="stat-tip-zeit">' + statZeit(g.t, lang) + ' – ' +
+          statZeit(g.t + (statDaten ? statDaten.breite : 0), lang) + '</span>' +
+        '<span class="stat-tip-mehr">' + GK.fmt(p.runden) + ' Runden · ' +
+          GK.fmt(p.einsatz) + ' gesetzt · ' + GK.fmt(p.gewinn) + ' ausgezahlt' +
+          (p.logins ? ' · ' + GK.fmt(p.logins) + ' Logins' : '') + '</span>';
+      statTip.hidden = false;
+      /* Am Rand kippt der Hinweis auf die andere Seite, sonst steht er
+         halb außerhalb des Rahmens. */
+      var breite = statTip.offsetWidth || 160;
+      var platz = statCanvas.clientWidth;
+      var links = Math.max(4, Math.min(platz - breite - 4, g.mitte - breite / 2));
+      statTip.style.left = links + 'px';
+      statTip.style.top = Math.max(4, Math.min(200, g.y - 12)) + 'px';
+    }
+
+    function statZeiger(ev) {
+      var i = statTreffer(ev);
+      if (i === statHover) { if (i >= 0) statTipZeigen(i, ev); return; }
+      statHover = i;
+      kurveZeichnen();
+      if (i >= 0) statTipZeigen(i, ev); else statTip.hidden = true;
+    }
+    statCanvas.addEventListener('pointermove', statZeiger);
+    statCanvas.addEventListener('pointerdown', statZeiger);
+    statCanvas.addEventListener('pointerleave', function () {
+      if (statHover < 0) return;
+      statHover = -1; statTip.hidden = true; kurveZeichnen();
+    });
 
     var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
     statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
@@ -1583,9 +1733,10 @@
             el('div', { style: 'height:8px' }),
             spannenReihe,
             reihenReihe,
+            typReihe,
             el('div', { style: 'height:8px' }),
             statKopf,
-            el('div', { class: 'stat-rahmen' }, [statCanvas]),
+            statRahmen,
             el('div', { style: 'height:8px' }),
             statTabelle,
             el('div', { style: 'height:8px' }),

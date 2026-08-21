@@ -842,30 +842,46 @@ function handleRequest(req, res) {
 
       var jetzt = Date.now();
       var spanne = Math.max(0, int(body.spanne));          // 0 = alles
-      var von = spanne ? jetzt - spanne : 0;
       var nurSpieler = clean(body.spieler, 40);
       var nurSpiel = clean(body.spiel, 24);
+      var EIMER = 40;
 
+      /* ── Zeitraster ──
+         Wichtig: die Eimergrenzen haengen *nicht* an der aktuellen Uhrzeit.
+         Frueher war der Anfang „jetzt minus Spanne" und die Breite daraus
+         gerechnet — damit verschob sich bei jedem Aktualisieren das ganze
+         Raster um die verstrichenen Sekunden, dieselben Runden fielen in
+         andere Eimer, und die Balken sprangen, obwohl sich an den Daten
+         nichts geaendert hatte. Jetzt liegt das Raster fest: die Breite
+         folgt allein der gewaehlten Spanne, und das Ende wird auf die
+         naechste Rasterkante aufgerundet. Zwischen zwei Abrufen aendert
+         sich damit hoechstens der letzte, noch laufende Eimer. */
+      var breite, ende, anfang;
+      if (spanne) {
+        breite = Math.max(60000, Math.ceil(spanne / EIMER));
+      } else {
+        /* Ohne Spanne: vom ersten Ereignis bis jetzt. Die Breite wird auf
+           volle Minuten gerundet, sonst wanderte sie mit jeder Sekunde. */
+        var frueh = jetzt - 3600000;
+        if (db.runden.length) frueh = Math.min(frueh, db.runden[0].t);
+        if (db.logins.length) frueh = Math.min(frueh, db.logins[0].t);
+        breite = Math.max(60000, Math.ceil((jetzt - frueh) / EIMER / 60000) * 60000);
+      }
+      ende = Math.ceil(jetzt / breite) * breite;
+      anfang = ende - EIMER * breite;
+
+      /* Gezaehlt wird genau das Fenster, das auch gezeichnet wird — sonst
+         passten Kopfzeile und Kurve nicht zueinander. */
       var runden = db.runden.filter(function (r) {
-        if (r.t < von) return false;
+        if (r.t < anfang) return false;
         if (nurSpieler && r.p !== nurSpieler) return false;
         if (nurSpiel && r.g !== nurSpiel) return false;
         return true;
       });
       var logins = db.logins.filter(function (l) {
-        return l.t >= von && (!nurSpieler || l.p === nurSpieler);
+        return l.t >= anfang && (!nurSpieler || l.p === nurSpieler);
       });
 
-      /* Zeitachse in 40 gleich breite Eimer. Ohne Spanne spannt sie vom
-         ersten Ereignis bis jetzt. */
-      var anfang = von;
-      if (!anfang) {
-        anfang = jetzt - 3600000;
-        if (runden.length) anfang = Math.min(anfang, runden[0].t);
-        if (logins.length) anfang = Math.min(anfang, logins[0].t);
-      }
-      var EIMER = 40;
-      var breite = Math.max(60000, Math.ceil((jetzt - anfang) / EIMER));
       var punkte = [];
       for (var i = 0; i < EIMER; i++) {
         punkte.push({ t: anfang + i * breite, einsatz: 0, gewinn: 0, runden: 0, logins: 0 });
@@ -904,7 +920,7 @@ function handleRequest(req, res) {
       runden.forEach(function (r) { wach[r.p] = 1; });
 
       sendJSON(res, 200, {
-        von: anfang, bis: jetzt, breite: breite,
+        von: anfang, bis: ende, breite: breite,
         punkte: punkte,
         spiele: liste(proSpiel, false),
         spieler: liste(proSpieler, true),

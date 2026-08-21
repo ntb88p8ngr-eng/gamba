@@ -173,7 +173,9 @@
     'STATISTIK': 'STATISTICS', 'Alle Spieler': 'All players', 'Alle Spiele': 'All games',
     'Netto Spieler': 'Player net', 'Einsätze': 'Bets', 'Auszahlungen': 'Payouts',
     'Runden': 'Rounds', 'Logins': 'Logins', 'Gesamt': 'Overall',
-    '1 Std': '1 hr', '12 Std': '12 hrs', '24 Std': '24 hrs', '7 Tage': '7 days', '30 Tage': '30 days',
+    '1 Std': '1 hr', '3 Std': '3 hrs', '6 Std': '6 hrs', '12 Std': '12 hrs',
+    '24 Std': '24 hrs', '7 Tage': '7 days', '30 Tage': '30 days',
+    '📊 Balken': '📊 Bars', '📈 Linie': '📈 Line',
     'OFFENE TISCHE & PARTYS': 'OPEN TABLES & PARTIES', 'AKTUALISIEREN': 'REFRESH',
     'NÄCHSTER WIPE': 'NEXT WIPE', 'DATUM (0 UHR)': 'DATE (MIDNIGHT)',
     'WIPE PLANEN': 'SCHEDULE WIPE', 'ABSAGEN': 'CANCEL',
@@ -488,6 +490,10 @@
        Die Ersetzung darf auch eine Funktion sein: dann lässt sich ein Name
        aus der Mitte noch einmal durchs Wörterbuch schicken (Pferde, Gegner
        am Pokertisch), statt ihn deutsch stehen zu lassen. */
+    /* Die Zeile im Statistik-Hinweis unter dem Zeiger */
+    [/^(.+) Runden · (.+) gesetzt · (.+) ausgezahlt · (.+) Logins$/,
+      '$1 rounds · $2 staked · $3 paid out · $4 logins'],
+    [/^(.+) Runden · (.+) gesetzt · (.+) ausgezahlt$/, '$1 rounds · $2 staked · $3 paid out'],
     /* Knöpfe, die eine Zahl mittragen */
     [/^➡️ WEITER \((.+)\)$/, '➡️ CONTINUE ($1)'],
     [/^📞 MITGEHEN \((.+)\)$/, '📞 CALL ($1)'],
