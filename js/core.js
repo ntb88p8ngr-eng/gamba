@@ -1268,6 +1268,10 @@
 
     var quick = GK.el('div', { class: 'bet-quick' }, [
       qb('½', function () { setVal(Math.floor(Number(input.value) / 2)); }, 'Halbieren'),
+      /* Abziehen links vom Verdoppeln: die Reihe liest sich damit von klein
+         nach groß — halbieren, wegnehmen, verdoppeln, dazulegen. */
+      qb('−5', function () { setVal(Number(input.value) - 5); }, '5 weniger'),
+      qb('−50', function () { setVal(Number(input.value) - 50); }, '50 weniger'),
       qb('2×', function () { setVal(Number(input.value) * 2); }, 'Verdoppeln'),
       qb('+10', function () { setVal(Number(input.value) + 10); }, '', 'qb-extra'),
       qb('+50', function () { setVal(Number(input.value) + 50); }),

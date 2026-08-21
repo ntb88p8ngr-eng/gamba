@@ -213,12 +213,14 @@ img{max-width:100%}
   #view-game .bet-panel .bet-label{display:none}
   /* min-width:0 ist hier nicht optional: ohne das zieht sich die Zeile auf die
      Mindestbreite des Zahlenfelds (rund 227 px) auf und quetscht die Chips weg. */
-  #view-game .bet-panel .bet-row{flex:0 0 88px;min-width:0}
+  #view-game .bet-panel .bet-row{flex:0 0 76px;min-width:0}
   #view-game .bet-input{font-size:1rem;padding:7px 8px;border-radius:11px;text-align:center}
   /* Rest der Breite für die Chips; passt es nicht, wird geschoben statt umgebrochen */
-  #view-game .bet-quick{flex:1;min-width:0;display:flex;flex-wrap:nowrap;gap:4px;overflow-x:auto;scrollbar-width:none}
+  #view-game .bet-quick{flex:1;min-width:0;display:flex;flex-wrap:nowrap;gap:3px;overflow-x:auto;scrollbar-width:none}
   #view-game .bet-quick::-webkit-scrollbar{display:none}
-  #view-game .bet-quick .chip-btn{flex:0 0 auto;padding:6px 8px;font-size:.66rem}
+  /* Enger als am Desktop: mit −5 und −50 sind es sieben Chips in der Leiste,
+     und die passen nur mit knapperem Innenabstand ohne Schieben nebeneinander. */
+  #view-game .bet-quick .chip-btn{flex:0 0 auto;padding:6px 5px;font-size:.64rem}
   #view-game .bet-quick .qb-extra{display:none}
   /* „ALL IN 🔥" ist der breiteste Chip und sprengt die Zeile — in der Leiste
      heißt er kurz „MAX 🔥", auf dem Desktop bleibt die lange Beschriftung. */
