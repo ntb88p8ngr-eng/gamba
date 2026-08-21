@@ -261,6 +261,16 @@ img{max-width:100%}
 .xp-strip i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--cyan),var(--pink));
   box-shadow:0 0 14px var(--lime);transition:width .6s cubic-bezier(.2,1,.3,1)}
 
+/* Sprachumschalter im Kopf: das Bild zeigt den Zustand, ein Klick wechselt. */
+.lang-schalter{
+  border:0;background:none;padding:0;cursor:pointer;line-height:0;
+  border-radius:999px;transition:transform .14s,filter .14s;flex:0 0 auto
+}
+.lang-schalter img{height:34px;width:auto;display:block;pointer-events:none}
+.lang-schalter:hover{transform:scale(1.06)}
+.lang-schalter:active{transform:scale(.94)}
+@media (max-width:720px){ .lang-schalter img{height:26px} }
+
 .sound-box{display:flex;align-items:center;gap:7px;padding:0 8px 0 0;border-radius:14px;background:rgba(255,255,255,.05);border:2px solid var(--line)}
 .sound-box .icon-btn{border:0;background:none;width:36px;height:36px}
 .sound-box .icon-btn:hover{transform:none;box-shadow:none}

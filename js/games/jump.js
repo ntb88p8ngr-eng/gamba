@@ -71,6 +71,8 @@
      Stelle unpassierbar. */
   function abstand(stufe) { return Math.min(138, 82 + 2.6 * stufe); }
   function broeckelAnteil(stufe) { return Math.min(0.42, 0.04 + 0.022 * stufe); }
+  /* So lange hält eine angeknackste Plattform noch, bevor sie zerfällt. */
+  var BROECKEL_WARTEN = 1.0;
   function wanderAnteil(stufe) { return Math.min(0.40, 0.05 + 0.02 * stufe); }
   function mausDichte(stufe) { return Math.min(0.55, Math.max(0, (stufe - 1) * 0.05)); }
 
@@ -251,8 +253,10 @@
       /* ── Zeichnen ─────────────────────────────────────────────────── */
 
       function plattenBild(p) {
-        if (p.art === 'broeckel') return da(p.bruch ? 'platte-3' : 'platte-2');
-        return da('platte-1');
+        if (p.art !== 'broeckel') return da('platte-1');
+        /* Rissig, solange sie noch trägt — zerbrochen erst, wenn sie
+           tatsächlich zerfällt. */
+        return da(p.bruch > 0.02 ? 'platte-3' : 'platte-2');
       }
 
       function zeichnen() {
@@ -554,7 +558,17 @@
               if (p.x < 8) { p.x = 8; p.vx = -p.vx; }
               if (p.x > W - PLATTE_B - 8) { p.x = W - PLATTE_B - 8; p.vx = -p.vx; }
             }
-            if (p.bruch) { p.bruch += dt * 1.6; if (p.bruch > 1.4) p.weg = true; }
+            /* Bröckeln mit Verzögerung: erst steht die Plattform noch eine
+               Sekunde, dann bricht sie weg. Sofort zu zerfallen sah aus, als
+               wäre der Absprung schuld — und man konnte den Sprung nicht mehr
+               ansetzen, weil der Boden schon im Fallen war. */
+            if (p.bruch) {
+              p.warten = (p.warten || 0) + dt;
+              if (p.warten > BROECKEL_WARTEN) {
+                p.bruch += dt * 1.6;
+                if (p.bruch > 1.4) p.weg = true;
+              }
+            }
             if (p.weg || held.vy <= 0) return;
             var fuesse = held.y + HELD_R;
             var vorher = fuesse - held.vy * dt;
@@ -572,7 +586,7 @@
                 held.vy = ABSPRUNG;
                 GK.sfx('plop');
               }
-              if (p.art === 'broeckel' && !p.bruch) p.bruch = 0.01;
+              if (p.art === 'broeckel' && !p.bruch) { p.bruch = 0.01; p.warten = 0; }
             }
           });
 
