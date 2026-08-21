@@ -149,6 +149,103 @@
       'A sliding maze full of gold — sneak in deep, but woe if Smaug wakes up.',
 
     /* Mehrspieler und Party */
+    'Partymodus': 'Party mode',
+    'Bis zu acht Leute, dieselbe Spielhalle, dasselbe Startguthaben und dieselbe Uhr. Wer den größten Gewinn macht, gewinnt.':
+      'Up to eight people, the same arcade, the same starting chips and the same clock. Biggest profit wins.',
+    'Bis zu acht Leute, alle mit demselben Startguthaben, alle in derselben Spielhalle. Wer am Ende den dicksten Gewinn hat, gewinnt. Dein Konto bleibt dabei unberührt — Partychips sind eigene Chips.':
+      'Up to eight people, all with the same starting chips, all in the same arcade. Whoever has the fattest profit at the end wins. Your account stays untouched — party chips are their own thing.',
+    "Texas Hold'em, 2 bis 6 Plätze. Blinds, Flop, Turn, River — gegen echte Leute.":
+      "Texas hold'em, 2 to 6 seats. Blinds, flop, turn, river — against real people.",
+    'Bayerisch Watten zu viert, zwei gegen zwei. Schlag und Trumpf werden angesagt, wer drei von fünf Stichen holt, gewinnt die Hand.':
+      'Bavarian Watten for four, two against two. Schlag and trump are called; whoever takes three of five tricks wins the hand.',
+    'Einer gegen einen. Beide setzen gleich viel, die Münze entscheidet.':
+      'One against one. Both stake the same, the coin decides.',
+    'Noch kein Tisch offen. Mach den ersten auf — wer die Multiplayer-Seite aufruft, sieht ihn sofort.':
+      'No table open yet. Start the first one — anyone opening the multiplayer page sees it right away.',
+    'Gerade schaut sonst niemand her.': 'Nobody else is looking right now.',
+    'gerade keine': 'none right now', 'gerade niemand': 'nobody right now',
+    'Die Party läuft — gespielt wird in der Spielhalle.':
+      'The party is on — play happens in the arcade.',
+    'Gleich geht es los — alle in die Spielhalle!': 'Starting any moment — everyone to the arcade!',
+    '🎰 ZUR SPIELHALLE': '🎰 TO THE ARCADE',
+    '🪑 OFFENE TISCHE': '🪑 OPEN TABLES', '👋 GERADE DA': '👋 HERE RIGHT NOW',
+    'Münzduell': 'Coin duel', 'Watten': 'Watten',
+    '● läuft': '● running', '○ wartet': '○ waiting',
+    'Neuer Tisch': 'New table', 'Höhe': 'Stakes', 'Neue Party': 'New party',
+    '🎉 PARTY AUFMACHEN': '🎉 OPEN PARTY', '🚀 PARTY STARTEN': '🚀 START PARTY',
+    '🚪 PARTY VERLASSEN': '🚪 LEAVE PARTY', '🔁 NOCH EINE RUNDE': '🔁 ANOTHER ROUND',
+    '✨ TISCH ERÖFFNEN': '✨ OPEN THE TABLE', '🪑 PLATZ NEHMEN': '🪑 TAKE A SEAT',
+    '🔁 NACHKAUFEN': '🔁 REBUY', '🏳️ PASSEN': '🏳️ FOLD', '✊ KLOPFEN': '✊ KNOCK',
+    '⬆️ ERHÖHEN': '⬆️ RAISE', '👑 KRONE': '👑 CROWN', '🐉 DRACHE': '🐉 DRAGON',
+    '🚪 JA, RAUS': '🚪 YES, LEAVE', 'Bot dazusetzen': 'Add a bot',
+    'Dein Einkauf': 'Your buy-in', 'Einkauf': 'Buy-in',
+    'Es wird angesagt…': 'Calling in progress…',
+    'Schlag und Trumpf werden noch angesagt': 'Schlag and trump are still being called',
+    'Welche Farbe wird Trumpf?': 'Which suit becomes trump?',
+    'Welchen Schlag sagst du an?': 'Which Schlag do you call?',
+    'Trumpf': 'Trump', 'Stiche': 'Tricks', 'Wir': 'Us', 'passt': 'folds',
+    'nächste Hand': 'next hand', 'wartet auf vier Spieler': 'waiting for four players',
+    '– frei –': '– free –',
+    'Warte auf einen Gegner…': 'Waiting for an opponent…',
+    'Warte auf vier Spieler…': 'Waiting for four players…',
+    'Verbinde mit dem Casino…': 'Connecting to the casino…',
+    'Diese Hand läuft schon — du bist ab der nächsten dabei.':
+      'This hand is already running — you are in from the next one.',
+    'Nichts setzen und weitergeben — geht nur, solange kein Einsatz offensteht':
+      'Bet nothing and pass along — only works while no bet is outstanding',
+    'Wieviel nimmst du mit an den Tisch? Der Stapel kommt beim Aufstehen zurück aufs Konto.':
+      'How much do you take to the table? The stack goes back to your account when you stand up.',
+    'Wie stark soll der Gegner spielen? Die Chips des Bots kommen aus der Kasse des Hauses, nicht von einem Konto.':
+      'How strong should the opponent play? The bot’s chips come from the house, not from an account.',
+    '🚪 AUFSTEHEN': '🚪 STAND UP', 'AUFSTEHEN': 'STAND UP',
+    'BOT DAZU': 'ADD BOT', 'KARTENDECK': 'CARD DECK',
+    'gleich geht es los…': 'starting any moment…',
+    'Warte auf Mitspieler…': 'Waiting for players…',
+    'Du eröffnest den Tisch und nimmst gleich Platz. Sobald sich jemand dazusetzt, geht es los.':
+      'You open the table and take a seat right away. As soon as somebody joins, it begins.',
+    'Warte auf die nächste Hand…': 'Waiting for the next hand…',
+    'Bot auf diesen Platz setzen': 'Seat a bot here',
+    'Bot rausnehmen': 'Remove the bot',
+    'Anfänger': 'beginner', 'Solide': 'solid', 'Hai': 'shark',
+    '👀 LÄUFT': '👀 RUNNING', 'VOLL': 'FULL', '🎉 MITMACHEN': '🎉 JOIN',
+    '🚪 PLATZ VERLASSEN': '🚪 LEAVE SEAT', '🪑 PLATZ NEHMEN': '🪑 TAKE A SEAT',
+    'Partys': 'Parties', 'Party': 'Party', 'Tisch': 'Table',
+    'bereit': 'ready', 'weg': 'away', 'offen': 'open',
+    '+ PARTY': '+ PARTY', '+ TISCH': '+ TABLE',
+    'Party einstellen': 'Party settings',
+    'Gilt für alle — auch für die, die schon in der Lobby sitzen.':
+      'Applies to everyone — including those already in the lobby.',
+    '⚙️ EINSTELLUNGEN ÄNDERN': '⚙️ CHANGE SETTINGS', '✅ ÜBERNEHMEN': '✅ APPLY',
+    'Mit eigenen Chips spielen (Buy-in)': 'Play with your own chips (buy-in)',
+    'Jeder zahlt sein Startguthaben vom Konto ein. Der Sieger nimmt die Gewinne aller mit; wer im Plus ist, aber nicht Erster, bekommt seinen Einsatz zurück. Kein Nachschub.':
+      'Everyone pays their starting chips from their account. The winner takes everyone else’s profits; whoever is up but not first gets their stake back. No top-up.',
+    'Startguthaben kommt vom Konto, der Sieger nimmt die Gewinne aller mit. Kein Nachschub.':
+      'Starting chips come from the account, the winner takes everyone else’s profits. No top-up.',
+    'Wer sich verzockt hat, bekommt automatisch neue Chips und spielt weiter. Für die Rangliste zählt das Geschenk nicht — es wird vom Gewinn abgezogen.':
+      'Anyone who gambles it all away automatically gets new chips and plays on. The gift does not count for the ranking — it is deducted from the profit.',
+    'Auch die, die jemand noch nicht freigespielt hat. Aus heisst: es zaehlt die eigene Stufe.':
+      'Including the ones somebody has not unlocked yet. Off means: your own level counts.',
+    'Auch die, die jemand noch nicht freigespielt hat.':
+      'Including the ones somebody has not unlocked yet.',
+    'Min. Einsatz': 'Min. bet', 'Max. Einsatz': 'Max. bet',
+    'kein Minimum': 'no minimum', 'kein Maximum': 'no maximum',
+    'Startchips': 'Starting chips',
+    '☑ ALLE': '☑ ALL', '☐ KEINE': '☐ NONE',
+    'Party verlassen': 'Leave the party',
+    'Buy-in: jeder zahlt sein Startguthaben vom Konto ein':
+      'Buy-in: everyone pays their starting chips from their account',
+    'Gratis-Chips: das Konto bleibt unberührt': 'Free chips: your account stays untouched',
+    'Du nimmst höchstens deinen Einsatz mit. Was du darüber hinaus gewonnen hast, bleibt liegen und geht an den Sieger der Party.':
+      'You take home at most your stake. Anything you won beyond that stays behind and goes to the winner of the party.',
+    'Deine Partychips verfallen — sie gehören zur Party, nicht zum Konto. Dein Kontostand bleibt so, wie er vor der Party war.':
+      'Your party chips expire — they belong to the party, not to your account. Your balance stays as it was before the party.',
+    'Party verlassen — dein Einsatz kommt zurück aufs Konto':
+      'Left the party — your stake comes back to your account',
+    'Party verlassen — dein Konto ist unverändert':
+      'Left the party — your account is unchanged',
+    'Die Party ist vorbei.': 'The party is over.',
+    'Geht aufs Konto': 'Goes to the account',
+    'WÄHL DEINEN AVATAR': 'PICK YOUR AVATAR',
     'Neue Party': 'New party', 'Partymodus': 'Party mode',
     'PARTY AUFMACHEN': 'OPEN PARTY', 'PARTY STARTEN': 'START PARTY',
     'PARTY VERLASSEN': 'LEAVE PARTY', 'MITMACHEN': 'JOIN', 'LÄUFT': 'RUNNING', 'VOLL': 'FULL',
@@ -409,7 +506,7 @@
      dazwischen. Stückweise zu übersetzen ginge zwar, wäre aber ein Wörterbuch
      aus Halbsätzen — deshalb werden diese Absätze am Stück ausgetauscht.
      Verglichen wird der zusammengeschobene innerHTML. */
-  var HTML_SELEKTOR = 'p.hint, .mp-intro, .admin-note, .party-schalter-was, .fl-info, .jp-info';
+  var HTML_SELEKTOR = 'p.hint, .mp-intro, .modal-text, .admin-note, .party-schalter-was, .fl-info, .jp-info';
   var WB_HTML = {
     '💡 Tipp: Die Krone zahlt <b>100×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz. <b>Endlos</b> dreht weiter, bis du stoppst oder die Chips alle sind.':
       '💡 Tip: the crown pays <b>100×</b>. Two matching symbols at least save part of your bet. <b>Endless</b> keeps spinning until you stop or run out of chips.',
@@ -440,6 +537,10 @@
     '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.':
       '💡 <b>A</b>/<b>D</b> to move, <b>click</b> to shoot — on a phone use the buttons on the field and tap the field itself. A tap also starts the run.',
     'Noch am Boden': 'Still on the ground',
+    'Hier spielst du gegen <b>echte Leute</b> statt gegen den Automaten. Setz dich an einen offenen Tisch oder mach einen eigenen auf — sobald ein zweiter Platz belegt ist, geht es los.':
+      'Here you play against <b>real people</b> instead of the machine. Sit down at an open table or start one of your own — as soon as a second seat is taken, it begins.',
+    'Melde dich mit deinem Konto an. Jeder startet mit <b>500 Chips</b> — es geht um <b>kein echtes Geld</b>, nur um Ehre und die Krone.':
+      'Log in with your account. Everyone starts with <b>500 chips</b> — this is about <b>no real money</b>, just honour and the crown.',
     '⚠️ Alle Chips sind <b>reine Fantasie</b> — kein echtes Geld, keine Auszahlung.':
       '⚠️ All chips are <b>pure fantasy</b> — no real money, no payout.'
   };
@@ -499,6 +600,63 @@
        Die Ersetzung darf auch eine Funktion sein: dann lässt sich ein Name
        aus der Mitte noch einmal durchs Wörterbuch schicken (Pferde, Gegner
        am Pokertisch), statt ihn deutsch stehen zu lassen. */
+    /* Das Protokoll am Pokertisch — Name vorn, Zahl hinten. */
+    [/^(.+) setzt sich mit (.+) Chips an den Tisch — ab der nächsten Hand dabei$/,
+      '$1 sits down with $2 chips — in from the next hand'],
+    [/^(.+) setzt sich dazu \(Bot, (.+)\)$/,
+      function (m, n, st) { return n + ' joins (bot, ' + (WB[st] || st) + ')'; }],
+    [/^(.+) geht wieder$/, '$1 leaves again'],
+    [/^(.+) wegschicken$/, 'Send $1 away'],
+    [/^Tisch aufgelöst$/, 'Table dissolved'],
+    [/^(.+) verlässt den Tisch und gibt auf$/, '$1 leaves the table and folds'],
+    [/^(.+) nimmt den Pot mit \((.+)\) — sonst war niemand mehr drin$/,
+      '$1 takes the pot ($2) — nobody else was left in'],
+    [/^Hand abgebrochen — es fehlt ein Spieler$/, 'Hand aborted — a player is missing'],
+    [/^Hand (\d+) — Blinds (\d+)\/(\d+)$/, 'Hand $1 — blinds $2/$3'],
+    [/^(.+) kauft für (.+) Chips nach$/, '$1 rebuys for $2 chips'],
+    [/^(.+) passt \(Zeit\)$/, '$1 folds (time)'],
+    [/^(.+) klopft \(Zeit\)$/, '$1 checks (time)'],
+    [/^(.+) passt$/, '$1 folds'],
+    [/^(.+) klopft$/, '$1 checks'],
+    [/^(.+) geht All-in mit (.+)$/, '$1 goes all in with $2'],
+    [/^(.+) geht All-in \((.+)\)$/, '$1 goes all in ($2)'],
+    [/^(.+) geht mit \((.+)\)$/, '$1 calls ($2)'],
+    [/^(.+) erhöht auf (.+)$/, '$1 raises to $2'],
+    [/^Der Zug lag auf einem leeren Platz — es geht weiter$/,
+      'The move sat on an empty seat — carrying on'],
+    [/^Hand (\d+): (.+) \+(\d+) \(alle passen\)$/, 'Hand $1: $2 +$3 (everyone folds)'],
+    [/^Hand (\d+): (.+)$/, 'Hand $1: $2'],
+    [/^(.+) gewinnt (.+) Chips am Pokertisch „(.+)“$/, '$1 wins $2 chips at the poker table “$3”'],
+    /* Mehrspieler: Zahlen in den Zeilen */
+    [/^(\d+) Minuten$/, '$1 minutes'],
+    [/^🎮 ERLAUBTE SPIELE \((\d+)\)$/, '🎮 ALLOWED GAMES ($1)'],
+    [/^✋ DABEI \((.+)\)$/, '✋ IN ($1)'],
+    [/^🏳️ AUS \((.+)\)$/, '🏳️ OUT ($1)'],
+    [/^⬆️ GEHEN \(auf (.+)\)$/, '⬆️ RAISE (to $1)'],
+    [/^✅ MITGEHEN (.+)$/, '✅ CALL $1'],
+    [/^Erhöhung auf (.+)$/, 'Raise to $1'],
+    [/^Die Gegenseite geht auf (.+)$/, 'The other side raises to $1'],
+    [/^Die Münze zeigt (.+)$/, 'The coin shows $1'],
+    [/^Deine Hand: (.+)$/, 'Your hand: $1'],
+    [/^Schlag (.+)$/, 'Schlag $1'],
+    [/^Es geht um (.+)$/, 'Playing for $1'],
+    [/^Du hast (.+)$/, 'You have $1'],
+    [/^Einkauf \((.+)\)$/, 'Buy-in ($1)'],
+    [/^Nachschub: (.+)$/, 'Top-up: $1'],
+    [/^ges\. (.+)$/, 'total $1'],
+    [/^Blinds (\d+)\/(\d+)  ·  Einkauf ab (.+)$/, 'Blinds $1/$2  ·  buy-in from $3'],
+    [/^Einsatz (\d+) pro Wurf  ·  Einkauf ab (.+)$/, 'Stake $1 per toss  ·  buy-in from $2'],
+    [/^Blinds (\d+)\/(\d+)  ·  Hand (\d+)$/, 'Blinds $1/$2  ·  hand $3'],
+    [/^Bot — Spielstärke (.+)$/, function (m, x) { return 'Bot — playing style ' + (WB[x] || x); }],
+    [/^(.+) setzt sich mit (.+) Chips an den Tisch$/, '$1 sits down with $2 chips'],
+    [/^(.+) steht auf \((.+) Chips\)$/, '$1 stands up ($2 chips)'],
+    [/^(.+)s Tisch$/, '$1’s table'],
+    [/^(.+)s Party$/, '$1’s party'],
+    [/^👥 DABEI \((\d+)\/(\d+)\)$/, '👥 IN ($1/$2)'],
+    [/^(\d+) Tische?$/, function (m, n) { return n + (n === '1' ? ' table' : ' tables'); }],
+    [/^(\d+) Partys?$/, function (m, n) { return n + (n === '1' ? ' party' : ' parties'); }],
+    [/^(.+) Chips · (\d+) min · (\d+) Spiele$/, '$1 chips · $2 min · $3 games'],
+    [/^Party läuft: alle mit (.+)$/, 'Party running: everyone with $1'],
     /* Party-Protokoll: Kopfzeile und Auswahl */
     [/^(.+) Startchips$/, '$1 starting chips'],
     [/^Nachschub (.+)$/, 'Top-up $1'],
@@ -752,6 +910,8 @@
        vermerkt und lässt sich damit genauso sauber zurückstellen. */
     if (sprache === 'en') anschalten(); else ausschalten();
     schalterZeigen();
+    /* Wer Texte beim Zeichnen selbst zusammensetzt, muss neu zeichnen. */
+    if (GK.emit) GK.emit('sprache', sprache);
   }
 
   /** Baut einen Sprachknopf. `gross` gibt ihm die Fassung fürs Kontofenster. */

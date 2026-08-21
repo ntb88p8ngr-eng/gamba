@@ -174,6 +174,44 @@
     ]
   };
 
+  /* Die drei Regelsätze aus dem Mehrspieler-Bereich. Sie stehen nicht an
+     einem Spiel, sondern am Tisch — deshalb eigene Schlüssel. */
+  var MP_REGELN = {
+    watten: [
+      '<b>Bavarian Watten</b> for four: seats 1 and 3 against seats 2 and 4.',
+      'Everyone gets five cards. The <b>forehand</b> calls the <b>Schlag</b> (the rank), the <b>dealer</b> calls the <b>trump suit</b>.',
+      'From the top: <b>Max</b> (king of hearts), <b>Belli</b> (seven of bells), <b>Spitz</b> (seven of acorns) — then the <b>Rechte</b> (the Schlag in the trump suit), then the remaining <b>Schläge</b>, then the rest of the trumps.',
+      'All other Schläge are equally strong: the one <b>played first</b> beats the later ones.',
+      '<b>No obligation to follow suit</b> — you may always play whatever you like.',
+      'Whoever takes <b>three of five</b> tricks wins the hand.',
+      'A hand is worth <b>2 points</b>. With <b>raise</b> you push it up; the other side <b>goes along</b> or <b>drops out</b> and then pays the value so far.',
+      'Every point costs the losers the table stake — the money goes straight to the other team.',
+      'The German suits sit on the familiar deck: <b>acorns ♣ · leaves ♠ · hearts ♥ · bells ♦</b>, and <b>Unter = jack, Ober = queen, Sau = ace</b>.'
+    ],
+    poker: [
+      '<b>Texas hold’em</b> against real people: two cards of your own, five face up in the middle.',
+      '<b>Knocking</b> means: bet nothing and pass to the next player. That only works while no bet is outstanding — otherwise you have to call, raise or fold. At a real table you knock on the felt for it.',
+      'The blinds move around. The <b>D</b> button shows who is dealing.',
+      'You have <b>30 seconds</b> per move. If the time runs out, it checks or folds for you.',
+      'Betting more than someone else can cover creates a <b>side pot</b> — you never win more than you risked yourself.',
+      'Your stack is yours: when you <b>stand up</b> everything goes back to your account.',
+      'Leaving in the middle of a hand counts as folding — what you already bet stays in the pot.'
+    ],
+    flip: [
+      '<b>One against one.</b> Both stake the same amount, the coin decides.',
+      'Whoever picks first gets their side — the second one gets the other.',
+      'If you do not pick in time, the free side is assigned to you.'
+    ]
+  };
+
+  /** Englische Regeln für einen Mehrspieler-Tisch. */
+  GK.regelnMpEn = function (art, deutsch) {
+    var r = MP_REGELN[art];
+    if (!r) return null;
+    if (deutsch && deutsch.length !== r.length) return null;
+    return r;
+  };
+
   /**
    * Englische Regeln eines Spiels — oder null, wenn es keine gibt.
    *

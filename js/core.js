@@ -1266,7 +1266,9 @@
     if (opts.icon && GK.hasIcon(opts.icon)) content.appendChild(GK.el('div', { class: 'modal-icon', html: GK.iconHTML(opts.icon) }));
     else if (opts.emoji) content.appendChild(GK.el('span', { class: 'modal-emoji', text: opts.emoji }));
     if (opts.title) content.appendChild(GK.el('h3', { text: opts.title }));
-    if (opts.text) content.appendChild(GK.el('p', { html: opts.text }));
+    /* Klasse, damit der Sprachumschalter diesen Absatz am Stück findet —
+       er trägt oft Auszeichnungen und lässt sich nicht wortweise tauschen. */
+    if (opts.text) content.appendChild(GK.el('p', { class: 'modal-text', html: opts.text }));
     (opts.nodes || []).forEach(function (n) { content.appendChild(n); });
     /* weit: breiter Dialog fuer Panels mit vielen Reglern. Auf dem Handy
        aendert die Klasse nichts — dort greift sie erst ab 900 px. */
