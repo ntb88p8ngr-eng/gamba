@@ -214,7 +214,70 @@
     'Sitzung abgelaufen': 'Session expired',
     'Name oder Passwort stimmt nicht': 'Name or password is wrong',
     'Diesen Namen gibt es schon — melde dich an': 'That name is taken — log in instead',
-    'Nicht genug Chips': 'Not enough chips'
+    'Nicht genug Chips': 'Not enough chips',
+
+    /* Wett-Erklärungen, die beim Umschalten der Wettart neu gesetzt werden.
+       Sie stehen zwar in einem p.hint, kommen aber als reiner Text — daher
+       gehören sie hierher und nicht ins HTML-Wörterbuch. */
+    'Zahlt 1:1. Gewinnt, wenn die Spielerhand naeher an 9 liegt.':
+      'Pays 1:1. Wins when the player hand is closer to 9.',
+    'Zahlt 1:1, ohne Kommission — und gewinnt etwas oefter als Player.':
+      'Pays 1:1, no commission — and wins slightly more often than player.',
+    'Zahlt 8:1, trifft aber selten. Bei Gleichstand kassiert nur diese Wette.':
+      'Pays 8:1 but rarely hits. On a tie only this bet cashes in.',
+    'Deine Summe muss die des Dealers schlagen. Gleichstand = Einsatz zurück.':
+      'Your total has to beat the dealer’s. A tie returns your bet.',
+    'Deine beiden Würfel zusammen müssen mehr als 7 ergeben.':
+      'Your two dice together have to add up to more than 7.',
+    'Deine beiden Würfel zusammen müssen weniger als 7 ergeben.':
+      'Your two dice together have to add up to less than 7.',
+    'Genau 7 — der riskante Held-Move.': 'Exactly 7 — the risky hero move.',
+    'WETTART': 'BET TYPE',
+    '⚔️ Duell': '⚔️ Duel', '⬆️ Über 7': '⬆️ Over 7',
+    '⬇️ Unter 7': '⬇️ Under 7', '🎯 Exakt 7': '🎯 Exactly 7',
+    '🌫️ Nebelschleier': '🌫️ Veil of Mist', '🌕 Blutmond': '🌕 Blood Moon',
+    '🕳️ Abgrund': '🕳️ Abyss',
+    'viele Seelen, kleine Werte': 'many souls, small values',
+    'ausgewogen, mit Zähnen': 'balanced, with teeth',
+    'selten, dafür brutal': 'rare, but brutal'
+  };
+
+  /* ── Ganze Absätze mit Auszeichnung ─────────────────────────────────
+     Die Tipps unter den Spielen bestehen aus mehreren Textstücken mit <b>
+     dazwischen. Stückweise zu übersetzen ginge zwar, wäre aber ein Wörterbuch
+     aus Halbsätzen — deshalb werden diese Absätze am Stück ausgetauscht.
+     Verglichen wird der zusammengeschobene innerHTML. */
+  var HTML_SELEKTOR = 'p.hint, .mp-intro, .admin-note, .party-schalter-was, .fl-info, .jp-info';
+  var WB_HTML = {
+    '💡 Tipp: Die Krone zahlt <b>100×</b>. Zwei gleiche Symbole retten dir immerhin einen Teil vom Einsatz. <b>Endlos</b> dreht weiter, bis du stoppst oder die Chips alle sind.':
+      '💡 Tip: the crown pays <b>100×</b>. Two matching symbols at least save part of your bet. <b>Endless</b> keeps spinning until you stop or run out of chips.',
+    '💡 Du kannst <b>beliebig viele Felder gleichzeitig</b> belegen — jeder Klick legt einen weiteren Chip drauf. Rechtsklick räumt ein Feld wieder ab.':
+      '💡 You can cover <b>as many fields at once</b> as you like — every click adds another chip. Right-click clears a field again.',
+    '💡 6 Decks, Dealer bleibt auf <b>17</b> stehen. Blackjack zahlt <b>6:5</b>.':
+      '💡 6 decks, the dealer stands on <b>17</b>. Blackjack pays <b>6:5</b>.',
+    '💡 8 Decks. Die dritte Karte folgt fester Tabelle — <b>Banker</b> gewinnt etwas oefter als Player und zahlt hier trotzdem voll aus.':
+      '💡 8 decks. The third card follows a fixed table — <b>banker</b> wins slightly more often than player and still pays in full here.',
+    '💡 Bei <b>Irre</b> zahlen die Außenfächer 40× — die Mitte frisst dafür fast alles.':
+      '💡 On <b>Insane</b> the outer slots pay 40× — but the middle eats almost everything.',
+    '💡 Halt die Maus gedrückt und wisch über die Felder. Ab rund <b>einem Drittel</b> freigerubbelt springt das Feld von selbst auf.':
+      '💡 Hold the mouse down and wipe across the tiles. Once about <b>a third</b> is scratched off, the tile opens by itself.',
+    '💡 Acht Linien auf einem Los: die <b>Mitte</b> liegt in vier davon. Zwei Linien gleichzeitig sind kein Zufall, sondern der Normalfall bei einem guten Los.':
+      '💡 Eight lines on one ticket: the <b>centre</b> sits in four of them. Two lines at once is not luck, it is what a good ticket looks like.',
+    '💡 Der Geber (<b>D</b>) rückt jede Hand weiter. Das Haus nimmt <b>8 % Rake</b> — aber nur, wenn ein Flop fällt.':
+      '💡 The dealer button (<b>D</b>) moves on every hand. The house takes <b>8 % rake</b> — but only if a flop is dealt.',
+    '💡 Du kannst auch <b>direkt auf die nächste Scholle tippen</b>. Jeder Sprung gelingt mit <b>75 %</b>; nach zwölf Schollen ist das Festland erreicht — <b>27,5×</b>.':
+      '💡 You can also <b>tap the next floe directly</b>. Every hop succeeds with <b>75 %</b>; after twelve floes you reach the mainland — <b>27.5×</b>.',
+    '💡 Es zählt die <b>Summe</b> aller Seelen. Jede neue Seele stellt die drei Kerzen zurück — lange Ketten sind der eigentliche Gewinn.':
+      '💡 What counts is the <b>sum</b> of all souls. Every new soul resets the three candles — long chains are where the money is.',
+    '💡 Je näher an Smaugs Hort in der Mitte, desto wertvoller der Fund — und desto wacher wird er. Vor „JAGT!“ kannst du jederzeit fliehen.':
+      '💡 The closer to Smaug\'s hoard in the middle, the richer the find — and the more awake he gets. Before “HUNTING!” you can flee at any time.',
+    '💡 Der <b>Dreizack</b> ersetzt alles außer der Truhe. Fünf Dreizacke auf einer Linie zahlen <b>1900×</b> den Linieneinsatz. <b>Endlos</b> taucht weiter, bis du stoppst oder die Chips alle sind.':
+      '💡 The <b>trident</b> substitutes for everything except the chest. Five tridents on one line pay <b>1900×</b> the line bet. <b>Endless</b> keeps diving until you stop or run out of chips.',
+    '💡 <b>Tippen oder Leertaste</b> — auch zum Starten. Der Zuwachs je Röhre wächst mit, dafür wird die Lücke enger und das Tempo höher. Nach <b>25 Röhren</b> zahlt der Flug von selbst aus.':
+      '💡 <b>Tap or press space</b> — that starts the run too. The gain per pipe keeps growing, but the gap gets tighter and the pace faster. After <b>25 pipes</b> the flight cashes out by itself.',
+    '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.':
+      '💡 <b>A</b>/<b>D</b> to move, <b>click</b> to shoot — on a phone use the buttons on the field and tap the field itself. A tap also starts the run.',
+    'Noch am Boden': 'Still on the ground'
   };
 
   /* Muster für Texte mit Zahlen darin. Reihenfolge zählt: die erste
@@ -281,6 +344,19 @@
       return;
     }
     if (n.nodeType !== 1) return;
+
+    /* Ganze Absätze zuerst: passt einer, sind die Textstücke darin erledigt
+       und müssen nicht einzeln durchs Wörterbuch. */
+    if (n.matches && n.matches(HTML_SELEKTOR)) {
+      var roh = n.innerHTML.replace(/\s+/g, ' ').trim();
+      var ersatz = WB_HTML[roh];
+      if (ersatz !== undefined && ersatz !== roh) {
+        beruehrt.push({ n: n, art: 'html', alt: n.innerHTML });
+        n.innerHTML = ersatz;
+        return;
+      }
+    }
+
     /* Eingabefelder mit Wert: nur Knöpfe, nicht was jemand getippt hat. */
     if (n.tagName === 'INPUT' && (n.type === 'button' || n.type === 'submit')) {
       var w = uebersetze(n.value);
@@ -330,6 +406,7 @@
       var e = beruehrt[i];
       if (!e.n || (e.n.isConnected === false)) continue;
       if (e.art === 'text') e.n.nodeValue = e.alt;
+      else if (e.art === 'html') e.n.innerHTML = e.alt;
       else if (e.art === 'wert') e.n.value = e.alt;
       else e.n.setAttribute(e.name, e.alt);
     }

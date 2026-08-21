@@ -697,6 +697,10 @@
       /* Ein Tipp aufs Feld startet den Lauf; danach schießt jeder Tipp einen
          Feuerball dorthin, wo der Finger war. */
       buehne.addEventListener('pointerdown', function (ev) {
+        /* Die Richtungsknöpfe liegen im Spielfeld — ein Tipp auf sie ist
+           gemeint als "lauf nach links", nicht als "schieß dorthin". Ohne
+           diese Zeile feuerte jeder Schritt einen Feuerball ab. */
+        if (ev.target.closest && ev.target.closest('.jp-tasten')) return;
         ev.preventDefault();
         if (!laeuft) { if (!startBtn.disabled) start(); return; }
         var r = canvas.getBoundingClientRect();
@@ -707,7 +711,11 @@
         /* pointerdown/up statt click: der Knopf soll gedrückt bleiben, solange
            der Finger liegt. pointercancel und pointerleave gehören dazu, sonst
            läuft der Held weiter, wenn der Finger vom Knopf rutscht. */
-        knopf.addEventListener('pointerdown', function (e) { e.preventDefault(); setzen(true); });
+        knopf.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          e.stopPropagation();          // nicht bis zum Spielfeld durchreichen
+          setzen(true);
+        });
         ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) {
           knopf.addEventListener(n, function () { setzen(false); });
         });
