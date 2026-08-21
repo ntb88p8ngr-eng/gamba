@@ -4,7 +4,7 @@ Ein knallbuntes Fantasy-Casino für Challenges unter Freunden. **Kein Echtgeld, 
 Einzahlung, keine Auszahlung** — alle Chips sind wertlose Spielwährung. Es geht nur um
 Angeben, Ehre und die Krone im Leaderboard.
 
-20 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon- und Bild-Set, prozedural
+21 Spiele, Level-System mit freischaltbaren Spielen, eigenes Icon- und Bild-Set, prozedural
 erzeugte Hintergrundmusik und ein gemeinsames Leaderboard über einen kleinen Server.
 
 ---
@@ -91,7 +91,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 
 ---
 
-## Die 20 Spiele
+## Die 21 Spiele
 
 | # | Spiel | Was passiert | Max | Quote |
 |---|-------|--------------|-----|-------|
@@ -114,7 +114,8 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 17 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
 | 18 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
 | 19 | **Smaugs Höhle** 🔒 Lv30 | Schiebe-Labyrinth wie beim Verrückten Labyrinth: Kachel drehen, Reihe/Spalte schieben, Schatz sammeln — wacht Smaug auf, jagt er dich zum Ausgang | 100×+ | ~87 % |
-| 20 | **Flatterflug** 🔒 Lv50 | Flappy-Bird mit Einsatz: jede Röhre erhöht den Multiplikator, der Zuwachs wächst mit — erste Röhre +2 %, zehnte +29 %, ab der 21. je +60 %. Lücke und Tempo ziehen mit an; jederzeit aussteigen | 1800× nach 25 Röhren | Können |
+| 20 | **Endlos-Sprung** 🔒 Lv35 | Doodle-Jump mit Einsatz: von Plattform zu Plattform nach oben, alle 340 Höhenmeter steigt der Multiplikator (erste Stufe +3 %, zehnte +23 %, ab der 27. je +60 %). Fledermäuse abschießen, Sprungfedern mitnehmen, jederzeit aussteigen | 520× nach 25 Stufen | Können |
+| 21 | **Flatterflug** 🔒 Lv50 | Flappy-Bird mit Einsatz: jede Röhre erhöht den Multiplikator, der Zuwachs wächst mit — erste Röhre +2 %, zehnte +29 %, ab der 21. je +60 %. Lücke und Tempo ziehen mit an; jederzeit aussteigen | 1800× nach 25 Röhren | Können |
 
 Beim Poker gibt es keine feste Quote: dort spielst du gegen die drei KI-Gegner, nicht
 gegen das Haus. Das Haus nimmt nur **8 % Rake** vom gewonnenen Pot — und auch das nur,
@@ -158,7 +159,7 @@ du anderswo benutzt.
 ## ⭐ Level & XP
 
 XP gibt es fürs Spielen: **Einsatz/8** pro Runde (max. 60) plus Bonus-XP für Gewinne.
-Neun Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10, 15, 20, 25, 30 und 50).
+Zehn Spiele schalten sich erst mit der Zeit frei (Level 2, 4, 7, 10, 15, 20, 25, 30, 35 und 50).
 
 **Nach oben ist offen** — es gibt kein Maximallevel mehr. Bis Level 30 wird jede Stufe
 teurer als die vorige (Level 2 braucht 280 XP, Level 10 schon 6.840, Level 15 dann

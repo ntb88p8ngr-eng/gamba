@@ -434,6 +434,8 @@
   /* Der Vogel wohnt bei seinen eigenen Bildern, nicht im Symbolordner —
      dort liegt das ganze Blatt aus assets/bird beieinander. */
   SYMBOL_IMGS.vogel = 'assets/bird/vogel.webp';
+  /* Ebenso der Held aus dem Endlos-Sprung. */
+  SYMBOL_IMGS.held = 'assets/jump/held.webp';
 
   /* Verläufe einmal ins Dokument hängen */
   var injected = false;
