@@ -134,7 +134,14 @@
 
   function showRules(g) {
     GK.sfx('click');
-    var ul = el('ul', { class: 'rules-list' }, (g.rules || []).map(function (r) {
+    /* Die Regeln stehen als HTML in den Spielen; die englische Fassung liegt
+       je Spiel in js/i18n-regeln.js. Fehlt sie oder passt die Anzahl nicht,
+       bleibt es beim Original. */
+    var regeln = g.rules || [];
+    if (GK.lang && GK.lang() === 'en' && GK.regelnEn) {
+      regeln = GK.regelnEn(g.id, regeln) || regeln;
+    }
+    var ul = el('ul', { class: 'rules-list' }, regeln.map(function (r) {
       return el('li', { html: r });
     }));
     GK.modal({

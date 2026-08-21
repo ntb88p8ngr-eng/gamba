@@ -12,9 +12,9 @@
    Vorteile: kein Spielmodul muss angefasst werden, und was im Wörterbuch
    fehlt, bleibt einfach auf Deutsch stehen statt zu verschwinden.
 
-   Beim Umschalten wird die Seite neu geladen. Das ist Absicht: eine
-   halb übersetzte Ansicht zurückzuverwandeln wäre fehleranfällig, und der
-   Spielstand liegt ohnehin auf dem Server.
+   Umgeschaltet wird ohne Neuladen: jede Änderung am Baum wird in `beruehrt`
+   vermerkt, und der Weg zurück auf Deutsch stellt genau diese Stellen wieder
+   her. Was im Wörterbuch fehlt, bleibt unangetastet stehen.
    ═══════════════════════════════════════════════════════════ */
 (function (GK) {
   'use strict';
@@ -232,6 +232,126 @@
     'Deine beiden Würfel zusammen müssen weniger als 7 ergeben.':
       'Your two dice together have to add up to less than 7.',
     'Genau 7 — der riskante Held-Move.': 'Exactly 7 — the risky hero move.',
+    /* Die Kurzhilfen an den Einsatz-Chips — sie stehen in jedem Spiel. */
+    '1 weniger': '1 less', '5 weniger': '5 less', '50 weniger': '50 less',
+    '1 mehr': '1 more', 'Alles setzen': 'Bet everything', 'Halbieren': 'Halve',
+    'Verdoppeln': 'Double',
+
+    /* Beschriftungen aus einzelnen Spielen */
+    'Auszahlung': 'Payout', 'Nächster Bonus': 'Next bonus', 'Nächster': 'Next',
+    'Noch nichts gesetzt — tipp auf die Felder': 'Nothing placed yet — tap the fields',
+    '2 Drachen': '2 dragons', '3 Drachen': '3 dragons', '5 Drachen': '5 dragons',
+    '8 Drachen': '8 dragons', '12 Drachen': '12 dragons', '18 Drachen': '18 dragons',
+    '24 Drachen': '24 dragons',
+    '☠ Nichts': '☠ Nothing',
+    '0,5× halb zurück': '0.5× half back', '1× zurück': '1× your bet',
+    '3 gleiche Runen = Gewinn': '3 matching runes = a win',
+    '„Die Pferde sind am Start…"': '“The horses are at the gate…”',
+    '❄️ Dünnes Eis': '❄️ Thin ice',
+    '· 2× auf alles': '· 2× on everything',
+    'V groß': 'V wide', 'Λ groß': 'Λ wide', 'Treppe auf': 'stairs up',
+    'Treppe ab': 'stairs down', 'Welle': 'wave', 'Zacke': 'zigzag',
+    '„Setz dich, der Tisch wartet."': '“Sit down, the table is waiting.”',
+    'ein Einsatz': 'one bet', 'doppelter Einsatz': 'double bet',
+    'Auf die Scholle tippen zum Springen': 'Tap the floe to hop',
+    'Der Altar ist kalt.': 'The altar is cold.',
+    'Smaug schläft tief.': 'Smaug sleeps deeply.',
+    'Ersatzkachel drehen, dann eine Reihe/Spalte schieben.':
+      'Turn the spare tile, then push a row or column.',
+    'Schlüssel': 'Keys',
+
+    /* ── Meldungen aus dem Spielbetrieb ──
+       Was ohne Zahlen darin auskommt, steht hier; alles mit eingesetzten
+       Werten läuft unten über die Muster. */
+    'Viel Glück!': 'Good luck!',
+    'Rot': 'Red', 'Schwarz': 'Black', 'Gerade': 'Even', 'Ungerade': 'Odd',
+    /* Symbole aus den Walzenspielen und den Rubbellosen */
+    'Alge': 'Kelp', 'Muschel': 'Shell', 'Fisch': 'Fish', 'Riff-Fisch': 'Reef fish',
+    'Krabbe': 'Crab', 'Krake': 'Octopus', 'Hai': 'Shark', 'Perle': 'Pearl',
+    'Dreizack': 'Trident', 'Schatztruhe': 'Treasure chest',
+    'Krone': 'Crown', 'Stern': 'Star', 'Juwel': 'Jewel', 'Flamme': 'Flame',
+    'Kleeblatt': 'Clover', 'Münze': 'Coin', 'Kirsche': 'Cherry', 'Glocke': 'Bell',
+    'Königskrone': "King's crown",
+    'Das Rad dreht sich…': 'The wheel is spinning…',
+    /* Smaugs Wachsamkeit und die Absturzgründe beim Flatterflug */
+    'Schläft': 'Asleep', 'Regt sich': 'Stirring', 'Misstrauisch': 'Suspicious',
+    'Wach': 'Awake', 'JAGT!': 'HUNTING!', 'SMAUG JAGT DICH!': 'SMAUG IS HUNTING YOU!',
+    'Im Boden gelandet': 'Hit the ground',
+    'Die Münze fliegt…': 'The coin is in the air…',
+    'Die Würfel fliegen…': 'The dice are rolling…',
+    'Vorsichtig… welche Scholle hält?': 'Careful… which floe will hold?',
+    'Das Eis bricht! 🌊 Der Bär schwimmt, dein Einsatz nicht.':
+      'The ice breaks! 🌊 The bear swims, your bet does not.',
+    'Das Eis knackt schon… viel Glück!': 'The ice is cracking already… good luck!',
+    'Platsch. Der Pinguin schwimmt zurück.': 'Splash. The penguin swims back.',
+    'Keine einzige Seele erscheint — der Einsatz verhallt.':
+      'Not a single soul appears — the bet fades away.',
+    'Jeder Sockel besetzt — der Grand-Bonus fällt.':
+      'Every pedestal taken — the grand bonus drops.',
+    'Zu wenige Seelen für einen Gewinn.': 'Too few souls for a win.',
+    'Die Kerzen sind aus. Das Ritual hat gehalten.':
+      'The candles are out. The ritual held.',
+    'Die letzte Kerze erlischt.': 'The last candle goes out.',
+    'Auto-Ritual gestoppt — Chips reichen nicht mehr':
+      'Auto ritual stopped — not enough chips left',
+    'Mindestens 5 Chips (5 Linien)': 'At least 5 chips (5 lines)',
+    'Keine Linie, keine Bonus-Rune — Niete!': 'No line, no bonus rune — a blank!',
+    'Keine einzige Röhre geschafft.': 'Not a single pipe made.',
+    'Keine einzige Stufe geschafft.': 'Not a single level made.',
+    'Voll in die Röhre': 'Straight into the pipe',
+    '1× — Einsatz zurück, nichts passiert': '1× — bet back, nothing happens',
+    '☠ Totenkopf — das Schicksal ist grausam': '☠ Skull — fate is cruel',
+    'Dafür reichen deine Chips nicht': 'Your chips are not enough for that',
+    'Erst Chips auf den Tisch legen': 'Put some chips on the table first',
+    'Für diesen Grundeinsatz reichen die Chips nicht':
+      'Your chips are not enough for this base bet',
+    'Hand abgebrochen — zu wenig Chips': 'Hand aborted — not enough chips',
+    'Dir fehlen die Chips zum Mitgehen — du kannst nur passen.':
+      'You are short of chips to call — folding is all that is left.',
+    'Weiter geht’s — deine Hand von vorhin.': 'Carry on — your hand from before.',
+    'Weiter geht’s — die Hand von vorhin.': 'Carry on — the hand from before.',
+    'Weiter geht’s — die Runde von vorhin.': 'Carry on — the round from before.',
+    'Weiter geht’s — du bist am Zug.': 'Carry on — it is your move.',
+    'Weiter geht’s — schieb eine Reihe.': 'Carry on — push a row.',
+    'Weiter rubbeln — dein Los von vorhin.': 'Keep scratching — your ticket from before.',
+    'Kein Weg frei — die Runde geht ohne Bewegung weiter.':
+      'No way through — the round continues without a move.',
+    'Stern! Der nächste Fund zählt doppelt ✨': 'Star! The next find counts double ✨',
+    'Alle Schlüssel! Smaugs Hort ist offen 🔓': 'All keys! Smaug’s hoard is open 🔓',
+    'Zaubertrank getrunken — kurzzeitig weniger Verdacht 🧪':
+      'Potion drunk — less suspicion for a moment 🧪',
+    'Deine Figur stand auf der geschobenen Kachel und ist mitgewandert!':
+      'Your figure stood on the pushed tile and travelled along!',
+    'Nutze das Labyrinth: schiebe Smaug aus, dann lauf zum Ausgang!':
+      'Use the maze: push Smaug out of the way, then run for the exit!',
+    'Smaug hat dich erwischt — Schatz und Einsatz verbrannt.':
+      'Smaug caught you — treasure and bet burned.',
+    'Du schleichst dich in die Höhle…': 'You sneak into the cave…',
+    'Der Berg aus Gold glänzt im Feuerschein. Smaug schläft — für jetzt. Was nimmst du mit?':
+      'The mound of gold gleams in the firelight. Smaug sleeps — for now. What do you take?',
+    'Such die Edelsteine… 💎': 'Find the gems… 💎',
+
+    /* Pokerblätter und das Geplauder am Tisch */
+    'Hohe Karte': 'High card', 'Ein Paar': 'One pair', 'Zwei Paare': 'Two pair',
+    'Drilling': 'Three of a kind', 'Straße': 'Straight', 'Vierling': 'Four of a kind',
+    'Beide Hände vorn': 'Both hands ahead', 'Alle passen': 'Everyone folds',
+    'Gewonnen': 'Won', 'River — letzte Runde.': 'River — last round.',
+    'Zurueck auf eine Hand.': 'Back to one hand.',
+    'Das war zu leicht.': 'That was too easy.',
+    'Einmal ist keinmal!': 'Once is never!',
+    'Geduld ist eine Waffe.': 'Patience is a weapon.',
+    'Ich warte auf Besseres.': 'I am waiting for something better.',
+    'Chips sind nur Konfetti.': 'Chips are just confetti.',
+    '„Setz dich, der Tisch wartet."': '“Sit down, the table is waiting.”',
+
+    /* Namen, die in den Regeln mit übersetzt sind — sonst stünde in der
+       Regel „Golden Mane" und auf der Bahn „Goldmähne". */
+    'Blitzhuf': 'Lightning Hoof', 'Donnerwolke': 'Thundercloud',
+    'Kleefuchs': 'Clover Fox', 'Schattentanz': 'Shadow Dance',
+    'Goldmähne': 'Golden Mane',
+    'Baron von Bluff': 'Baron von Bluff', 'Gräfin Eiskalt': 'Countess Icecold',
+    'Onkel Kalle': 'Uncle Charlie',
+
     'WETTART': 'BET TYPE',
     '⚔️ Duell': '⚔️ Duel', '⬆️ Über 7': '⬆️ Over 7',
     '⬇️ Unter 7': '⬇️ Under 7', '🎯 Exakt 7': '🎯 Exactly 7',
@@ -277,7 +397,9 @@
       '💡 <b>Tap or press space</b> — that starts the run too. The gain per pipe keeps growing, but the gap gets tighter and the pace faster. After <b>25 pipes</b> the flight cashes out by itself.',
     '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.':
       '💡 <b>A</b>/<b>D</b> to move, <b>click</b> to shoot — on a phone use the buttons on the field and tap the field itself. A tap also starts the run.',
-    'Noch am Boden': 'Still on the ground'
+    'Noch am Boden': 'Still on the ground',
+    '⚠️ Alle Chips sind <b>reine Fantasie</b> — kein echtes Geld, keine Auszahlung.':
+      '⚠️ All chips are <b>pure fantasy</b> — no real money, no payout.'
   };
 
   /* Muster für Texte mit Zahlen darin. Reihenfolge zählt: die erste
@@ -304,6 +426,127 @@
     [/^Stufe (\d+)$/, 'Level $1'],
     [/^Stufe (\d+) · (.+)$/, 'Level $1 · $2'],
     [/^(\d+) Röhren · (.+)$/, '$1 pipes · $2'],
+    /* Legende im Rad des Schicksals: Beschriftung und Anzahl in einem Stück. */
+    [/^0,5× halb zurück \((\d+)\)$/, '0.5× half back ($1)'],
+    [/^1× zurück \((\d+)\)$/, '1× your bet ($1)'],
+    [/^☠ Nichts \((\d+)\)$/, '☠ Nothing ($1)'],
+    [/^(\d+(?:,\d+)?)× Jackpot \((\d+)\)$/, '$1× jackpot ($2)'],
+    /* Startnummer und Pferdename stehen zusammen in einer Zeile. */
+    [/^(\d+) Blitzhuf$/, '$1 Lightning Hoof'],
+    [/^(\d+) Donnerwolke$/, '$1 Thundercloud'],
+    [/^(\d+) Kleefuchs$/, '$1 Clover Fox'],
+    [/^(\d+) Schattentanz$/, '$1 Shadow Dance'],
+    [/^(\d+) Goldmähne$/, '$1 Golden Mane'],
+    /* Nummer und Name der Gewinnlinie im Tiefsee-Schatz. */
+    [/^(\d+) V groß$/, '$1 V wide'],
+    [/^(\d+) Λ groß$/, '$1 Λ wide'],
+    [/^(\d+) V klein$/, '$1 V narrow'],
+    [/^(\d+) Λ klein$/, '$1 Λ narrow'],
+    [/^(\d+) Treppe auf$/, '$1 stairs up'],
+    [/^(\d+) Treppe ab$/, '$1 stairs down'],
+    [/^(\d+) Welle$/, '$1 wave'],
+    [/^(\d+) Gegenwelle$/, '$1 counter-wave'],
+    [/^(\d+) Zacke$/, '$1 zigzag'],
+    [/^(\d+) Gegenzacke$/, '$1 counter-zigzag'],
+    [/^(\d+) Mitte$/, '$1 middle'],
+    [/^(\d+) Oben$/, '$1 top'],
+    [/^(\d+) Unten$/, '$1 bottom'],
+    [/^(\d+) Zwei$/, '$1 second'],
+    [/^(\d+) Vier$/, '$1 fourth'],
+    /* ── Meldungen mit eingesetzten Werten ──
+       Die Ersetzung darf auch eine Funktion sein: dann lässt sich ein Name
+       aus der Mitte noch einmal durchs Wörterbuch schicken (Pferde, Gegner
+       am Pokertisch), statt ihn deutsch stehen zu lassen. */
+    /* Freispiele und Treffermeldungen der Walzenspiele */
+    [/^\+(\d+) Freispiele — die Serie geht weiter!$/, '+$1 free spins — the run continues!'],
+    [/^(\d+) Freispiele! Jeder Gewinn zählt (.+)$/, '$1 free spins! Every win counts $2'],
+    [/^(\d+)× (.+) auf Linie (\d+)(.*)$/,
+      function (m, n, sym, li, rest) { return n + '× ' + (WB[sym] || sym) + ' on line ' + li + rest; }],
+    [/^Runde zu Ende gespielt — (.+) Chips verloren$/, 'Round played out — $1 chips lost'],
+    [/^Runde zu Ende gespielt — (.+) Chips$/, 'Round played out — $1 chips'],
+    [/^Runde abgebrochen — (.+) Chips zurück$/, 'Round cancelled — $1 chips back'],
+    [/^(.+) (\d+) — gewonnen! \+(.+)$/, '$1 $2 — you win! +$3'],
+    [/^(.+) gewinnt mit (\d+) gegen (\d+)$/, '$1 wins with $2 against $3'],
+    [/^(.+) bei (\d+) Röhren — (.+) Chips futsch$/,
+      function (m, woran, n, c) { return (WB[woran] || woran) + ' at ' + n + ' pipes — ' + c + ' chips gone'; }],
+    [/^Gleichstand bei (\d+) — Einsatz zurück$/, 'Tie at $1 — bet returned'],
+    [/^Push bei (\d+) — Einsatz zurück$/, 'Push at $1 — bet returned'],
+    [/^Dealer überkauft mit (\d+)! 🎉(.*)$/, 'Dealer busts with $1! 🎉$2'],
+    [/^Überkauft mit (\d+)(.*)$/, 'Bust with $1$2'],
+    [/^(\d+) schlägt (\d+) — gewonnen!(.*)$/, '$1 beats $2 — you win!$3'],
+    [/^(\d+) schlägt deine (\d+)( 😤)?$/, '$1 beats your $2$3'],
+    [/^(\d+) schlägt (\d+) 🏆(.*)$/, '$1 beats $2 🏆$3'],
+    [/^(\d+) — über 7! 🎉(.*)$/, '$1 — over 7! 🎉$2'],
+    [/^(\d+) — unter 7! 🎉(.*)$/, '$1 — under 7! 🎉$2'],
+    [/^(\d+) — nicht über 7$/, '$1 — not over 7'],
+    [/^(\d+) — nicht unter 7$/, '$1 — not under 7'],
+    [/^(\d+) — keine 7$/, '$1 — no 7'],
+    [/^EXAKT 7! 🎯 (.+)$/, 'EXACTLY 7! 🎯 $1'],
+    [/^CRASH bei (.+)× — Einsatz verglüht 💀$/, 'CRASH at $1× — bet burned up 💀'],
+    [/^Flug beendet bei (.+) — (.+) Chips gesichert$/, 'Flight ended at $1 — $2 chips secured'],
+    [/^Lauf beendet auf Stufe (\d+) — (.+) Chips gesichert$/,
+      'Run ended at level $1 — $2 chips secured'],
+    [/^Ausgestiegen auf Stufe (\d+)(.*)$/, 'Cashed out at level $1$2'],
+    [/^Ein Drache! 🐉 Einsatz von (.+) verbrannt\.$/, 'A dragon! 🐉 Bet of $1 burned.'],
+    [/^Keine Seele — noch (\d+) Kerzen?\.$/, 'No soul — $1 candle(s) left.'],
+    [/^(\d+) neue Seelen? (.+)$/, '$1 new soul(s) $2'],
+    [/^(\d+) Seelen, aber nichts wert — Einsatz weg\.$/,
+      '$1 souls, but worth nothing — bet gone.'],
+    [/^(\d+) Treffer — (.+) zurück$/, '$1 hits — $2 back'],
+    [/^Scholle (\d+) von (\d+) — (.+)$/, 'Floe $1 of $2 — $3'],
+    [/^Die Scholle bricht bei Nummer (\d+)(.*)$/, 'The floe breaks at number $1$2'],
+    [/^(.+)× — \+(.+) Chips!$/, '$1× — +$2 chips!'],
+    [/^(.+)× — Einsatz zurück$/, '$1× — bet returned'],
+    [/^(.+)× — nur (.+) von (.+) zurück$/, '$1× — only $2 of $3 back'],
+    [/^(.+)× — nur (.+) zurück$/, '$1× — only $2 back'],
+    [/^(\d+) \((.+)\) — kein Treffer$/, '$1 ($2) — no hit'],
+    /* Roulette-Treffer: die Liste dazwischen sind Wettfelder, jedes für sich
+       im Wörterbuch. */
+    [/^(\d+) — (.+) trifft! (.+)$/, function (m, n, liste, rest) {
+      var teile = liste.split(', ').map(function (x) {
+        var w = x.match(/^(.*?)( \+\d+ weitere)?$/);
+        return (WB[w[1]] || w[1]) + (w[2] ? w[2].replace(' weitere', ' more') : '');
+      });
+      return n + ' — ' + teile.join(', ') + ' hits! ' + rest;
+    }],
+    [/^3× (.+) — Einsatz zurück$/, '3× $1 — bet returned'],
+    [/^(.+) — Niete!$/, '$1 — a blank!'],
+    [/^(.+) — (.+) zurück$/, '$1 — $2 back'],
+    [/^Unterbrochene Runde fortgesetzt · Einsatz (.+)$/, 'Interrupted round resumed · bet $1'],
+    [/^Unterbrochene Hand fortgesetzt · Einsatz (.+)$/, 'Interrupted hand resumed · bet $1'],
+    [/^Unterbrochener Lauf fortgesetzt · Einsatz (.+)$/, 'Interrupted run resumed · bet $1'],
+    [/^Unterbrochenes Los fortgesetzt · Einsatz (.+)$/, 'Interrupted ticket resumed · bet $1'],
+    [/^Unterbrochener Zug fortgesetzt · (.+) · Einsatz (.+)$/,
+      'Interrupted move resumed · $1 · bet $2'],
+    [/^(\d+)er Serie! \+(.+) Bonus-Chips 🔥$/, '$1-in-a-row! +$2 bonus chips 🔥'],
+    [/^☁️ Der Himmel ist erreicht! (.+)$/, '☁️ You reached the sky! $1'],
+    [/^Smaug: (.+) \((\d+)%\)$/, function (m, wach, p) { return 'Smaug: ' + (WB[wach] || wach) + ' (' + p + '%)'; }],
+    [/^Schlüssel gefunden \((\d+)\/(\d+)\) 🗝️$/, 'Key found ($1/$2) 🗝️'],
+    /* Namen mitten im Satz: die gehen noch einmal durchs Wörterbuch. */
+    [/^„(.+) geht in Führung!"$/, function (m, n) { return '“' + (WB[n] || n) + ' takes the lead!”'; }],
+    [/^🏁 „(.+) gewinnt das Rennen!" — Platz 2: (.+)$/,
+      function (m, a, b) { return '🏁 “' + (WB[a] || a) + ' wins the race!” — 2nd: ' + (WB[b] || b); }],
+    [/^(.+) gewinnt — dein (.+) war zu langsam$/,
+      function (m, a, b) { return (WB[a] || a) + ' wins — your ' + (WB[b] || b) + ' was too slow'; }],
+    /* Der Pokertisch redet in Anführungszeichen — die stehen im Muster mit
+       drin, sonst landet das „ mitten im Namen und das Wörterbuch greift nicht. */
+    [/^„(.+) (erhöht|erhöhst) auf (.+)\."$/,
+      function (m, n, v, b) { return '“' + (WB[n] || n) + (v === 'erhöhst' ? ' raise' : ' raises') + ' to ' + b + '.”'; }],
+    [/^„(.+) (geht|gehst) mit (.+) mit\."$/,
+      function (m, n, v, b) { return '“' + (WB[n] || n) + (v === 'gehst' ? ' call' : ' calls') + ' ' + b + '.”'; }],
+    [/^„(.+) passt\."$/, function (m, n) { return '“' + (WB[n] || n) + ' folds.”'; }],
+    [/^„(.+) schiebt\."$/, function (m, n) { return '“' + (WB[n] || n) + ' checks.”'; }],
+    [/^„Blinds stehen — (.+) und (.+)\."$/, '“Blinds are up — $1 and $2.”'],
+    [/^„Du zeigst (.+) — der Pot gehört dir\."$/,
+      function (m, h) { return '“You show ' + (WB[h] || h) + ' — the pot is yours.”'; }],
+    [/^„(.+)"$/, function (m, t) { return '“' + (WB[t] || t) + '”'; }],
+    [/^(.+) gewinnt mit (.+) \((.+) verloren\)$/,
+      function (m, n, h, v) { return (WB[n] || n) + ' wins with ' + (WB[h] || h) + ' (' + v + ' lost)'; }],
+    [/^(.+) gewinnt — alle anderen passen \((.+) verloren\)$/,
+      function (m, n, v) { return (WB[n] || n) + ' wins — everyone else folds (' + v + ' lost)'; }],
+    [/^(.+) — Pot (.+) \((.+)\)$/,
+      function (m, h, p, n) { return (WB[h] || h) + ' — pot ' + p + ' (' + n + ')'; }],
+    [/^Hand (\d+): (.+)$/, function (m, i, h) { return 'Hand ' + i + ': ' + (WB[h] || h); }],
     [/^(.+) verliert (.+) bei (.+)$/, '$1 loses $2 at $3'],
     [/^(.+) gewinnt (.+) bei (.+)$/, '$1 wins $2 at $3'],
     [/^(.+) betritt das Casino mit (.+)$/, '$1 enters the casino with $2']
