@@ -463,9 +463,11 @@ function createMP(deps) {
     }
     var pa = partys.get(String(id || ''));
     if (pa) {
-      /* In einer Party liegen keine Chips vom Konto — die Partykasse gehoert
-         der Party. Es reicht, sie wegzunehmen; die Browser merken es an der
-         404 und raeumen ihre Kasse selbst ab. */
+      /* In einer Gratis-Party liegen keine Chips vom Konto — die Partykasse
+         gehoert der Party. Es reicht, sie wegzunehmen; die Browser merken es
+         an der 404 und raeumen ihre Kasse selbst ab. Bei einer Buy-in-Party
+         steht dagegen echtes Guthaben drin: das wird vorher abgerechnet. */
+      partyAbrechnen(pa);
       partys.delete(pa.id);
       bump(null);
       return { ok: true, art: 'party', name: pa.name };
@@ -782,6 +784,9 @@ function createMP(deps) {
   var P_MAX = 8;              // mehr Namen passen nicht mehr ins Leaderboard
   var P_COUNTDOWN = 8000;     // Vorlauf, damit alle die Uhr sehen
   var P_MELDUNGEN = 8;        // so viele Grossgewinne bleiben stehen
+  /* Nach dem Abpfiff bleibt der Kasse kurz Zeit, ihren Schlussstand zu
+     melden — erst danach wird eine Buy-in-Party ausgezahlt. */
+  var P_SCHLUSSFRIST = 2500;
 
   function partyOf(id) {
     var gefunden = null;
@@ -822,6 +827,16 @@ function createMP(deps) {
          sichtParty), sonst gewaenne die Rangliste, wer am oeftesten pleite
          geht. */
       nachschub: opts.nachschub === undefined ? 250 : clamp(int(opts.nachschub), 0, 100000),
+      /* Zwei Arten von Party:
+         aus = Gratis-Chips. Die Party bekommt eigene Chips geschenkt, das
+               Konto bleibt unberuehrt. So war es bisher immer.
+         an  = eigene Chips. Jeder zahlt sein Startguthaben vom Konto ein und
+               bekommt am Ende das heraus, was noch in der Kasse liegt.
+         Nachschub und Buy-in schliessen sich aus: geschenkte Chips waeren
+         hier echtes Geld aus dem Nichts. */
+      eigeneChips: !!opts.eigeneChips,
+      /* Liegengebliebene Gewinne vorzeitiger Aussteiger — gehen an den Sieger. */
+      topf: 0,
       spieler: [],
       startAt: 0,
       endeAt: 0,
@@ -830,6 +845,7 @@ function createMP(deps) {
       stillSeit: now(),
       v: seq + 1
     };
+    if (pa.eigeneChips) pa.nachschub = 0;
     partys.set(pa.id, pa);
     var ein = joinParty(id, { party: pa.id });
     if (ein.error) { partys.delete(pa.id); return ein; }
@@ -858,10 +874,19 @@ function createMP(deps) {
 
     var p = deps.players()[id];
     if (!p) return { error: 'Spieler nicht gefunden', code: 404 };
+    /* Bei einer Buy-in-Party wird schon hier geprueft: abgebucht wird erst
+       beim Start, aber niemand soll in einer Lobby sitzen, aus der er beim
+       Start wieder herausfliegt. */
+    if (pa.eigeneChips && p.balance < pa.startChips) {
+      return { error: 'Dafür reichen deine Chips nicht — nötig sind ' + pa.startChips, code: 400 };
+    }
     pa.spieler.push({
       id: id, name: p.name, avatar: p.avatar,
       chips: pa.startChips, start: pa.startChips,
-      nachschub: 0, besterWin: 0, runden: 0, at: now()
+      nachschub: 0, besterWin: 0, runden: 0, at: now(),
+      /* Was diese Person vom Konto eingezahlt hat und noch zurueckbekommt.
+         0 heisst: nichts offen (Gratis-Party oder schon abgerechnet). */
+      bezahlt: 0
     });
     pa.stillSeit = now();
     touch(id);
@@ -869,9 +894,77 @@ function createMP(deps) {
     return { ok: true, party: pa.id };
   }
 
+  /** Einen Anteil aufs Konto zurueckbuchen. `bezahlt` ist danach zu. */
+  function partyAuszahlen(pa, s, betrag) {
+    var p = deps.players()[s.id];
+    var raus = clamp(int(betrag), 0, pa.startChips * 1000);
+    s.bezahlt = 0;
+    s.ausgezahlt = raus;
+    if (!p) return 0;
+    p.balance += raus;
+    p.returned = (p.returned || 0) + raus;
+    p.plays = (p.plays || 0) + 1;
+    if (raus > pa.startChips) {
+      p.wins = (p.wins || 0) + 1;
+      p.biggestWin = Math.max(p.biggestWin || 0, raus - pa.startChips);
+      p.peak = Math.max(p.peak || 0, p.balance);
+    } else if (raus < pa.startChips) {
+      p.losses = (p.losses || 0) + 1;
+    }
+    return raus;
+  }
+
+  /**
+   * Buy-in-Party abrechnen — der Sieger nimmt die Gewinne.
+   *
+   * Die Regel der Party: wer am Ende vorn liegt, bekommt seinen eigenen Stand
+   * *und* den Gewinn aller anderen dazu. Wer im Plus war, aber nicht Erster,
+   * bekommt nur seinen Einsatz zurueck. Verluste wandern nirgendwohin — wer
+   * im Minus steht, behaelt den Rest seiner Kasse und mehr passiert nicht.
+   *
+   * Wer vorzeitig geht, nimmt hoechstens seinen Einsatz mit; sein Gewinn
+   * bleibt als Topf liegen und geht an den spaeteren Sieger. Sonst koennte
+   * man mit einem Gluecksgriff aussteigen und die Regel umgehen.
+   *
+   * Einmal je Person — `bezahlt` ist der Merker. Deshalb laeuft jeder Ausgang
+   * hierher: Zeit abgelaufen, Gastgeber beendet, jemand geht vorzeitig, Party
+   * wird aufgeloest. Bei einer Gratis-Party tut das hier nichts.
+   */
+  function partyAbrechnen(pa, nurId) {
+    if (!pa.eigeneChips) return 0;
+    var summe = 0;
+
+    if (nurId) {
+      var einer = partySpieler(pa, nurId);
+      if (!einer || einer.bezahlt <= 0) return 0;
+      pa.topf = (pa.topf || 0) + Math.max(0, int(einer.chips) - pa.startChips);
+      summe = partyAuszahlen(pa, einer, Math.min(int(einer.chips), pa.startChips));
+      deps.save();
+      return summe;
+    }
+
+    var drin = pa.spieler.filter(function (s) { return s.bezahlt > 0; });
+    if (!drin.length) return 0;
+    var sieger = drin.reduce(function (a, b) { return int(b.chips) > int(a.chips) ? b : a; });
+    var topf = pa.topf || 0;
+    drin.forEach(function (s) {
+      if (s !== sieger) topf += Math.max(0, int(s.chips) - pa.startChips);
+    });
+    drin.forEach(function (s) {
+      summe += partyAuszahlen(pa, s,
+        s === sieger ? int(s.chips) + topf : Math.min(int(s.chips), pa.startChips));
+    });
+    pa.topf = 0;
+    deps.save();
+    return summe;
+  }
+
   function leaveParty(id) {
     var pa = partyOf(id);
     if (!pa) return null;
+    /* Wer vorzeitig geht, nimmt bei einer Buy-in-Party mit, was gerade in
+       seiner Kasse liegt — verfallen wuerde echtes Kontoguthaben. */
+    partyAbrechnen(pa, id);
     pa.spieler = pa.spieler.filter(function (s) { return s.id !== id; });
     if (!pa.spieler.length) {
       partys.delete(pa.id);
@@ -918,6 +1011,10 @@ function createMP(deps) {
       if (op.spiele !== undefined) pa.spiele = reinigeSpiele(op.spiele);
       if (op.alleFrei !== undefined) pa.alleFrei = !!op.alleFrei;
       if (op.nachschub !== undefined) pa.nachschub = clamp(int(op.nachschub), 0, 100000);
+      if (op.eigeneChips !== undefined) pa.eigeneChips = !!op.eigeneChips;
+      /* Buy-in und Nachschub zusammen hiesse: geschenkte Chips landen als
+         echtes Guthaben auf dem Konto. Also schliesst das eine das andere aus. */
+      if (pa.eigeneChips) pa.nachschub = 0;
       if (op.name !== undefined) pa.name = String(op.name).slice(0, 24) || pa.name;
       /* Das Startguthaben gilt fuer alle, auch fuer die, die schon da sind. */
       pa.spieler.forEach(function (s) {
@@ -932,12 +1029,32 @@ function createMP(deps) {
       if (pa.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
       if (pa.status !== 'lobby') return { error: 'Die Party laeuft schon', code: 409 };
       if (!pa.spiele.length) return { error: 'Waehle mindestens ein Spiel aus', code: 400 };
+      /* Buy-in: erst pruefen, dann abbuchen. Beides in einem Rutsch, damit
+         niemand einzahlt, waehrend ein anderer den Start scheitern laesst. */
+      if (pa.eigeneChips) {
+        var leute = deps.players();
+        var fehlt = null;
+        pa.spieler.forEach(function (s) {
+          var p = leute[s.id];
+          if (!p || p.balance < pa.startChips) fehlt = fehlt || s.name;
+        });
+        if (fehlt) {
+          return { error: fehlt + ' hat keine ' + pa.startChips + ' Chips für den Einsatz', code: 400 };
+        }
+        pa.spieler.forEach(function (s) {
+          var p = leute[s.id];
+          p.balance -= pa.startChips;
+          p.wagered = (p.wagered || 0) + pa.startChips;
+          s.bezahlt = pa.startChips;
+        });
+        deps.save();
+      }
       pa.status = 'countdown';
       pa.startAt = now() + P_COUNTDOWN;
       pa.endeAt = pa.startAt + pa.dauer * 1000;
       pa.spieler.forEach(function (s) {
         s.chips = pa.startChips; s.start = pa.startChips;
-        s.nachschub = 0; s.besterWin = 0; s.runden = 0;
+        s.nachschub = 0; s.besterWin = 0; s.runden = 0; s.ausgezahlt = 0;
       });
       pa.meldungen = [];
       bumpParty(pa);
@@ -945,7 +1062,11 @@ function createMP(deps) {
     }
 
     if (op.action === 'partystand') {
-      if (pa.status !== 'laeuft') return { ok: true };
+      /* Nach dem Abpfiff wird noch kurz zugehoert: der Browser meldet seinen
+         Schlussstand, und bei einer Buy-in-Party haengt daran, was aufs Konto
+         zurueckgeht. Sobald abgerechnet ist (bezahlt = 0), ist Schluss. */
+      var nochOffen = pa.status === 'ende' && pa.eigeneChips && mich.bezahlt > 0;
+      if (pa.status !== 'laeuft' && !nochOffen) return { ok: true };
       /* Der Browser meldet seinen Stand. Das ist die eine Stelle, an der
          der Server dem Client glauben muss: die Einzelspiele laufen dort.
          Begrenzt wird trotzdem — ein Stand ausserhalb jeder Vernunft waere
@@ -980,17 +1101,21 @@ function createMP(deps) {
       if (pa.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
       pa.status = 'ende';
       pa.endeAt = now();
+      pa.abrechnenAb = now() + P_SCHLUSSFRIST;
       bumpParty(pa);
       return { ok: true };
     }
 
     if (op.action === 'partyneu') {
       if (pa.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      /* Noch eine Runde heisst bei Buy-in: erst die alte auszahlen, dann
+         beim naechsten Start neu einzahlen. */
+      partyAbrechnen(pa);
       pa.status = 'lobby';
-      pa.startAt = 0; pa.endeAt = 0; pa.meldungen = [];
+      pa.startAt = 0; pa.endeAt = 0; pa.meldungen = []; pa.topf = 0;
       pa.spieler.forEach(function (s) {
         s.chips = pa.startChips; s.start = pa.startChips;
-        s.nachschub = 0; s.besterWin = 0; s.runden = 0;
+        s.nachschub = 0; s.besterWin = 0; s.runden = 0; s.ausgezahlt = 0;
       });
       bumpParty(pa);
       return { ok: true };
@@ -1009,7 +1134,12 @@ function createMP(deps) {
         bumpParty(pa);
       } else if (pa.status === 'laeuft' && jetzt >= pa.endeAt) {
         pa.status = 'ende';
+        pa.abrechnenAb = jetzt + P_SCHLUSSFRIST;
         bumpParty(pa);
+      }
+      /* Buy-in auszahlen, sobald die Schlussfrist um ist. */
+      if (pa.status === 'ende' && pa.eigeneChips && jetzt >= (pa.abrechnenAb || 0)) {
+        if (partyAbrechnen(pa)) bumpParty(pa);
       }
       /* Eine Party, in der seit einer Viertelstunde niemand mehr war,
          raeumt sich selbst weg. */
@@ -1019,6 +1149,7 @@ function createMP(deps) {
         if (o && o.at > letzte) letzte = o.at;
       });
       if (letzte && jetzt - letzte > 15 * 60000) {
+        partyAbrechnen(pa);
         partys.delete(pa.id);
         bump(null);
       }
@@ -1049,6 +1180,8 @@ function createMP(deps) {
       spiele: pa.spiele.slice(),
       alleFrei: !!pa.alleFrei,
       nachschub: pa.nachschub || 0,
+      eigeneChips: !!pa.eigeneChips,
+      topf: pa.topf || 0,
       max: P_MAX,
       startAt: pa.startAt,
       endeAt: pa.endeAt,
@@ -1059,6 +1192,10 @@ function createMP(deps) {
           id: s.id, name: s.name, avatar: s.avatar,
           chips: s.chips, gewinn: gewinn(s), runden: s.runden,
           nachschub: s.nachschub || 0,
+          /* Was nach der Regel wirklich aufs Konto ging — erst nach der
+             Abrechnung gesetzt, vorher 0. */
+          ausgezahlt: s.ausgezahlt || 0,
+          offen: (s.bezahlt || 0) > 0,
           besterWin: s.besterWin, online: isOnline(s.id), ich: s.id === viewer
         };
       })
@@ -1973,6 +2110,7 @@ function createMP(deps) {
         id: pa.id, name: pa.name, status: pa.status,
         startChips: pa.startChips, dauer: pa.dauer,
         spiele: pa.spiele.length, max: P_MAX, nachschub: pa.nachschub || 0,
+        eigeneChips: !!pa.eigeneChips,
         besetzt: pa.spieler.length,
         spieler: pa.spieler.map(function (s) {
           return { name: s.name, avatar: s.avatar, online: isOnline(s.id) };

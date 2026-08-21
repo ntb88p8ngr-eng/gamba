@@ -114,6 +114,32 @@
     melden();
   }
 
+  /**
+   * Schlussstand sofort melden — ohne die übliche Drosselung.
+   *
+   * Bei einer Buy-in-Party hängt daran echtes Geld: der Server zahlt nach
+   * dem Abpfiff das aus, was zuletzt gemeldet wurde, und wartet dafür ein
+   * paar Sekunden. Diese Meldung ist die letzte Gelegenheit.
+   */
+  var letzteMeldung = Promise.resolve();
+  function schlussMelden() {
+    var k = GK.partyKasse();
+    if (!Party.id || !k) return Promise.resolve();
+    letzteMeldung = ruf('action', {
+      action: 'partystand', chips: k.chips, nachschub: k.nachschub,
+      runden: k.runden, besterWin: k.besterWin
+    }).catch(function () {});
+    return letzteMeldung;
+  }
+
+  /** Nach der Abrechnung steht ein neuer Kontostand auf dem Server. */
+  function kontoNachziehen(nachMs) {
+    setTimeout(function () {
+      if (!GK.net || !GK.net.pull) return;
+      GK.net.pull().then(function () { GK.updateHUD(); });
+    }, nachMs);
+  }
+
   function beenden(d) {
     if (!Party.an) return;
     Party.an = false;
@@ -126,6 +152,7 @@
        ein Partygewinn aufs echte Konto. Bei der Rakete war das gut zu sehen,
        weil sie nach dem Ende einfach weiterflog. */
     GK.emit('party-schliessen');
+    schlussMelden();
 
     var gewinn = GK.partyGewinn();
     GK.partyKasse(null);
@@ -133,30 +160,79 @@
     tafelWeg();
     GK.emit('party-ende', d);
     GK.updateHUD();
-    if (d) ergebnisZeigen(d, gewinn);
+    /* Buy-in: der Server rechnet erst ein paar Sekunden nach dem Abpfiff ab —
+       vorher stünden im Ergebnis noch die Zwischenstände. Also warten wir auf
+       die abgerechnete Ansicht und holen dann auch den Kontostand nach. */
+    if (d && d.eigeneChips) {
+      wartetErgebnis = { gewinn: gewinn, ersatz: d };
+      kontoNachziehen(3400);
+      setTimeout(ergebnisNachreichen, 7000);
+    } else if (d) {
+      ergebnisZeigen(d, gewinn);
+    }
+  }
+
+  /* Solange die Abrechnung läuft, wartet das Ergebnisfenster hier. */
+  var wartetErgebnis = null;
+
+  /** Ergebnis zeigen, sobald abgerechnet ist — spätestens nach der Frist. */
+  function ergebnisNachreichen(d) {
+    if (!wartetErgebnis) return;
+    var w = wartetErgebnis;
+    wartetErgebnis = null;
+    ergebnisZeigen(d || Party.daten || w.ersatz, w.gewinn);
   }
 
   /** Nach der Party: wer hat gewonnen? */
   function ergebnisZeigen(d, meinGewinn) {
-    var reihen = (d.spieler || []).map(function (s, i) {
+    var kauf = !!d.eigeneChips;
+    var start = d.startChips || 0;
+    var leute = d.spieler || [];
+    /* Bei Buy-in gilt die Partyregel: der Erste bekommt seinen Stand plus die
+       Gewinne aller anderen, wer sonst im Plus ist, holt nur seinen Einsatz
+       heraus, und ein Minus bleibt, wo es entstanden ist. Der Server rechnet
+       genauso — hier wird nur dasselbe angezeigt. */
+    function ausZahlung(s, platz) {
+      if (!kauf) return null;
+      if (s.ausgezahlt) return s.ausgezahlt;
+      if (platz === 0) {
+        var topf = d.topf || 0;
+        leute.forEach(function (x, i) { if (i > 0) topf += Math.max(0, x.gewinn); });
+        return Math.max(0, start + s.gewinn) + topf;
+      }
+      return Math.min(start + s.gewinn, start);
+    }
+
+    var reihen = leute.map(function (s, i) {
+      var raus = ausZahlung(s, i);
       return el('div', { class: 'party-erg' + (s.ich ? ' ich' : '') }, [
         el('span', { class: 'party-erg-platz', text: (i + 1) + '.' }),
         el('span', { class: 'party-erg-av', text: s.avatar || '👤' }),
         el('span', { class: 'party-erg-name', text: s.name }),
         s.nachschub ? el('span', { class: 'party-gabe', title: 'Nachschub: ' +
                                    GK.fmt(s.nachschub) + ' Chips', text: '🎁' }) : null,
+        kauf ? el('span', { class: 'party-erg-aus', title: 'Geht aufs Konto',
+                            text: '→ ' + GK.fmt(raus) }) : null,
         el('span', { class: 'party-erg-gewinn' + (s.gewinn >= 0 ? ' plus' : ' minus'),
                      text: GK.fmtSigned(s.gewinn) })
       ]);
     });
-    var sieger = (d.spieler || [])[0];
+    var sieger = leute[0];
+    var ich = null;
+    leute.forEach(function (s, i) { if (s.ich) ich = { s: s, i: i }; });
+    var meins = ich ? ausZahlung(ich.s, ich.i) : 0;
     GK.modal({
       icon: 'party',
       title: 'Party vorbei',
-      text: sieger
-        ? sieger.name + ' macht den dicksten Gewinn: ' + GK.fmtSigned(sieger.gewinn) + ' Chips. ' +
-          'Dein Ergebnis: ' + GK.fmtSigned(meinGewinn) + '. Auf dein Konto wirkt sich das nicht aus.'
-        : 'Die Party ist vorbei.',
+      text: !sieger ? 'Die Party ist vorbei.'
+        : sieger.name + ' macht den dicksten Gewinn: ' + GK.fmtSigned(sieger.gewinn) + ' Chips. ' +
+          'Dein Ergebnis: ' + GK.fmtSigned(meinGewinn) + '. ' +
+          (kauf
+            ? 'Auf dein Konto gehen ' + GK.fmt(meins) + ' Chips zurück — ' +
+              (ich && ich.i === 0
+                ? 'als Sieger nimmst du die Gewinne aller mit.'
+                : 'die Gewinne der anderen holt sich der Sieger.')
+            : 'Auf dein Konto wirkt sich das nicht aus.'),
       nodes: [el('div', { class: 'party-ergebnis' }, reihen)]
     });
     GK.sfx(meinGewinn > 0 ? 'jackpot' : 'click');
@@ -177,11 +253,15 @@
       GK.sfx('click');
       var ja = el('button', { class: 'btn btn-danger btn-full', text: '🚪 JA, RAUS' });
       ja.addEventListener('click', function () { GK.closeModal(); Party.verlassen(); });
+      var d = Party.daten || {};
       GK.modal({
         emoji: '🚪',
         title: 'Party verlassen?',
-        text: 'Deine Partychips verfallen — sie gehören zur Party, nicht zum Konto. ' +
-              'Dein Kontostand bleibt so, wie er vor der Party war.',
+        text: d.eigeneChips
+          ? 'Du nimmst höchstens deinen Einsatz mit. Was du darüber hinaus ' +
+            'gewonnen hast, bleibt liegen und geht an den Sieger der Party.'
+          : 'Deine Partychips verfallen — sie gehören zur Party, nicht zum Konto. ' +
+            'Dein Kontostand bleibt so, wie er vor der Party war.',
         nodes: [ja]
       });
     });
@@ -387,6 +467,12 @@
     if (d.status === 'laeuft' && !Party.an) starten(d);
     if (d.status !== 'laeuft' && Party.an) beenden(d);
     if (Party.an) tafelZeichnen(d);
+    /* Die abgerechnete Ansicht ist da (jemand hat eine Auszahlung stehen) —
+       jetzt kann das Ergebnis mit echten Zahlen aufgehen. */
+    if (wartetErgebnis && d.status === 'ende' &&
+        (d.spieler || []).some(function (s) { return s.ausgezahlt; })) {
+      ergebnisNachreichen(d);
+    }
   };
 
   /** Welche Spiele sind in dieser Party erlaubt? Leer = alle. */
@@ -416,14 +502,22 @@
   /** Party ganz verlassen (auch aus dem Spielbetrieb heraus). */
   Party.verlassen = function () {
     if (!Party.id) return;
+    var kauf = !!(Party.daten && Party.daten.eigeneChips);
     beenden(null);
     Party.daten = null;
     Party.id = null;
     /* Auch die Mehrspieler-Ansicht muss die Party loslassen — sonst fragt die
        Langabfrage weiter nach einem Tisch, an dem man gar nicht mehr sitzt. */
     if (GK.mp) { GK.mp.tisch = null; GK.mp.seit = 0; }
-    ruf('leave', {}).catch(function () {});
-    GK.toast('Party verlassen — dein Konto ist unverändert', '', '🚪');
+    /* Erst der Schlussstand, dann das Verlassen: der Server zahlt beim
+       Verlassen sofort aus und soll dabei den aktuellen Stand kennen. */
+    letzteMeldung.then(function () { return ruf('leave', {}); }).catch(function () {});
+    if (kauf) {
+      kontoNachziehen(900);
+      GK.toast('Party verlassen — dein Einsatz kommt zurück aufs Konto', '', '🚪');
+    } else {
+      GK.toast('Party verlassen — dein Konto ist unverändert', '', '🚪');
+    }
   };
 
 })(window.GK);

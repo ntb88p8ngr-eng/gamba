@@ -1684,6 +1684,19 @@ body.party-an::before{
 .party-erg-gewinn{font-family:'Bungee',sans-serif;font-size:.82rem}
 .party-erg-gewinn.plus{color:var(--lime)}
 .party-erg-gewinn.minus{color:#ff6b8a}
+/* Buy-in: was tatsächlich aufs Konto zurückgeht, steht neben dem Ergebnis. */
+.party-erg-aus{font-family:'Bungee',sans-serif;font-size:.72rem;color:var(--gold);opacity:.9}
+
+/* Das Schild an einer Party: Gratis-Chips oder eigener Einsatz. */
+.chip-marke{
+  display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
+  padding:3px 9px;border-radius:999px;font-family:'Bungee',sans-serif;
+  font-size:.6rem;letter-spacing:.04em;white-space:nowrap;border:2px solid
+}
+.marke-frei{color:var(--lime);border-color:rgba(124,255,59,.5);background:rgba(124,255,59,.12)}
+.marke-eigen{color:var(--gold);border-color:rgba(255,209,46,.55);background:rgba(255,209,46,.14)}
+.party-marke-zeile{display:flex;justify-content:center;margin-bottom:12px}
+.party-marke-zeile .chip-marke{font-size:.72rem;padding:6px 14px}
 
 @media(max-width:900px){
   /* Auf schmalen Schirmen wuerde die Tafel ueber dem Spiel liegen — dort

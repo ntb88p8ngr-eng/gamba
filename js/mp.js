@@ -486,6 +486,33 @@
 
     var nach = nachschubFeld(250);
 
+    /* Buy-in: statt Gratis-Chips zahlt jeder sein Startguthaben vom eigenen
+       Konto ein. Dann gibt es zwingend keinen Nachschub — geschenkte Chips
+       wären hier echtes Guthaben aus dem Nichts. */
+    var eigen = el('input', { type: 'checkbox' });
+    var nachBlock = el('div', {}, [
+      el('label', { class: 'mp-label', text: 'Nachschub bei null Chips' }), nach,
+      el('p', { class: 'mp-hinweis', text:
+        'Wer sich verzockt hat, bekommt automatisch neue Chips und spielt weiter. ' +
+        'Für die Rangliste zählt das Geschenk nicht — es wird vom Gewinn abgezogen.' })
+    ]);
+    var eigenZeile = el('label', { class: 'party-schalter' }, [
+      eigen,
+      el('span', {}, [
+        el('b', { text: 'Mit eigenen Chips spielen (Buy-in)' }),
+        el('span', { class: 'party-schalter-was',
+                     text: 'Jeder zahlt sein Startguthaben vom Konto ein. Der Sieger nimmt ' +
+                           'die Gewinne aller mit; wer im Plus ist, aber nicht Erster, ' +
+                           'bekommt seinen Einsatz zurück. Kein Nachschub.' })
+      ])
+    ]);
+    function eigenZeigen() {
+      nachBlock.hidden = eigen.checked;
+      if (eigen.checked) nach.value = '0';
+    }
+    eigen.addEventListener('change', function () { GK.sfx('click'); eigenZeigen(); });
+    eigenZeigen();
+
     /* Spielauswahl: alles an, was der Gastgeber selbst freigeschaltet hat.
        Ein Spiel, das er gar nicht kennt, kann er auch nicht sinnvoll waehlen. */
     var kaesten = {};
@@ -536,7 +563,8 @@
         startChips: parseInt(chips.value, 10),
         dauer: parseInt(dauer.value, 10),
         alleFrei: frei.checked,
-        nachschub: parseInt(nach.value, 10),
+        nachschub: eigen.checked ? 0 : parseInt(nach.value, 10),
+        eigeneChips: eigen.checked,
         spiele: gewaehlt
       }).then(function (b) {
         if (b && b.party) { MP.tisch = { id: b.party }; MP.seit = 0; anstossen(); }
@@ -553,16 +581,31 @@
         el('label', { class: 'mp-label', text: 'Name' }), name,
         el('label', { class: 'mp-label', text: 'Startchips für alle' }), chips,
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
-        el('label', { class: 'mp-label', text: 'Nachschub bei null Chips' }), nach,
-        el('p', { class: 'mp-hinweis', text:
-          'Wer sich verzockt hat, bekommt automatisch neue Chips und spielt weiter. ' +
-          'Für die Rangliste zählt das Geschenk nicht — es wird vom Gewinn abgezogen.' }),
+        eigenZeile,
+        nachBlock,
         freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }),
         el('div', { class: 'party-wahl-knoepfe' }, [alle, keine]),
         gitter,
         el('div', { style: 'height:10px' }), ok
       ]
+    });
+  }
+
+  /**
+   * Das Schild an einer Party: woher die Chips kommen.
+   *
+   * Bewusst englisch beschriftet, damit es in beiden Sprachfassungen
+   * dasselbe kurze Wortpaar bleibt — und weil es als Marke gelesen wird,
+   * nicht als Satz.
+   */
+  function chipMarke(eigene) {
+    return el('span', {
+      class: 'chip-marke ' + (eigene ? 'marke-eigen' : 'marke-frei'),
+      title: eigene
+        ? 'Buy-in: jeder zahlt sein Startguthaben vom Konto ein'
+        : 'Gratis-Chips: das Konto bleibt unberührt',
+      text: eigene ? '💰 YOUR CHIPS' : '🎁 FREE CHIPS'
     });
   }
 
@@ -584,6 +627,7 @@
     return el('div', { class: 'mp-tisch party-karte' }, [
       el('div', { class: 'mp-tisch-kopf' }, [
         el('span', { class: 'mp-tisch-name', text: pa.name }),
+        chipMarke(pa.eigeneChips),
         el('span', { class: 'mp-tisch-spiel', html: GK.iconHTML('partychip') + ' Party' })
       ]),
       el('div', { class: 'mp-leute' }, pa.spieler.map(function (s) {
@@ -606,6 +650,10 @@
   function zeichneParty() {
     var pa = MP.tisch;
     var wrap = el('div', { class: 'party-lobby' });
+
+    /* Ganz oben das Schild: in dieser Party geht es um eigene Chips oder um
+       geschenkte. Das soll man sehen, bevor man auf START drückt. */
+    wrap.appendChild(el('div', { class: 'party-marke-zeile' }, [chipMarke(pa.eigeneChips)]));
 
     if (pa.status === 'countdown') {
       var rest = Math.max(0, Math.ceil((pa.startAt - Date.now()) / 1000));
@@ -634,11 +682,17 @@
       'Alle starten mit <b>' + GK.fmt(pa.startChips) + ' Chips</b> und spielen ' +
       '<b>' + Math.round(pa.dauer / 60) + ' Minuten</b> lang die Einzelspiele. ' +
       'Gewonnen hat, wer am Ende den größten Gewinn gemacht hat. ' +
-      'Dein Konto bleibt unberührt. ' +
-      (pa.nachschub
-        ? 'Wer blank ist, bekommt <b>' + GK.fmt(pa.nachschub) + ' Chips</b> Nachschub — ' +
-          'der zählt aber nicht als Gewinn. '
-        : 'Nachschub gibt es keinen: wer blank ist, schaut zu. ') +
+      (pa.eigeneChips
+        ? 'Das ist eine <b>Buy-in-Party</b>: jeder zahlt die ' + GK.fmt(pa.startChips) +
+          ' Chips beim Start vom eigenen Konto ein. Der Sieger bekommt seinen Stand ' +
+          '<b>plus die Gewinne aller anderen</b>; wer im Plus ist, aber nicht Erster, ' +
+          'bekommt genau seinen Einsatz zurück, und wer im Minus steht, behält den Rest. ' +
+          'Nachschub gibt es hier nicht. '
+        : 'Dein Konto bleibt unberührt. ' +
+          (pa.nachschub
+            ? 'Wer blank ist, bekommt <b>' + GK.fmt(pa.nachschub) + ' Chips</b> Nachschub — ' +
+              'der zählt aber nicht als Gewinn. '
+            : 'Nachschub gibt es keinen: wer blank ist, schaut zu. ')) +
       (pa.alleFrei
         ? 'Alle ausgewählten Spiele sind <b>offen</b>, auch noch nicht freigespielte.'
         : 'Es gilt die <b>eigene Stufe</b> — wer ein Spiel noch nicht freigespielt hat, kann es nicht öffnen.') }));
@@ -711,6 +765,26 @@
                                          selected: d[0] === pa.dauer ? 'selected' : null }));
       });
     var nach = nachschubFeld(pa.nachschub || 0);
+    var eigen = el('input', { type: 'checkbox' });
+    eigen.checked = !!pa.eigeneChips;
+    var nachBlock = el('div', {}, [
+      el('label', { class: 'mp-label', text: 'Nachschub bei null Chips' }), nach
+    ]);
+    var eigenZeile = el('label', { class: 'party-schalter' }, [
+      eigen,
+      el('span', {}, [
+        el('b', { text: 'Mit eigenen Chips spielen (Buy-in)' }),
+        el('span', { class: 'party-schalter-was',
+                     text: 'Startguthaben kommt vom Konto, der Sieger nimmt die Gewinne ' +
+                           'aller mit. Kein Nachschub.' })
+      ])
+    ]);
+    function eigenZeigen() {
+      nachBlock.hidden = eigen.checked;
+      if (eigen.checked) nach.value = '0';
+    }
+    eigen.addEventListener('change', function () { GK.sfx('click'); eigenZeigen(); });
+    eigenZeigen();
     var frei = el('input', { type: 'checkbox' });
     frei.checked = !!pa.alleFrei;
     var freiZeile = el('label', { class: 'party-schalter' }, [
@@ -747,7 +821,8 @@
         startChips: parseInt(chips.value, 10),
         dauer: parseInt(dauer.value, 10),
         alleFrei: frei.checked,
-        nachschub: parseInt(nach.value, 10),
+        nachschub: eigen.checked ? 0 : parseInt(nach.value, 10),
+        eigeneChips: eigen.checked,
         spiele: gewaehlt
       });
     });
@@ -758,7 +833,8 @@
       nodes: [
         el('label', { class: 'mp-label', text: 'Startchips' }), chips,
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
-        el('label', { class: 'mp-label', text: 'Nachschub bei null Chips' }), nach,
+        eigenZeile,
+        nachBlock,
         freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }), gitter,
         el('div', { style: 'height:10px' }), ok
