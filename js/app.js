@@ -312,7 +312,11 @@
       var profit = GK.profitOf(p);
       var val, sub;
       if (boardSort === 'profit') { val = GK.fmtSigned(profit); sub = GK.fmt(p.balance) + ' Chips'; }
-      else if (boardSort === 'biggestWin') { val = '+' + GK.fmt(p.biggestWin); sub = 'bester Einzelwin'; }
+      else if (boardSort === 'biggestWin') {
+        val = '+' + GK.fmt(p.biggestWin);
+        var wo = p.biggestWinGame && GK.gameById(p.biggestWinGame);
+        sub = wo ? 'bester Win · ' + wo.name : 'bester Einzelwin';
+      }
       else if (boardSort === 'plays') { val = GK.fmt(p.plays); sub = p.wins + 'W / ' + p.losses + 'L'; }
       else { val = GK.fmt(p.balance); sub = GK.fmtSigned(profit) + ' Profit'; }
 
@@ -384,6 +388,7 @@
     if ((me ? GK.levelOf(me.xp) : null) !== drawnLevel) renderGames();
     renderBoard();
     renderFeed();
+    renderWipe();
     renderMarquee();
     renderLevel();
     GK.updateHUD();
@@ -542,7 +547,11 @@
       el('div', { class: 'info-grid' }, [
         el('div', { class: 'info-box' }, [el('b', { text: GK.fmt(p.plays) }), el('span', { text: 'Spiele' })]),
         el('div', { class: 'info-box' }, [el('b', { text: GK.fmtSigned(GK.profitOf(p)) }), el('span', { text: 'Profit' })]),
-        el('div', { class: 'info-box' }, [el('b', { text: '+' + GK.fmt(p.biggestWin) }), el('span', { text: 'Bester Win' })])
+        el('div', { class: 'info-box' }, [el('b', { text: '+' + GK.fmt(p.biggestWin) }),
+          el('span', { text: (function () {
+            var w = p.biggestWinGame && GK.gameById(p.biggestWinGame);
+            return w ? 'Bester Win · ' + w.name : 'Bester Win';
+          })() })])
       ]),
       el('div', { style: 'height:14px' })
     ];
@@ -1157,9 +1166,236 @@
       GK.toast('Alle Quoten stehen wieder neutral', 'gold', '⚖️');
     });
 
+    /* ── Statistik ──
+       Der Server rechnet die Zahlen aus (siehe /api/stats), hier werden sie
+       nur gezeichnet. Umschaltbar sind Zeitraum, Reihe und Zuschnitt — alles
+       drei sind einfache Knopfreihen, damit man mit einem Blick sieht, was
+       gerade gezeigt wird. */
+    var statSpanne = 12 * 3600000;      // 12 Stunden
+    var statReihe = 'netto';
+    var statSpieler = '';               // leer = alle
+    var statSpiel = '';                 // leer = alle
+    var statDaten = null;
+    var statLaeuft = false;
+
+    var statCanvas = el('canvas', { class: 'stat-canvas', width: '900', height: '260' });
+    var statKopf = el('div', { class: 'stat-kopf' });
+    var statTabelle = el('div', { class: 'stat-tabelle' });
+
+    var SPANNEN = [['1 Std', 3600000], ['12 Std', 12 * 3600000], ['24 Std', 86400000],
+                   ['7 Tage', 7 * 86400000], ['30 Tage', 30 * 86400000], ['Gesamt', 0]];
+    var REIHEN = [['Netto Spieler', 'netto'], ['Einsätze', 'einsatz'],
+                  ['Auszahlungen', 'gewinn'], ['Runden', 'runden'], ['Logins', 'logins']];
+
+    function knopfReihe(paare, holen, setzen) {
+      var box = el('div', { class: 'stat-knoepfe' });
+      var knoepfe = paare.map(function (pa) {
+        var b = el('button', { class: 'chip-btn', text: pa[0] });
+        b.addEventListener('click', function () {
+          setzen(pa[1]);
+          GK.sfx('click');
+          knoepfe.forEach(function (o) { o.b.classList.toggle('sel', o.wert === holen()); });
+        });
+        box.appendChild(b);
+        return { b: b, wert: pa[1] };
+      });
+      knoepfe.forEach(function (o) { o.b.classList.toggle('sel', o.wert === holen()); });
+      return box;
+    }
+
+    var spannenReihe = knopfReihe(SPANNEN, function () { return statSpanne; },
+      function (v) { statSpanne = v; statHolen(); });
+    var reihenReihe = knopfReihe(REIHEN, function () { return statReihe; },
+      function (v) { statReihe = v; statZeichnen(); });
+
+    var spielerWahl = el('select', { class: 'mp-feld' });
+    var spielWahl = el('select', { class: 'mp-feld' });
+    function wahlenFuellen() {
+      spielerWahl.innerHTML = '';
+      spielerWahl.appendChild(el('option', { value: '', text: 'Alle Spieler' }));
+      GK.playerList().slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
+        .forEach(function (p) {
+          spielerWahl.appendChild(el('option', { value: p.id, text: p.name,
+                                                 selected: p.id === statSpieler ? 'selected' : null }));
+        });
+      spielWahl.innerHTML = '';
+      spielWahl.appendChild(el('option', { value: '', text: 'Alle Spiele' }));
+      GK.games.forEach(function (g) {
+        spielWahl.appendChild(el('option', { value: g.id, text: g.name,
+                                             selected: g.id === statSpiel ? 'selected' : null }));
+      });
+    }
+    spielerWahl.addEventListener('change', function () { statSpieler = spielerWahl.value; statHolen(); });
+    spielWahl.addEventListener('change', function () { statSpiel = spielWahl.value; statHolen(); });
+
+    function statHolen() {
+      if (statLaeuft || !GK.net || !GK.net.stats) return;
+      statLaeuft = true;
+      statKopf.textContent = 'Lade…';
+      GK.net.stats({ spanne: statSpanne, spieler: statSpieler, spiel: statSpiel })
+        .then(function (d) {
+          statLaeuft = false;
+          statDaten = d;
+          statZeichnen();
+        }).catch(function (e) {
+          statLaeuft = false;
+          statKopf.textContent = 'Statistik nicht erreichbar' + (e && e.message ? ': ' + e.message : '');
+        });
+    }
+
+    function statZeichnen() {
+      var d = statDaten;
+      if (!d) return;
+      var g = d.gesamt;
+      statKopf.innerHTML =
+        '<span><b>' + GK.fmt(g.runden) + '</b> Runden</span>' +
+        '<span><b>' + GK.fmt(g.einsatz) + '</b> gesetzt</span>' +
+        '<span><b>' + GK.fmt(g.gewinn) + '</b> ausgezahlt</span>' +
+        '<span class="' + (g.netto >= 0 ? 'plus' : 'minus') + '"><b>' + GK.fmtSigned(g.netto) +
+          '</b> für die Spieler</span>' +
+        '<span><b>' + (g.einsatz ? Math.round(g.quote * 1000) / 10 : 0) + ' %</b> Quote</span>' +
+        '<span><b>' + GK.fmt(g.logins) + '</b> Logins</span>' +
+        '<span><b>' + GK.fmt(g.aktive) + '</b> aktive von ' + GK.fmt(g.spieler) + '</span>';
+
+      /* ── Kurve ── */
+      var c = statCanvas, ctx = c.getContext('2d');
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      var br = c.clientWidth || 900, ho = 260;
+      c.width = Math.round(br * dpr); c.height = Math.round(ho * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, br, ho);
+
+      var werte = d.punkte.map(function (p) {
+        if (statReihe === 'netto') return p.gewinn - p.einsatz;
+        return p[statReihe] || 0;
+      });
+      var max = Math.max(1, Math.max.apply(null, werte.map(Math.abs)));
+      var null0 = statReihe === 'netto' ? ho / 2 : ho - 26;
+      var hoch = statReihe === 'netto' ? (ho / 2 - 18) : (ho - 46);
+      var bx = br / werte.length;
+
+      // Gitter
+      ctx.strokeStyle = 'rgba(255,255,255,.09)';
+      ctx.lineWidth = 1;
+      for (var i = 0; i <= 4; i++) {
+        var y = 10 + i * (ho - 36) / 4;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(br, y); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,.28)';
+      ctx.beginPath(); ctx.moveTo(0, null0); ctx.lineTo(br, null0); ctx.stroke();
+
+      // Balken
+      werte.forEach(function (w, i) {
+        var h = (Math.abs(w) / max) * hoch;
+        var x = i * bx + 1.5;
+        var oben = w >= 0 ? null0 - h : null0;
+        ctx.fillStyle = statReihe === 'netto'
+          ? (w >= 0 ? 'rgba(124,255,59,.75)' : 'rgba(255,59,107,.75)')
+          : 'rgba(0,229,255,.7)';
+        ctx.fillRect(x, oben, Math.max(1, bx - 3), Math.max(1, h));
+      });
+
+      // Beschriftung: Anfang, Mitte, Ende
+      ctx.fillStyle = 'rgba(255,255,255,.6)';
+      ctx.font = '11px system-ui, sans-serif';
+      var f = function (t) {
+        var dt = new Date(t);
+        return d.bis - d.von > 2 * 86400000
+          ? dt.getDate() + '.' + (dt.getMonth() + 1) + '.'
+          : ('0' + dt.getHours()).slice(-2) + ':' + ('0' + dt.getMinutes()).slice(-2);
+      };
+      ctx.textAlign = 'left'; ctx.fillText(f(d.von), 2, ho - 6);
+      ctx.textAlign = 'center'; ctx.fillText(f((d.von + d.bis) / 2), br / 2, ho - 6);
+      ctx.textAlign = 'right'; ctx.fillText(f(d.bis), br - 2, ho - 6);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      ctx.fillText('max ' + GK.fmt(Math.round(max)), 2, 12);
+
+      /* ── Tabelle: welche Spiele zahlen für die Spieler positiv? ── */
+      statTabelle.innerHTML = '';
+      var reihen = (d.spiele || []).slice(0, 30);
+      if (!reihen.length) {
+        statTabelle.appendChild(el('div', { class: 'feed-empty', text: 'In diesem Zeitraum wurde nicht gespielt.' }));
+      } else {
+        statTabelle.appendChild(el('div', { class: 'stat-zeile kopf' }, [
+          el('span', { class: 'nm', text: 'Spiel' }),
+          el('span', { text: 'Runden' }),
+          el('span', { text: 'Einsatz' }),
+          el('span', { text: 'Quote' }),
+          el('span', { text: 'Netto Spieler' })
+        ]));
+        reihen.forEach(function (r) {
+          var sp = GK.gameById(r.id);
+          statTabelle.appendChild(el('div', { class: 'stat-zeile' + (r.netto >= 0 ? ' plus' : '') }, [
+            el('span', { class: 'nm', text: sp ? sp.name : (r.id || '—') }),
+            el('span', { text: GK.fmt(r.runden) }),
+            el('span', { text: GK.fmt(r.einsatz) }),
+            el('span', { text: (Math.round(r.quote * 1000) / 10) + ' %' }),
+            el('span', { class: r.netto >= 0 ? 'plus' : 'minus', text: GK.fmtSigned(r.netto) })
+          ]));
+        });
+      }
+    }
+
+    var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
+    statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
+
+    /* ── Nächster Wipe ──
+       Datum wählen, Haken für die Stufen setzen, fertig. Um Mitternacht
+       dieses Tages setzt der Server alle Konten zurück — er sieht dafür
+       jede halbe Minute nach und holt einen verpassten Termin nach, falls
+       er zu dem Zeitpunkt gerade nicht lief. */
+    var wipeDatum = el('input', { class: 'input', type: 'date' });
+    var wipeXpBox = el('input', { type: 'checkbox' });
+    var wipeStand = el('p', { class: 'hint' });
+    var wipeSetzen = el('button', { class: 'btn btn-gold btn-small', text: '🧹 WIPE PLANEN' });
+    var wipeAus = el('button', { class: 'btn btn-ghost btn-small', text: '✖ ABSAGEN' });
+
+    function wipeSync() {
+      var at = GK.wipeAt ? GK.wipeAt() : 0;
+      if (at) {
+        var d = new Date(at);
+        wipeStand.textContent = 'Geplant: ' + d.toLocaleDateString('de-DE') + ' um ' +
+          d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) +
+          (GK.wipeXp() ? ' — mit Stufen' : ' — nur Chips');
+        var iso = new Date(at - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        if (!wipeDatum.value) wipeDatum.value = iso;
+        wipeXpBox.checked = GK.wipeXp();
+      } else {
+        wipeStand.textContent = 'Kein Wipe geplant. Ohne Termin bleibt die Anzeige im Hauptmenü aus.';
+      }
+      wipeAus.disabled = !at;
+    }
+
+    wipeSetzen.addEventListener('click', function () {
+      if (!wipeDatum.value) { GK.toast('Erst ein Datum wählen', 'bad', '📅'); return; }
+      /* Mitternacht des gewählten Tages in der Zeit dieses Geräts. */
+      var teile = wipeDatum.value.split('-');
+      var ziel = new Date(Number(teile[0]), Number(teile[1]) - 1, Number(teile[2]), 0, 0, 0, 0).getTime();
+      if (ziel <= Date.now()) { GK.toast('Das Datum liegt schon hinter uns', 'bad', '📅'); return; }
+      GK.setWipe(ziel, wipeXpBox.checked).then(function () {
+        GK.logFeed('👑 ADMIN: Wipe geplant für ' + new Date(ziel).toLocaleDateString('de-DE'), 'admin');
+        GK.toast('Wipe geplant', 'gold', '🧹');
+        GK.sfx('cash');
+        wipeSync();
+        renderWipe();
+      });
+    });
+    wipeAus.addEventListener('click', function () {
+      GK.setWipe(0, false).then(function () {
+        GK.toast('Wipe abgesagt', 'gold', '✖');
+        GK.sfx('click');
+        wipeSync();
+        renderWipe();
+      });
+    });
+
     renderList();
     renderMP();
     renderQuoten();
+    wahlenFuellen();
+    statHolen();
+    wipeSync();
     syncLuck();
 
     /* Jeder Abschnitt ist eine eigene Karte. Auf dem Handy stehen sie
@@ -1215,6 +1451,21 @@
             el('p', { class: 'hint', text: '50 ist neutral, Zehntel sind möglich — 50,5 ist ein Hauch gnädiger. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat stehen nicht in der Liste: dort werden echte Karten ausgeteilt, da gibt es nichts zu schieben.' })
           ], true),
 
+          feld('STATISTIK', [
+            el('div', { class: 'stat-waehler' }, [spielerWahl, spielWahl]),
+            el('div', { style: 'height:8px' }),
+            spannenReihe,
+            reihenReihe,
+            el('div', { style: 'height:8px' }),
+            statKopf,
+            el('div', { class: 'stat-rahmen' }, [statCanvas]),
+            el('div', { style: 'height:8px' }),
+            statTabelle,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [statNeu]),
+            el('p', { class: 'hint', text: 'Netto ist aus Sicht der Spieler: positiv heißt, das Spiel hat in diesem Zeitraum mehr ausgezahlt als eingenommen. Aufgezeichnet werden die letzten 31 Tage.' })
+          ], true),
+
           feld('OFFENE TISCHE & PARTYS', [
             mpBox,
             el('div', { style: 'height:8px' }),
@@ -1231,6 +1482,21 @@
             el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
             el('div', { style: 'height:8px' }),
             el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
+          ]),
+
+          feld('NÄCHSTER WIPE', [
+            el('div', { class: 'field' }, [el('label', { text: 'DATUM (0 UHR)' }), wipeDatum]),
+            el('label', { class: 'party-schalter' }, [
+              wipeXpBox,
+              el('span', {}, [
+                el('b', { text: 'Stufen mit zurücksetzen' }),
+                el('span', { class: 'party-schalter-was',
+                             text: 'Ohne Haken bleiben XP und Level stehen, nur die Chips gehen zurück.' })
+              ])
+            ]),
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [wipeSetzen, wipeAus]),
+            wipeStand
           ]),
 
           feld('GEFAHRENZONE', [
@@ -1272,6 +1538,29 @@
    * gilt gerade nicht: die Party hat ihr eigenes Guthaben, und gespielt wird
    * nur, was ausgewaehlt wurde.
    */
+  /**
+   * Countdown bis zum naechsten Wipe.
+   *
+   * Steht keiner an, bleibt die Zeile ausgeblendet — sie soll nur dann Platz
+   * kosten, wenn es wirklich etwas zu wissen gibt.
+   */
+  function renderWipe() {
+    var box = $('#wipe-uhr');
+    if (!box) return;
+    var ziel = GK.wipeAt ? GK.wipeAt() : 0;
+    var rest = ziel - Date.now();
+    if (!ziel || rest <= 0) { box.hidden = true; return; }
+    var tage = Math.floor(rest / 86400000);
+    var std = Math.floor(rest / 3600000) % 24;
+    var min = Math.floor(rest / 60000) % 60;
+    var sek = Math.floor(rest / 1000) % 60;
+    var txt = tage > 0 ? tage + ' T ' + std + ' Std ' + min + ' Min'
+      : (std > 0 ? std + ' Std ' + min + ' Min ' + sek + ' Sek' : min + ' Min ' + sek + ' Sek');
+    box.hidden = false;
+    box.innerHTML = '🧹 <span>Nächster Wipe in</span> <b>' + txt + '</b> <span>· alle zurück auf ' +
+      GK.fmt(GK.START_BALANCE) + ' Chips' + (GK.wipeXp && GK.wipeXp() ? ' und Stufe 1' : '') + '</span>';
+  }
+
   function renderHero() {
     var sub = $('.hero-sub'), card = $('#level-card');
     var d = GK.party && GK.party.an && GK.party.daten;
@@ -1356,7 +1645,15 @@
     // Lobby-Aktionen
     $('#btn-play-random').addEventListener('click', function () {
       GK.sfx('click');
-      openGame(GK.pick(GK.unlockedGames()).id);
+      /* In der Party stehen nur die Spiele zur Wahl, die der Gastgeber
+         freigegeben hat — sonst landet der Zufall auf einer Kachel, die es
+         dort gar nicht gibt. */
+      var topf = GK.games.filter(function (g) {
+        if (GK.party && GK.party.an && !GK.party.erlaubt(g.id)) return false;
+        return spielbar(g);
+      });
+      if (!topf.length) { GK.toast('Kein Spiel verfügbar', 'bad', '🎲'); return; }
+      openGame(GK.pick(topf).id);
     });
     $('#btn-multiplayer').addEventListener('click', function () { GK.sfx('click'); openMP(); });
     $('#btn-mp-back').addEventListener('click', function () {
@@ -1440,6 +1737,8 @@
 
     // Feed-Zeiten frisch halten
     setInterval(renderFeed, 60000);
+    // Der Wipe-Countdown laeuft sekundengenau
+    setInterval(renderWipe, 1000);
 
     // Regelmäßig den Stand der anderen holen, solange die Lobby offen ist
     GK.net.startPolling(function () {

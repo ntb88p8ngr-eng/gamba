@@ -129,9 +129,11 @@ Einen Klang in genau einem Spiel abschalten:
 "games": { "mystery": { "click": { "enabled": false } } }
 ```
 
-Gültige ids: `slots`, `roulette`, `blackjack`, `coinflip`, `dice`, `crash`,
+Gültige ids — alle 21 Spiele stehen auch schon als leere Einträge in
+`sounds.json`, es reicht also, dort die gewünschten Klänge einzutragen:
+`slots`, `roulette`, `blackjack`, `baccarat`, `coinflip`, `dice`, `crash`,
 `mines`, `wheel`, `plinko`, `scratch`, `horses`, `icebear`, `ocean`, `poker`,
-`penguin`, `scratch9`, `mystery`, `smaugcave`, `baccarat`.
+`penguin`, `scratch9`, `mystery`, `flappy`, `jump`, `smaugcave`.
 
 ---
 

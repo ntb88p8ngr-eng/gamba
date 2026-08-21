@@ -120,7 +120,7 @@
     blurb: 'Ein Schiebe-Labyrinth voller Gold — schleich dich tief hinein, aber wehe, Smaug wacht auf.',
     badge: 'BIS 100×+',
     color: '#ff8a00',
-    minLevel: 30,
+    minLevel: 50,
     rules: [
       'Jede Runde bekommst du eine <b>Ersatzkachel</b>: drehen und in eine der drei markierten Reihen/Spalten schieben — das ganze Labyrinth verschiebt sich. Steht deine Figur auf dieser Reihe/Spalte, wandert sie mit und taucht am anderen Rand wieder auf.',
       'Danach kannst du bis zu <b>5 Felder weit</b> zu jedem erreichbaren Ziel laufen. Ein Klick genügt, der Abenteurer läuft automatisch.',

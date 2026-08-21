@@ -63,6 +63,9 @@
       feed: [],
       /* Quote je Spiel, 0..100 mit 50 als neutral. Was fehlt, laeuft neutral. */
       spielLuck: {},
+      /* Naechster geplanter Wipe (ms seit 1970, 0 = keiner). */
+      wipeAt: 0,
+      wipeXp: false,
       settings: { sound: true, volume: 50, adminPin: '1337', chaos: true, cardTheme: 'eerie' },
       admin: false
     };
@@ -277,13 +280,15 @@
   /** Serverstand übernehmen. Gibt zurück, ob sich etwas geändert hat. */
   GK.adoptState = function (s) {
     if (!s || !s.players) return false;
-    var before = JSON.stringify([state.players, state.feed, state.spielLuck]);
+    var before = JSON.stringify([state.players, state.feed, state.spielLuck, state.wipeAt]);
     state.players = s.players;
     state.feed = s.feed || [];
     state.spielLuck = s.spielLuck || {};
+    state.wipeAt = s.wipeAt || 0;
+    state.wipeXp = !!s.wipeXp;
     if (state.currentId && !state.players[state.currentId]) state.currentId = null;
     GK.save();
-    return JSON.stringify([state.players, state.feed, state.spielLuck]) !== before;
+    return JSON.stringify([state.players, state.feed, state.spielLuck, state.wipeAt]) !== before;
   };
 
   /**
@@ -339,6 +344,7 @@
       wins: 0,
       losses: 0,
       biggestWin: 0,
+      biggestWinGame: '',
       peak: START_BALANCE,
       luck: 50,         // 0-100, nur der Admin dreht daran
       xp: 0,
@@ -573,9 +579,16 @@
        Parameter — nur die id passt zum gesicherten Spielstand. */
     openStakeAdd(GK.currentGame, amount);
     GK.commit('wager', { id: p.id, amount: amount });
-    // XP fürs Mitspielen — gedeckelt, damit ein einzelner Riesen-Einsatz
-    // nicht sofort alles freischaltet (der Server deckelt identisch).
-    GK.addXP(Math.min(60, Math.max(3, Math.floor(amount / 8))));
+    /* XP fürs Mitspielen. Zwei Bremsen:
+       - Die Wurzel statt des geraden Betrags: wer das Hundertfache setzt,
+         bekommt das Zehnfache an XP, nicht das Hundertfache. Vorher war ein
+         einziger dicker Einsatz mehr wert als eine halbe Stunde spielen.
+       - Ein Faktor je Spiel (xpFaktor in der Registry). Plinko wirft pro
+         Runde mehrere Kugeln und bucht für jede einen eigenen Einsatz —
+         ohne Bremse sammelt es ein Vielfaches der anderen Spiele. */
+    var roh = Math.min(40, Math.max(2, Math.round(Math.sqrt(amount) * 1.3)));
+    var sp = GK.gameById(GK.currentGame);
+    GK.addXP(Math.max(1, Math.round(roh * ((sp && sp.xpFaktor) || 1))));
     GK.updateHUD(-amount);
     return true;
   };
@@ -607,13 +620,18 @@
       p.returned += amount;
       p.peak = Math.max(p.peak, p.balance);
       var net = amount - ((meta && meta.stake) || 0);
-      if (net > p.biggestWin) p.biggestWin = net;
+      if (net > p.biggestWin) {
+        p.biggestWin = net;
+        /* Wo der dickste Einzelgewinn herkam — das Leaderboard zeigt es an. */
+        p.biggestWinGame = GK.currentGame || p.biggestWinGame || '';
+      }
       p.wins++;
       if (net > 0) GK.addXP(8 + Math.min(25, Math.floor(net / 50)));   // Bonus-XP für Gewinne
     } else {
       p.losses++;
     }
-    GK.commit('payout', { id: p.id, amount: amount, stake: (meta && meta.stake) || 0 });
+    GK.commit('payout', { id: p.id, amount: amount, stake: (meta && meta.stake) || 0,
+                          game: GK.currentGame || '' });
     GK.updateHUD(amount > 0 ? amount : 0);
     GK.checkBroke();
   };
@@ -715,6 +733,15 @@
     if (wert === 50) delete state.spielLuck[id];
     else state.spielLuck[id] = wert;
     return GK.commit('gameLuck', { game: id, luck: wert });
+  };
+
+  /** Naechster Wipe: Zeitpunkt in ms, 0 heisst keiner geplant. */
+  GK.wipeAt = function () { return state.wipeAt || 0; };
+  GK.wipeXp = function () { return !!state.wipeXp; };
+  GK.setWipe = function (at, mitXp) {
+    state.wipeAt = at ? Math.floor(at) : 0;
+    state.wipeXp = !!mitXp;
+    return GK.commit('setWipe', { at: state.wipeAt, xp: state.wipeXp });
   };
 
   /** Alle Spiele zurueck auf neutral. */

@@ -72,12 +72,20 @@
      Das Anfangstempo liegt bewusst über dem gemütlichen Bereich: mit 160
      px/s trudelte der Vogel die ersten Röhren so lahm entlang, dass die
      Runde erst nach einer halben Minute interessant wurde. */
-  function luecke(n, gluck) {
-    var g = Math.max(110, 205 - 5 * n);
-    /* Der Glücks-Regler des Admins verschiebt die Lücke um bis zu ±12 %. */
-    return g * (1 + ((gluck - 50) / 50) * 0.12);
+  function luecke(n) { return Math.max(110, 205 - 5 * n); }
+  /**
+   * Tempo der Röhren.
+   *
+   * Hier hängt der Regler aus "QUOTEN JE SPIEL": er verschiebt das
+   * Anfangstempo um bis zu ±20 %. Höher heißt langsamer und damit gnädiger,
+   * tiefer heißt schneller. Die Lücke bleibt davon unberührt — sie ist das
+   * Maß, an dem der Spieler seine Höhe abliest, und sollte sich nicht
+   * heimlich ändern.
+   */
+  function tempo(n, gluck) {
+    var v = Math.min(370, 185 + 6.5 * n);
+    return v * (1 - ((gluck - 50) / 50) * 0.2);
   }
-  function tempo(n) { return Math.min(370, 185 + 6.5 * n); }
   function abstand(n) { return Math.max(196, 272 - 2.4 * n); }
 
   GK.registerGame({
@@ -88,7 +96,7 @@
     blurb: 'Ein Tipp lässt ihn steigen, sonst fällt er. Jede Röhre zahlt mehr — und die Lücke wird enger.',
     badge: 'BIS ' + Math.round(multNach(ZIEL)) + '×',
     color: '#3bc94a',
-    minLevel: 50,
+    minLevel: 30,
     rules: [
       'Setze Chips und starte den Flug. <b>Tippen, klicken oder Leertaste</b> lässt den Vogel flattern — sonst fällt er.',
       'Jede durchflogene Röhre erhöht den Multiplikator. Die erste bringt nur <b>+2 %</b>, danach steigt der Zuwachs mit jeder Röhre: die fünfte bringt <b>+14 %</b>, die zehnte <b>+29 %</b>, ab der 21. sind es <b>+60 %</b>. Früh aussteigen lohnt sich also kaum — das Geld liegt weit hinten.',
@@ -343,7 +351,7 @@
       /* ── Ablauf ───────────────────────────────────────────────────── */
 
       function neueRohre() {
-        var g = luecke(geschafft, GK.luckOf('flappy'));
+        var g = luecke(geschafft);
         /* Die Lücke sitzt nie ganz oben oder unten — sonst wäre sie ohne
            Vorwarnung nicht mehr erreichbar. */
         var mitte = 90 + Math.random() * (LUFT - 180);
@@ -452,7 +460,7 @@
         zeitAb += dt;
         if (flatterAn > 0) flatterAn -= dt;
 
-        var v = laeuft ? tempo(geschafft) : 46;   // im Stillstand zieht nur die Kulisse
+        var v = laeuft ? tempo(geschafft, GK.luckOf('flappy')) : 46;   // im Stillstand zieht nur die Kulisse
         himmelX += v * 0.28 * dt;
         bodenX += v * dt;
 

@@ -197,12 +197,75 @@
       el('div', { class: 'party-meldungen', id: 'party-meldungen' })
     ]);
     document.body.appendChild(tafel);
-    /* Auf dem Handy nimmt die Tafel sonst das halbe Spiel weg — dort laesst
-       sie sich mit einem Tippen auf den Kopf zusammenklappen. */
-    tafel.querySelector('.party-tafel-kopf').addEventListener('click', function () {
-      tafel.classList.toggle('klein');
-      GK.sfx('click');
+
+    var kopf = tafel.querySelector('.party-tafel-kopf');
+
+    /* ── Verschieben ──
+       Die Tafel liegt fest über dem Spielfeld und deckt je nach Spiel etwas
+       Wichtiges zu. Am Kopf lässt sie sich deshalb an jede Stelle ziehen —
+       mit der Maus wie mit dem Finger. Die Stelle merkt sich das Gerät.
+
+       Ziehen und Zusammenklappen teilen sich denselben Griff: als Klick
+       zählt nur, was sich um weniger als ein paar Pixel bewegt hat. Sonst
+       klappte die Tafel bei jedem Verschieben zu. */
+    var zieht = false, packte = null, bewegt = 0;
+
+    function stelleMerken() {
+      try {
+        localStorage.setItem('gambaking:party-tafel',
+          JSON.stringify({ x: tafel.offsetLeft, y: tafel.offsetTop }));
+      } catch (e) {}
+    }
+    function stelleHolen() {
+      try {
+        var d = JSON.parse(localStorage.getItem('gambaking:party-tafel') || 'null');
+        if (d && typeof d.x === 'number') setzen(d.x, d.y);
+      } catch (e) {}
+    }
+    function setzen(x, y) {
+      /* Nie ganz aus dem Bild schieben lassen — sonst ist die Tafel weg und
+         kommt ohne Zurücksetzen nicht wieder. */
+      var b = tafel.getBoundingClientRect();
+      x = Math.max(4, Math.min(window.innerWidth - Math.min(b.width, 120) - 4, x));
+      y = Math.max(4, Math.min(window.innerHeight - 44, y));
+      tafel.style.left = x + 'px';
+      tafel.style.top = y + 'px';
+      tafel.style.right = 'auto';
+    }
+
+    kopf.addEventListener('pointerdown', function (ev) {
+      if (ev.target.closest('.party-raus')) return;
+      zieht = true; bewegt = 0;
+      var b = tafel.getBoundingClientRect();
+      packte = { dx: ev.clientX - b.left, dy: ev.clientY - b.top, x0: ev.clientX, y0: ev.clientY };
+      kopf.setPointerCapture && kopf.setPointerCapture(ev.pointerId);
+      tafel.classList.add('zieht');
+      ev.preventDefault();
     });
+    kopf.addEventListener('pointermove', function (ev) {
+      if (!zieht || !packte) return;
+      bewegt = Math.max(bewegt, Math.abs(ev.clientX - packte.x0) + Math.abs(ev.clientY - packte.y0));
+      setzen(ev.clientX - packte.dx, ev.clientY - packte.dy);
+    });
+    ['pointerup', 'pointercancel'].forEach(function (n) {
+      kopf.addEventListener(n, function () {
+        if (!zieht) return;
+        zieht = false;
+        tafel.classList.remove('zieht');
+        if (bewegt < 6) {
+          /* Kein Ziehen, sondern ein Tipp: zusammenklappen. Auf dem Handy
+             nimmt die Tafel sonst das halbe Spiel weg. */
+          tafel.classList.toggle('klein');
+          GK.sfx('click');
+        } else {
+          stelleMerken();
+        }
+      });
+    });
+    window.addEventListener('resize', function () {
+      if (tafel) setzen(tafel.offsetLeft, tafel.offsetTop);
+    });
+    stelleHolen();
     return tafel;
   }
 

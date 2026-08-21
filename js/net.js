@@ -77,6 +77,20 @@
    * Operation an den Server schicken. Die Änderung ist lokal schon
    * passiert — die Antwort ist die verbindliche Wahrheit.
    */
+  /**
+   * Statistik holen (nur Admin).
+   *
+   * Geht bewusst nicht ueber Net.op: die Auswertung veraendert nichts und
+   * soll sich nicht in die Kette der Schreibvorgaenge stellen.
+   */
+  Net.stats = function (frage) {
+    if (!Net.online) return Promise.resolve(null);
+    var body = Object.assign({}, frage || {});
+    if (Net.token) body.token = Net.token;
+    if (Net.session) body.session = Net.session;
+    return api('api/stats', { method: 'POST', body: JSON.stringify(body) });
+  };
+
   Net.op = function (type, payload) {
     if (!Net.online) return Promise.resolve(null);
     var body = Object.assign({ type: type }, payload || {});
