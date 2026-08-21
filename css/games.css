@@ -77,13 +77,19 @@
 /* Die Richtungsknöpfe gehören dem Handy: wo es einen genauen Zeiger gibt,
    liegen A und D näher. Ausgeblendet statt weggelassen, damit ein Gerät mit
    Maus *und* Touch sie trotzdem bekommt, sobald der Schirm schmal wird. */
-.jp-tasten{display:none;gap:12px;margin:10px auto 0;max-width:420px}
+/* Die Knöpfe liegen im Spielfeld, halbdurchsichtig und unten in den Ecken:
+   unter dem Feld schoben sie auf kleinen Schirmen etwas aus dem Bild. */
+.jp-tasten{display:none;position:absolute;left:0;right:0;bottom:0;
+  justify-content:space-between;padding:10px;gap:10px;z-index:3;pointer-events:none}
 .jp-taste{
-  flex:1;padding:14px 0;font-size:1.5rem;line-height:1;cursor:pointer;
-  border-radius:16px;border:2px solid var(--line);color:#fff;
-  background:rgba(255,255,255,.08);touch-action:none;user-select:none
+  pointer-events:auto;width:76px;height:62px;font-size:1.6rem;line-height:1;cursor:pointer;
+  border-radius:18px;border:2px solid rgba(255,255,255,.4);color:#fff;
+  background:rgba(10,20,40,.34);backdrop-filter:blur(3px);
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+  transition:background .12s,transform .12s
 }
-.jp-taste:active{background:rgba(140,227,74,.28);border-color:var(--lime)}
+.jp-taste:active{background:rgba(140,227,74,.45);border-color:var(--lime);transform:scale(.94)}
+.jp-taste:focus{outline:none}
 @media (hover:none),(max-width:820px){
   .jp-tasten{display:flex}
 }
@@ -428,8 +434,29 @@
   background-size:60px 60px;animation:bubbleup 9s linear infinite;opacity:.4}
 @keyframes bubbleup{to{background-position:0 -60px}}
 .oc-reels{grid-template-columns:repeat(5,1fr)!important;position:relative;gap:6px!important}
-.oc-reel{height:276px!important}
-.oc-sym{height:92px!important;flex:0 0 92px!important;line-height:0!important}
+/* Fünf Reihen statt drei: die Zellen schrumpfen, damit die Maschine nicht
+   in die Höhe wächst und auf dem Handy aus dem Bild läuft. */
+.oc-reel{height:320px!important;position:relative}
+/* Aufsteigende Blasen als Kulisse — kostet nichts und macht aus dem stillen
+   Kasten ein Stück Meer. */
+.oc-reels::before,.oc-reels::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:
+    radial-gradient(5px 5px at 12% 110%, rgba(255,255,255,.5), transparent 60%),
+    radial-gradient(7px 7px at 38% 130%, rgba(255,255,255,.36), transparent 60%),
+    radial-gradient(4px 4px at 63% 120%, rgba(255,255,255,.45), transparent 60%),
+    radial-gradient(6px 6px at 86% 140%, rgba(255,255,255,.32), transparent 60%);
+  animation:ocblasen 7s linear infinite
+}
+.oc-reels::after{animation-duration:11s;animation-delay:-3s;opacity:.7}
+@keyframes ocblasen{from{transform:translateY(0)}to{transform:translateY(-150%)}}
+.oc-machine.blitz{animation:ocblitz .7s}
+@keyframes ocblitz{
+  0%{box-shadow:0 0 0 rgba(255,209,46,0)}
+  30%{box-shadow:0 0 60px rgba(255,209,46,.85),inset 0 0 60px rgba(255,209,46,.35)}
+  100%{box-shadow:0 0 0 rgba(255,209,46,0)}
+}
+.oc-sym{height:64px!important;flex:0 0 64px!important;line-height:0!important}
 .oc-sym img,.oc-sym svg{width:64%!important;height:64%!important;object-fit:contain}
 .line-overlay{position:absolute;inset:10px;pointer-events:none;z-index:3}
 .win-line{position:absolute;left:0;height:4px;border-radius:4px;opacity:0;
@@ -872,8 +899,8 @@
   .ice-row .floe{padding:8px}
 
   /* 13. Tiefsee */
-  .oc-reel{height:210px!important}
-  .oc-sym{height:70px!important;flex:0 0 70px!important}
+  .oc-reel{height:250px!important}
+  .oc-sym{height:50px!important;flex:0 0 50px!important}
   .oc-paytable{grid-template-columns:repeat(auto-fit,minmax(52px,1fr))}
 
   /* 14. Poker */
@@ -899,8 +926,8 @@
   .card{width:50px;height:auto;font-size:.7rem}
   .card .mid{font-size:1.2rem}
   .peng-scene{height:200px}
-  .oc-reel{height:186px!important}
-  .oc-sym{height:62px!important;flex:0 0 62px!important}
+  .oc-reel{height:210px!important}
+  .oc-sym{height:42px!important;flex:0 0 42px!important}
   /* Der Tipp steht auch in den Regeln — auf winzigen Schirmen kostet er nur Platz */
   #game-stage .hint{display:none}
 }

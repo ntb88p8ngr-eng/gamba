@@ -1,9 +1,16 @@
-/* ═══════════ 13. TIEFSEE-SCHATZ — 5 Walzen (ab Level 7) ═══════════ */
+/* ═══════════ 13. TIEFSEE-SCHATZ — 5×5 Walzen (ab Level 7) ═══════════
+   Fünf Walzen mit je fünf Symbolen und fünfzehn Gewinnlinien. Das größere
+   Feld bringt von allein mehr Truhen ins Bild — und damit deutlich öfter
+   Freispiele als die alten drei Reihen. Damit die Quote dabei nicht
+   davonläuft, zahlt der Scatter selbst weniger als vorher; verschoben ist
+   also nur, wo der Gewinn herkommt: seltener aus der Truhe direkt, öfter
+   aus den Freispielen, die sie auslöst.
+   ═════════════════════════════════════════════════════════════════════ */
 (function (GK) {
   'use strict';
   var el = GK.el;
 
-  var ROWS = 3, REELS = 5;
+  var ROWS = 5, REELS = 5;
 
   /* pay: [3 Gleiche, 4 Gleiche, 5 Gleiche] — bezogen auf den Linieneinsatz */
   var SYMS = [
@@ -24,19 +31,34 @@
      (GK.luckRoll(0) ist bei neutralem Luck immer falsch). */
   var LUCKY_CELL = 0;
 
-  /* Scatter zahlt auf den Gesamteinsatz, egal wo die Truhen liegen */
-  var SCATTER_PAY = { 3: 4, 4: 17, 5: 100 };
+  /* Scatter zahlt auf den Gesamteinsatz, egal wo die Truhen liegen. Auf 25
+     Feldern liegen viel öfter drei Truhen als auf 15 — die Beträge sind
+     deshalb kleiner als früher, sonst kippt die Quote. */
+  var SCATTER_PAY = { 3: 1.2, 4: 5, 5: 28, 6: 120 };
   /* Dieselben Truhen bringen zusaetzlich Freispiele. Sie kosten nichts, jeder
      Gewinn zaehlt darin doppelt, und drei weitere Truhen verlaengern. */
-  var FREE_SPINS = { 3: 8, 4: 12, 5: 20 };
+  var FREE_SPINS = { 3: 2, 4: 3, 5: 6, 6: 10 };
   var FREE_MULT = 2;
 
+  /* Fünfzehn Linien über fünf Reihen: die fünf Geraden, große und kleine
+     Zacken, Treppen und Wellen. Mehr wären auf dem Handy nicht mehr zu
+     unterscheiden. */
   var LINES = [
-    { name: 'Mitte',   rows: [1, 1, 1, 1, 1], color: '#00e5ff' },
-    { name: 'Oben',    rows: [0, 0, 0, 0, 0], color: '#7cff3b' },
-    { name: 'Unten',   rows: [2, 2, 2, 2, 2], color: '#ffd12e' },
-    { name: 'V',       rows: [0, 1, 2, 1, 0], color: '#ff2fd0' },
-    { name: 'Λ',       rows: [2, 1, 0, 1, 2], color: '#ff8a00' }
+    { name: 'Mitte',    rows: [2, 2, 2, 2, 2], color: '#00e5ff' },
+    { name: 'Oben',     rows: [0, 0, 0, 0, 0], color: '#7cff3b' },
+    { name: 'Unten',    rows: [4, 4, 4, 4, 4], color: '#ffd12e' },
+    { name: 'Zwei',     rows: [1, 1, 1, 1, 1], color: '#ff2fd0' },
+    { name: 'Vier',     rows: [3, 3, 3, 3, 3], color: '#ff8a00' },
+    { name: 'V groß',   rows: [0, 1, 2, 3, 4], color: '#8ce34a' },
+    { name: 'Λ groß',   rows: [4, 3, 2, 1, 0], color: '#3bd6ff' },
+    { name: 'V klein',  rows: [1, 2, 3, 2, 1], color: '#ff6b6b' },
+    { name: 'Λ klein',  rows: [3, 2, 1, 2, 3], color: '#c06bff' },
+    { name: 'Welle',    rows: [0, 2, 0, 2, 0], color: '#ffe066' },
+    { name: 'Gegenwelle', rows: [4, 2, 4, 2, 4], color: '#59c6ff' },
+    { name: 'Treppe ab', rows: [0, 0, 2, 4, 4], color: '#ff9f1c' },
+    { name: 'Treppe auf', rows: [4, 4, 2, 0, 0], color: '#2ec4b6' },
+    { name: 'Zacke',    rows: [1, 0, 1, 0, 1], color: '#e71d73' },
+    { name: 'Gegenzacke', rows: [3, 4, 3, 4, 3], color: '#9bf6ff' }
   ];
 
   function randSym() {
@@ -80,8 +102,9 @@
     for (var r = 0; r < REELS; r++) for (var c = 0; c < ROWS; c++) {
       if (grid[r][c].scatter) scatters.push([r, c]);
     }
-    if (SCATTER_PAY[scatters.length]) {
-      var sAmount = Math.floor(totalBet * SCATTER_PAY[scatters.length]);
+    var sKey = Math.min(6, scatters.length);
+    if (SCATTER_PAY[sKey]) {
+      var sAmount = Math.floor(totalBet * SCATTER_PAY[sKey]);
       total += sAmount;
       wins.push({ scatter: true, count: scatters.length, cells: scatters, amount: sAmount });
     }
@@ -107,17 +130,17 @@
     name: 'Tiefsee-Schatz',
     emoji: '🐠',
     icon: 'reeffish',
-    blurb: '5 Walzen, 5 Gewinnlinien, ein versunkener Schatz. Algen, Muscheln, Haie — und die Truhe zahlt überall.',
+    blurb: '5×5 Felder, 15 Gewinnlinien, ein versunkener Schatz. Truhen zahlen überall — und öffnen die Freispiele.',
     badge: 'BIS 1900×',
     color: '#00e5ff',
     minLevel: 7,
     rules: [
-      '<b>5 Walzen mit je 3 Symbolen</b> und <b>5 Gewinnlinien</b> (Mitte, Oben, Unten, V und Λ).',
+      '<b>5 Walzen mit je 5 Symbolen</b> und <b>15 Gewinnlinien</b> — Geraden, Zacken, Wellen und Treppen.',
       'Gewinne zählen <b>von links</b>: ab 3 gleichen Symbolen auf einer Linie.',
       'Der <b>Dreizack</b> ist Wild und ersetzt jedes Symbol außer der Truhe.',
-      'Die <b>Schatztruhe</b> ist Scatter: 3 Stück irgendwo zahlen 4×, 4 zahlen 17×, 5 zahlen 100× — auf den Gesamteinsatz.',
-      'Der Einsatz verteilt sich gleichmäßig auf die 5 Linien.',
-      '<b>3, 4 oder 5 Truhen</b> bringen zusätzlich <b>8, 12 oder 20 Freispiele</b> — sie kosten nichts und jeder Gewinn zählt <b>' + FREE_MULT + '×</b>.',
+      'Die <b>Schatztruhe</b> ist Scatter: 3 Stück irgendwo zahlen 1,2×, 4 zahlen 5×, 5 zahlen 28× und 6 sogar 120× — auf den Gesamteinsatz.',
+      'Der Einsatz verteilt sich gleichmäßig auf die 15 Linien.',
+      '<b>3, 4, 5 oder 6 Truhen</b> bringen zusätzlich <b>2, 3, 6 oder 10 Freispiele</b> — sie kosten nichts und jeder Gewinn zählt <b>' + FREE_MULT + '×</b>. Auf dem großen Feld passiert das viel öfter als früher.',
       'Drei Truhen im Freispiel <b>verlängern</b> die Serie.'
     ],
     mount: function (root) {
@@ -372,7 +395,10 @@
         highlight(res.wins);
 
         var truhen = res.wins.filter(function (w) { return w.scatter; })[0];
-        if (truhen && FREE_SPINS[truhen.count]) awardFree(FREE_SPINS[truhen.count], inFree);
+        if (truhen) {
+          var stufe = Math.min(6, truhen.count);
+          if (FREE_SPINS[stufe]) awardFree(FREE_SPINS[stufe], inFree);
+        }
 
         res.total = total;
         if (res.total > stake) {
@@ -383,6 +409,11 @@
           GK.setResult(resultBox, label + ' → +' + GK.fmt(res.total - stake), 'win');
           GK.celebrate(res.total - stake, res.total / Math.max(1, stake));
           if (res.total >= stake * 20) GK.emojiRain(['💰', '🔱', '🫧', '🐠'], 30);
+          /* Kurzes Aufleuchten: bei einem dicken Treffer soll die ganze
+             Maschine reagieren, nicht nur die getroffene Linie. */
+          machine.classList.add('blitz');
+          setTimeout(function () { machine.classList.remove('blitz'); }, 700);
+          if (res.total >= stake * 12) GK.shake(machine);
         } else if (res.total > 0) {
           GK.setResult(resultBox, res.wins.length + ' Treffer — ' + GK.fmt(res.total) + ' zurück', 'push');
           GK.sfx('coin');

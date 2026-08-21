@@ -118,6 +118,9 @@
          nehmen A und D ihren Platz ein (siehe .jp-tasten in games.css). */
       var linksBtn = el('button', { class: 'jp-taste', text: '◀', 'aria-label': 'nach links' });
       var rechtsBtn = el('button', { class: 'jp-taste', text: '▶', 'aria-label': 'nach rechts' });
+      /* Die Knöpfe liegen halbdurchsichtig auf dem Spielfeld: unter dem Feld
+         schoben sie auf kleinen Schirmen entweder sich selbst oder das Feld
+         aus dem Bild. */
       var tastenReihe = el('div', { class: 'jp-tasten' }, [linksBtn, rechtsBtn]);
 
       var multBadge = el('div', { class: 'mult-badge center', text: '1.00×' });
@@ -140,7 +143,6 @@
       var stage = el('div', { class: 'stage split' }, [
         el('div', {}, [
           buehne,
-          tastenReihe,
           el('div', { style: 'height:8px' }),
           infoZeile
         ]),
@@ -162,6 +164,7 @@
           el('p', { class: 'hint', html: '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.' })
         ])
       ]);
+      buehne.appendChild(tastenReihe);
       root.appendChild(stage);
 
       function skalieren() {
