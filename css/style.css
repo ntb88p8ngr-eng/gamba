@@ -218,14 +218,27 @@ img{max-width:100%}
   /* Rest der Breite für die Chips; passt es nicht, wird geschoben statt umgebrochen */
   #view-game .bet-quick{flex:1;min-width:0;display:flex;flex-wrap:nowrap;gap:3px;overflow-x:auto;scrollbar-width:none}
   #view-game .bet-quick::-webkit-scrollbar{display:none}
-  /* Enger als am Desktop: mit −5 und −50 sind es sieben Chips in der Leiste,
+  /* Enger als am Desktop: mit ±1, −5, −50 sind es acht Chips in der Leiste,
      und die passen nur mit knapperem Innenabstand ohne Schieben nebeneinander. */
-  #view-game .bet-quick .chip-btn{flex:0 0 auto;padding:6px 5px;font-size:.64rem}
+  #view-game .bet-quick .chip-btn{flex:0 0 auto;padding:6px 4px;font-size:.63rem}
   #view-game .bet-quick .qb-extra{display:none}
   /* „ALL IN 🔥" ist der breiteste Chip und sprengt die Zeile — in der Leiste
-     heißt er kurz „MAX 🔥", auf dem Desktop bleibt die lange Beschriftung. */
+     heißt er kurz „MAX", auf dem Desktop bleibt die lange Beschriftung. */
   #view-game .bet-quick .qb-allin{font-size:0}
-  #view-game .bet-quick .qb-allin::after{content:"MAX 🔥";font-size:.66rem}
+  #view-game .bet-quick .qb-allin::after{content:"MAX";font-size:.63rem}
+  /* Im Spiel bleibt die Fußzeile draußen — am Handy war sie ein guter Teil
+     der Scrollstrecke und im Spiel sowieso nicht gefragt. */
+  body.spielt .footer{display:none}
+  /* Unter dem Feld stehen Auto-Ausstieg, Ergebnis und Tipp: ganz ohne
+     Scrollen geht es damit nicht. Also wandert die Kopfzeile mit — der
+     LOBBY-Knopf ist so an jeder Stelle erreichbar, auch mitten im Lauf,
+     wo das Spielfeld jede Wischgeste schluckt. */
+  #view-game .game-header{
+    position:sticky;top:var(--kopf-hoehe,58px);z-index:46;
+    margin:0 -10px 12px;padding:8px 10px;
+    background:linear-gradient(180deg,rgba(18,0,43,.97),rgba(18,0,43,.86));
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
+  }
   /* Untergrund, damit der Inhalt nicht durch die Leiste scheint */
   #view-game::after{
     content:"";position:fixed;left:0;right:0;bottom:0;height:188px;z-index:44;pointer-events:none;
@@ -241,6 +254,12 @@ img{max-width:100%}
   /* Am Seitenende liegt sonst die Fußzeile unter der Leiste */
   main:has(#view-game.active)+.footer{padding-bottom:186px}
   main:has(#view-game.active.has-actions)+.footer{padding-bottom:240px}
+}
+/* Auf den schmalsten Geräten (iPhone SE/mini, 375 px) fehlen der Chipleiste
+   sonst die letzten Pixel und sie fängt an zu schieben. */
+@media(max-width:400px){
+  #view-game .bet-quick{gap:2px}
+  #view-game .bet-quick .chip-btn{padding:6px 3px}
 }
 .balance-pop{animation:balpop .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes balpop{0%{transform:scale(1)}40%{transform:scale(1.28) rotate(-3deg)}100%{transform:scale(1)}}
@@ -271,7 +290,19 @@ img{max-width:100%}
 .lang-schalter img{height:34px;width:auto;display:block;pointer-events:none}
 .lang-schalter:hover{transform:scale(1.06)}
 .lang-schalter:active{transform:scale(.94)}
-@media (max-width:720px){ .lang-schalter img{height:26px} }
+
+/* Die Zeile im Kontofenster — sie gehört dem Handy. Am Rechner ist im Kopf
+   Platz genug, dort bleibt der Schalter oben und diese Zeile verschwindet. */
+.lang-zeile{display:none;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border-radius:14px;border:2px solid var(--line);background:rgba(255,255,255,.05)}
+.lang-zeile-was{font-weight:700;font-size:.95rem;margin-top:2px}
+.lang-zeile .lang-schalter img{height:40px}
+@media (max-width:620px){
+  /* Ganz rechts im Kopf stand er halb außerhalb des Schirms und war kaum
+     zu treffen — am Handy sitzt er stattdessen in den Kontoeinstellungen. */
+  .topbar-right .lang-schalter{display:none}
+  .lang-zeile{display:flex}
+}
 
 .sound-box{display:flex;align-items:center;gap:7px;padding:0 8px 0 0;border-radius:14px;background:rgba(255,255,255,.05);border:2px solid var(--line)}
 .sound-box .icon-btn{border:0;background:none;width:36px;height:36px}

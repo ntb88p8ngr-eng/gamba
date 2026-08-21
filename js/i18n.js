@@ -418,30 +418,62 @@
      Zwei Bilder aus der Vorlage: links leuchtet die amerikanische Flagge
      (Englisch), rechts die deutsche. Angezeigt wird der Zustand, nicht die
      Wahlmöglichkeit — deshalb steht auf Deutsch das deutsche Bild da. */
+  /* Es gibt den Schalter mehr als einmal: im Kopf am Rechner, in den
+     Kontoeinstellungen am Handy. Alle angelegten Knöpfe stehen hier, damit
+     ein Klick auf den einen auch den anderen richtig zeigt. */
+  var schalter = [];
+
+  function beschriftung() {
+    return sprache === 'de' ? 'Switch to English' : 'Auf Deutsch umschalten';
+  }
+
+  function schalterZeigen() {
+    for (var i = schalter.length - 1; i >= 0; i--) {
+      var b = schalter[i];
+      /* Der Knopf aus einem geschlossenen Fenster hängt nicht mehr im
+         Dokument — der fliegt hier raus, statt sich anzusammeln. */
+      if (!b.isConnected) { schalter.splice(i, 1); continue; }
+      b.title = beschriftung();
+      b.setAttribute('aria-label', beschriftung());
+      var bild = b.querySelector('img');
+      if (bild) bild.src = 'assets/symbols/sprache-' + sprache + '.webp';
+    }
+  }
+
+  function wechseln() {
+    sprache = sprache === 'de' ? 'en' : 'de';
+    try { localStorage.setItem(SCHLUESSEL, sprache); } catch (e) {}
+    if (GK.sfx) GK.sfx('click');
+    /* Sofort umschalten statt neu zu laden: was übersetzt wurde, ist
+       vermerkt und lässt sich damit genauso sauber zurückstellen. */
+    if (sprache === 'en') anschalten(); else ausschalten();
+    schalterZeigen();
+  }
+
+  /** Baut einen Sprachknopf. `gross` gibt ihm die Fassung fürs Kontofenster. */
+  function knopfBauen(gross) {
+    var b = document.createElement('button');
+    b.className = 'lang-schalter' + (gross ? ' lang-gross' : '');
+    b.type = 'button';
+    b.title = beschriftung();
+    b.setAttribute('aria-label', beschriftung());
+    b.innerHTML = '<img src="assets/symbols/sprache-' + sprache + '.webp" alt="" draggable="false">';
+    b.addEventListener('click', wechseln);
+    schalter.push(b);
+    return b;
+  }
+
   function schalterBauen() {
     var kopf = document.querySelector('.topbar-right') || document.querySelector('.topbar');
     if (!kopf) return;
-    var b = document.createElement('button');
-    b.className = 'lang-schalter';
-    b.type = 'button';
-    b.title = sprache === 'de' ? 'Switch to English' : 'Auf Deutsch umschalten';
-    b.setAttribute('aria-label', b.title);
-    b.innerHTML = '<img src="assets/symbols/sprache-' + sprache + '.webp" alt="" draggable="false">';
-    b.addEventListener('click', function () {
-      sprache = sprache === 'de' ? 'en' : 'de';
-      try { localStorage.setItem(SCHLUESSEL, sprache); } catch (e) {}
-      if (GK.sfx) GK.sfx('click');
-      /* Sofort umschalten statt neu zu laden: was übersetzt wurde, ist
-         vermerkt und lässt sich damit genauso sauber zurückstellen. */
-      if (sprache === 'en') anschalten(); else ausschalten();
-      b.title = sprache === 'de' ? 'Switch to English' : 'Auf Deutsch umschalten';
-      b.setAttribute('aria-label', b.title);
-      b.querySelector('img').src = 'assets/symbols/sprache-' + sprache + '.webp';
-    });
+    var b = knopfBauen(false);
     /* Vor die Schild-Schaltfläche, damit die Reihe im Kopf gleich bleibt. */
     var schild = kopf.querySelector('#hud-shield');
     if (schild) kopf.insertBefore(b, schild); else kopf.appendChild(b);
   }
+
+  /* Für das Kontofenster: ein Knopf zum Einhängen, wo er gebraucht wird. */
+  GK.langKnopf = function () { return knopfBauen(true); };
 
   function start() {
     schalterBauen();

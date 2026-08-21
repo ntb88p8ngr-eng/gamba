@@ -9,6 +9,16 @@
   var currentCleanup = null;
 
   /* ─────────────── VIEWS ─────────────── */
+  /* Die Kopfzeile im Spiel klebt unter der oberen Leiste — wie hoch die ist,
+     hängt vom Gerät ab, deshalb wird sie gemessen statt geraten. */
+  function kopfHoeheMessen() {
+    var leiste = document.querySelector('.topbar');
+    if (!leiste) return;
+    document.documentElement.style.setProperty('--kopf-hoehe', Math.round(leiste.getBoundingClientRect().height) + 'px');
+  }
+  window.addEventListener('resize', kopfHoeheMessen);
+  window.addEventListener('orientationchange', kopfHoeheMessen);
+
   function showView(id) {
     /* Wer die Mehrspieler-Seite verlaesst — egal auf welchem Weg: Zurueck-
        Knopf, Logo, ein anderes Spiel —, steht auch vom Tisch auf. Sonst
@@ -17,6 +27,11 @@
        Wechsel laeuft, und nicht an jedem einzelnen Knopf. */
     if (id !== 'view-mp' && GK.mp && GK.mp.an) GK.mp.close();
     $$('.view').forEach(function (v) { v.classList.toggle('active', v.id === id); });
+    /* Am Körper vermerkt, welche Seite läuft: die Fußzeile steht außerhalb
+       von <main> und lässt sich sonst nicht danach ausblenden. Am Handy war
+       sie der einzige Grund, warum man im Spiel überhaupt scrollen konnte —
+       und wer einmal gescrollt hatte, sah den LOBBY-Knopf nicht mehr. */
+    document.body.classList.toggle('spielt', id === 'view-game');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -555,6 +570,29 @@
       ]),
       el('div', { style: 'height:14px' })
     ];
+
+    /* Am Handy sitzt der Sprachschalter hier statt im Kopf: dort war er
+       am rechten Rand kaum zu treffen und wurde angeschnitten. Am Rechner
+       bleibt er oben, deshalb blendet die CSS diese Zeile dort aus. */
+    if (GK.langKnopf) {
+      var langWas = el('div', { class: 'lang-zeile-was', text: GK.lang() === 'de' ? 'Deutsch' : 'English' });
+      var langBtn = GK.langKnopf();
+      /* Der Umschalter selbst hängt schon dran; unser Zuhörer kommt danach
+         und sieht deshalb bereits die neue Sprache. */
+      langBtn.addEventListener('click', function () {
+        langWas.textContent = GK.lang() === 'de' ? 'Deutsch' : 'English';
+      });
+      nodes.push(
+        el('div', { class: 'lang-zeile' }, [
+          el('div', {}, [
+            el('div', { class: 'bet-label', text: 'SPRACHE / LANGUAGE' }),
+            langWas
+          ]),
+          langBtn
+        ]),
+        el('div', { style: 'height:14px' })
+      );
+    }
 
     if (GK.net.online) {
       var oldP = el('input', { class: 'input', type: 'password', placeholder: 'aktuelles Passwort' });
@@ -1587,6 +1625,7 @@
 
   function boot() {
     GK.initFX();
+    kopfHoeheMessen();
     fillStaticIcons();
     renderGameCount();
     renderGames();

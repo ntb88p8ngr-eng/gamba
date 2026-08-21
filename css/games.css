@@ -869,7 +869,10 @@
      Fläche breiter als den Bildschirm gemacht */
   .crash-screen{min-height:0;aspect-ratio:5/3;max-width:100%}
   .fl-screen{max-width:100%;border-width:2px;border-radius:14px}
-  .jp-screen{max-width:100%;border-width:2px;border-radius:14px}
+  /* Das Feld schluckt jede Berührung (touch-action:none) — reicht es bis an
+     den Rand, bleibt zum Wischen und zum Antippen der Lobby kaum Fläche.
+     Ein Streifen links und rechts macht das Spiel wieder verlassbar. */
+  .jp-screen{max-width:calc(100% - 32px);border-width:2px;border-radius:14px}
   .crash-mult{font-size:clamp(1.6rem,9vw,2.6rem)}
 
   /* 7. Drachenhöhle */
