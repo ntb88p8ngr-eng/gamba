@@ -486,6 +486,17 @@
 
     var nach = nachschubFeld(250);
 
+    /* Einsatzrahmen für diese Party — leer heißt: es gilt, was das Spiel
+       und der Admin ohnehin vorgeben. */
+    var minBet = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '1',
+                               placeholder: 'kein Minimum' });
+    var maxBet = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '1',
+                               placeholder: 'kein Maximum' });
+    var betZeile = el('div', { class: 'mp-zwei' }, [
+      el('div', {}, [el('label', { class: 'mp-label', text: 'Min. Einsatz' }), minBet]),
+      el('div', {}, [el('label', { class: 'mp-label', text: 'Max. Einsatz' }), maxBet])
+    ]);
+
     /* Buy-in: statt Gratis-Chips zahlt jeder sein Startguthaben vom eigenen
        Konto ein. Dann gibt es zwingend keinen Nachschub — geschenkte Chips
        wären hier echtes Guthaben aus dem Nichts. */
@@ -565,6 +576,8 @@
         alleFrei: frei.checked,
         nachschub: eigen.checked ? 0 : parseInt(nach.value, 10),
         eigeneChips: eigen.checked,
+        minBet: parseInt(minBet.value, 10) || 0,
+        maxBet: parseInt(maxBet.value, 10) || 0,
         spiele: gewaehlt
       }).then(function (b) {
         if (b && b.party) { MP.tisch = { id: b.party }; MP.seit = 0; anstossen(); }
@@ -583,6 +596,7 @@
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
         eigenZeile,
         nachBlock,
+        betZeile,
         freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }),
         el('div', { class: 'party-wahl-knoepfe' }, [alle, keine]),
@@ -765,6 +779,16 @@
                                          selected: d[0] === pa.dauer ? 'selected' : null }));
       });
     var nach = nachschubFeld(pa.nachschub || 0);
+    var minBet = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '1',
+                               placeholder: 'kein Minimum',
+                               value: pa.minBet ? String(pa.minBet) : '' });
+    var maxBet = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '1',
+                               placeholder: 'kein Maximum',
+                               value: pa.maxBet ? String(pa.maxBet) : '' });
+    var betZeile = el('div', { class: 'mp-zwei' }, [
+      el('div', {}, [el('label', { class: 'mp-label', text: 'Min. Einsatz' }), minBet]),
+      el('div', {}, [el('label', { class: 'mp-label', text: 'Max. Einsatz' }), maxBet])
+    ]);
     var eigen = el('input', { type: 'checkbox' });
     eigen.checked = !!pa.eigeneChips;
     var nachBlock = el('div', {}, [
@@ -823,6 +847,8 @@
         alleFrei: frei.checked,
         nachschub: eigen.checked ? 0 : parseInt(nach.value, 10),
         eigeneChips: eigen.checked,
+        minBet: parseInt(minBet.value, 10) || 0,
+        maxBet: parseInt(maxBet.value, 10) || 0,
         spiele: gewaehlt
       });
     });
@@ -835,6 +861,7 @@
         el('label', { class: 'mp-label', text: 'Spielzeit' }), dauer,
         eigenZeile,
         nachBlock,
+        betZeile,
         freiZeile,
         el('label', { class: 'mp-label', text: 'Erlaubte Spiele' }), gitter,
         el('div', { style: 'height:10px' }), ok

@@ -63,6 +63,7 @@
       feed: [],
       /* Quote je Spiel, 0..100 mit 50 als neutral. Was fehlt, laeuft neutral. */
       spielLuck: {},
+      spielRegel: {},
       /* Naechster geplanter Wipe (ms seit 1970, 0 = keiner). */
       wipeAt: 0,
       wipeXp: false,
@@ -103,6 +104,7 @@
         state.players = parsed.players || {};
         state.feed = parsed.feed || [];
         state.spielLuck = parsed.spielLuck || {};
+        state.spielRegel = parsed.spielRegel || {};
         state.settings = Object.assign(state.settings, parsed.settings || {});
       }
     } catch (e) { /* korrupte Daten -> frischer Start */ }
@@ -111,6 +113,7 @@
     try {
       localStorage.setItem(KEY, JSON.stringify({
         players: state.players, feed: state.feed, spielLuck: state.spielLuck,
+        spielRegel: state.spielRegel,
         settings: { adminPin: state.settings.adminPin }
       }));
     } catch (e) { /* z.B. privater Modus */ }
@@ -280,15 +283,18 @@
   /** Serverstand übernehmen. Gibt zurück, ob sich etwas geändert hat. */
   GK.adoptState = function (s) {
     if (!s || !s.players) return false;
-    var before = JSON.stringify([state.players, state.feed, state.spielLuck, state.wipeAt]);
+    var before = JSON.stringify([state.players, state.feed, state.spielLuck,
+                                 state.spielRegel, state.wipeAt]);
     state.players = s.players;
     state.feed = s.feed || [];
     state.spielLuck = s.spielLuck || {};
+    state.spielRegel = s.spielRegel || {};
     state.wipeAt = s.wipeAt || 0;
     state.wipeXp = !!s.wipeXp;
     if (state.currentId && !state.players[state.currentId]) state.currentId = null;
     GK.save();
-    return JSON.stringify([state.players, state.feed, state.spielLuck, state.wipeAt]) !== before;
+    return JSON.stringify([state.players, state.feed, state.spielLuck,
+                           state.spielRegel, state.wipeAt]) !== before;
   };
 
   /**
@@ -748,6 +754,64 @@
   GK.resetGameLuck = function () {
     state.spielLuck = {};
     return GK.commit('gameLuck', { alle: true });
+  };
+
+  /* ── Regeln je Spiel: sichtbar? und in welchem Rahmen wird gesetzt? ──
+     Sie kommen vom Server und gelten fuer alle. Was nicht drinsteht, laeuft
+     wie gehabt: Spiel sichtbar, Grenzen aus dem Spiel selbst. */
+  GK.spielRegel = function (id) {
+    var r = state.spielRegel ? state.spielRegel[id] : null;
+    return r || {};
+  };
+
+  /** Ist dieses Spiel vom Admin ausgeblendet? */
+  GK.gameAus = function (id) { return !!GK.spielRegel(id).aus; };
+
+  GK.setGameRule = function (id, regel) {
+    if (!id) return Promise.resolve(null);
+    state.spielRegel = state.spielRegel || {};
+    var r = Object.assign({}, state.spielRegel[id] || {}, regel || {});
+    r.aus = !!r.aus;
+    r.min = Math.max(0, Math.floor(Number(r.min) || 0));
+    r.max = Math.max(0, Math.floor(Number(r.max) || 0));
+    if (r.min && r.max && r.max < r.min) r.max = r.min;
+    if (!r.aus && !r.min && !r.max) delete state.spielRegel[id];
+    else state.spielRegel[id] = r;
+    return GK.commit('gameRule', {
+      game: id, aus: r.aus, min: r.min, max: r.max
+    });
+  };
+
+  /** Alle Spielregeln zurueck auf Normalbetrieb. */
+  GK.resetGameRules = function () {
+    state.spielRegel = {};
+    return GK.commit('gameRule', { alle: true });
+  };
+
+  /**
+   * Der Rahmen, in dem in einem Spiel gesetzt werden darf.
+   *
+   * Drei Quellen, in dieser Reihenfolge: was das Spiel selbst vorgibt, was
+   * der Admin dafuer eingestellt hat und — waehrend einer Party — was der
+   * Gastgeber fuer diese Runde festgelegt hat. Enger gewinnt, damit keine
+   * Einstellung eine andere aushebelt.
+   */
+  GK.einsatzGrenzen = function (id, eigenMin, eigenMax) {
+    var min = Math.max(1, Math.floor(eigenMin || 1));
+    var max = eigenMax || 0;
+    function enger(rMin, rMax) {
+      if (rMin) min = Math.max(min, Math.floor(rMin));
+      if (rMax) max = max ? Math.min(max, Math.floor(rMax)) : Math.floor(rMax);
+    }
+    var r = GK.spielRegel(id || GK.currentGame);
+    enger(r.min, r.max);
+    if (GK.party && GK.party.an && GK.party.daten) {
+      enger(GK.party.daten.minBet, GK.party.daten.maxBet);
+    }
+    /* Eine Obergrenze unter der Untergrenze gaebe ein Feld, in dem nichts
+       mehr geht — dann zaehlt die Untergrenze. */
+    if (max && max < min) max = min;
+    return { min: min, max: max };
   };
 
   /** Das Glueck, das gerade wirklich zaehlt — 0..100, 50 ist neutral. */
@@ -1232,9 +1296,12 @@
    */
   GK.betPanel = function (opts) {
     opts = opts || {};
-    var min = opts.min || 1;
+    /* Das Spiel bringt seine eigenen Grenzen mit; Admin und Party koennen sie
+       enger ziehen. Beides steckt in GK.einsatzGrenzen. */
+    var grenzen = GK.einsatzGrenzen(GK.currentGame, opts.min, opts.max);
+    var min = grenzen.min;
     var maxFn = function () {
-      var cap = opts.max || Infinity;
+      var cap = grenzen.max || Infinity;
       /* GK.chips statt p.balance: im Partymodus zaehlt die Party-Kasse. */
       return Math.max(min, Math.min(cap, GK.chips() || min));
     };
@@ -1282,8 +1349,17 @@
       qb('ALL IN 🔥', function () { setVal(maxFn()); }, 'Alles setzen', 'qb-allin')
     ]);
 
+    /* Steht eine engere Grenze im Weg, gehoert sie an die Beschriftung —
+       sonst wirkt es wie ein Fehler, wenn das Feld eine Eingabe zurechtrueckt. */
+    var beschriftung = opts.label || 'DEIN EINSATZ';
+    var engerAlsSpiel = grenzen.min > (opts.min || 1) || (grenzen.max && grenzen.max !== opts.max);
+    if (engerAlsSpiel) {
+      beschriftung += ' (' + GK.fmt(grenzen.min) +
+        (grenzen.max ? '–' + GK.fmt(grenzen.max) : '+') + ')';
+    }
+
     var wrap = GK.el('div', { class: 'bet-panel' }, [
-      GK.el('div', { class: 'bet-label', text: opts.label || 'DEIN EINSATZ' }),
+      GK.el('div', { class: 'bet-label', text: beschriftung }),
       GK.el('div', { class: 'bet-row' }, [input]),
       quick
     ]);

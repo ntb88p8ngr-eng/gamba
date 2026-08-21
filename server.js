@@ -87,6 +87,11 @@ function emptyDB() {
     settings: {
       adminPin: process.env.GAMBAKING_PIN || '1337',
       spielLuck: {},
+      /* spielRegel: was der Admin je Spiel festlegt — { aus, min, max }.
+         Auch hier steht nur drin, was vom Normalfall abweicht: aus = die
+         Kachel verschwindet fuer alle, min/max begrenzen den Einsatz
+         (0 heisst: die Grenze des Spiels selbst gilt). */
+      spielRegel: {},
       /* Naechster Wipe: Zeitpunkt in Millisekunden, 0 = keiner geplant.
          wipeXp sagt, ob dabei auch die Stufen fallen. */
       wipeAt: 0,
@@ -105,6 +110,7 @@ function loadDB() {
     db.logins = Array.isArray(db.logins) ? db.logins : [];
     db.settings = Object.assign(emptyDB().settings, db.settings || {});
     if (!db.settings.spielLuck || typeof db.settings.spielLuck !== 'object') db.settings.spielLuck = {};
+    if (!db.settings.spielRegel || typeof db.settings.spielRegel !== 'object') db.settings.spielRegel = {};
     return db;
   } catch (e) {
     return emptyDB();
@@ -346,6 +352,7 @@ function publicState() {
   return {
     players: safe, feed: db.feed, startBalance: START_BALANCE,
     spielLuck: db.settings.spielLuck || {},
+    spielRegel: db.settings.spielRegel || {},
     wipeAt: db.settings.wipeAt || 0,
     wipeXp: !!db.settings.wipeXp
   };
@@ -450,7 +457,7 @@ var mp = require('./mp.js')({
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, setWipe: 1, wipe: 1, resetPassword: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, setWipe: 1, wipe: 1, resetPassword: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -622,6 +629,28 @@ function applyOp(op) {
          toten Eintrag mit. */
       if (wert === 50) delete db.settings.spielLuck[spiel];
       else db.settings.spielLuck[spiel] = wert;
+      break;
+    }
+
+    /* Regeln eines Spiels: ob es ueberhaupt in der Halle steht und in
+       welchem Rahmen gesetzt werden darf. Gilt fuer alle Spieler. */
+    case 'gameRule': {
+      db.settings.spielRegel = db.settings.spielRegel || {};
+      if (op.alle) {
+        db.settings.spielRegel = {};
+        break;
+      }
+      var gspiel = clean(op.game, 24).trim();
+      if (!gspiel) return { error: 'Kein Spiel angegeben', code: 400 };
+      var regel = db.settings.spielRegel[gspiel] || {};
+      if (op.aus !== undefined) regel.aus = !!op.aus;
+      if (op.min !== undefined) regel.min = clamp(Math.floor(Number(op.min) || 0), 0, 1000000);
+      if (op.max !== undefined) regel.max = clamp(Math.floor(Number(op.max) || 0), 0, 100000000);
+      /* Eine Obergrenze unter der Untergrenze waere eine Sackgasse. */
+      if (regel.min && regel.max && regel.max < regel.min) regel.max = regel.min;
+      /* Nichts Besonderes eingestellt? Dann auch keinen Eintrag behalten. */
+      if (!regel.aus && !regel.min && !regel.max) delete db.settings.spielRegel[gspiel];
+      else db.settings.spielRegel[gspiel] = regel;
       break;
     }
 

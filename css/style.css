@@ -761,6 +761,24 @@ input[type=range]{flex:1;accent-color:var(--pink)}
 .luck-eingabe{display:flex;align-items:center;gap:6px;justify-content:center}
 .luck-eingabe .quote-feld{font-size:.82rem;flex:0 0 58px;width:58px}
 
+/* Spiele & Einsätze: Häkchen zum Zeigen, zwei Felder für den Rahmen */
+.regel-liste{display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto}
+.regel-zeile{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:11px;
+  background:rgba(255,255,255,.04);transition:opacity .15s}
+.regel-zeile.aus{opacity:.42}
+.regel-an{display:flex;align-items:center;gap:7px;flex:1;min-width:0;cursor:pointer}
+.regel-ic{width:22px;height:22px;flex:0 0 auto;display:grid;place-items:center}
+.regel-ic img,.regel-ic svg{width:100%;height:100%;object-fit:contain}
+.regel-name{min-width:0;font-size:.76rem;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.regel-zeile.aus .regel-name{text-decoration:line-through}
+.regel-feld{
+  flex:0 0 66px;width:66px;padding:4px 6px;border-radius:9px;text-align:right;
+  font-family:'Bungee',sans-serif;font-size:.66rem;color:var(--gold);
+  background:rgba(0,0,0,.42);border:2px solid var(--line)
+}
+.regel-feld:focus{outline:none;border-color:var(--cyan)}
+.regel-bis{color:var(--muted);font-size:.7rem}
+
 @media (min-width:900px){
   .modal.weit{width:min(1180px,96vw);max-height:92vh}
   .modal.weit .admin-gitter{
@@ -773,7 +791,7 @@ input[type=range]{flex:1;accent-color:var(--pink)}
   .modal.weit .admin-players{max-height:320px}
   /* Die Spielliste selbst noch einmal zweispaltig — sonst waere die Karte
      ueber die volle Breite eine sehr lange Schlange. */
-  .modal.weit .quoten-liste{
+  .modal.weit .quoten-liste,.modal.weit .regel-liste{
     display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 20px;max-height:none;overflow:visible
   }
 }

@@ -1251,6 +1251,9 @@
 .mp-online{display:flex;flex-wrap:wrap;gap:6px}
 
 .mp-label{display:block;margin:10px 0 4px;font-size:.76rem;color:var(--gold);font-family:'Bungee',sans-serif}
+/* Zwei Felder nebeneinander — Min und Max gehören zusammen gelesen. */
+.mp-zwei{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mp-zwei .mp-label{margin-top:10px}
 .mp-feld{
   width:100%;padding:10px 12px;border-radius:12px;font-size:1rem;
   border:2px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff

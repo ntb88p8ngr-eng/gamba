@@ -38,6 +38,13 @@
   function openGame(id) {
     var g = GK.gameById(id);
     if (!g) return;
+    /* Ausgeblendet heisst zu — auch fuer den, der die Kachel noch offen im
+       Zufallsspiel oder in einem alten Fenster hat. */
+    if (GK.gameAus(g.id)) {
+      GK.toast(g.name + ' ist gerade geschlossen', 'bad', '🚧');
+      GK.sfx('error');
+      return;
+    }
     /* In der Party gilt die Auswahl des Gastgebers — sonst spielt einer
        Roulette, waehrend die anderen an den Walzen sitzen. */
     if (GK.party && GK.party.an && !GK.party.erlaubt(g.id)) {
@@ -164,9 +171,10 @@
     /* Waehrend einer Party stehen nur die Spiele da, die der Gastgeber
        ausgewaehlt hat — die uebrigen auszugrauen waere unnoetiger Krach. */
     var inParty = !!(GK.party && GK.party.an);
-    var liste = inParty
-      ? GK.games.filter(function (g) { return GK.party.erlaubt(g.id); })
-      : GK.games;
+    /* Vom Admin ausgeblendete Spiele stehen nirgends — sie sollen fuer alle
+       weg sein, nicht bloss gesperrt aussehen. */
+    var liste = GK.games.filter(function (g) { return !GK.gameAus(g.id); });
+    if (inParty) liste = liste.filter(function (g) { return GK.party.erlaubt(g.id); });
     liste.forEach(function (g, i) {
       var open = spielbar(g);
       var kids = [
@@ -1204,6 +1212,72 @@
       GK.toast('Alle Quoten stehen wieder neutral', 'gold', '⚖️');
     });
 
+    /* ── Spiele: sichtbar? und in welchem Rahmen wird gesetzt? ──
+       Beides gilt fuer alle Spieler. Ausgeblendete Spiele verschwinden aus
+       der Halle, aus dem Zufallsspiel und lassen sich auch nicht mehr ueber
+       einen alten Link oeffnen. Min/Max 0 heisst: es gilt, was das Spiel
+       selbst vorgibt. */
+    var regelBox = el('div', { class: 'regel-liste' });
+
+    function regelZeile(g) {
+      var r = GK.spielRegel(g.id);
+      var an = el('input', { type: 'checkbox' });
+      an.checked = !r.aus;
+      var min = el('input', { class: 'regel-feld', type: 'number', min: '0', step: '1',
+                              value: r.min ? String(r.min) : '', placeholder: 'min' });
+      var max = el('input', { class: 'regel-feld', type: 'number', min: '0', step: '1',
+                              value: r.max ? String(r.max) : '', placeholder: 'max' });
+      var zeile = el('div', { class: 'regel-zeile' }, [
+        el('label', { class: 'regel-an', title: 'Spiel in der Halle zeigen' }, [
+          an, el('span', { class: 'regel-ic', html: GK.iconHTML(g.icon) }),
+          el('span', { class: 'regel-name', text: g.name })
+        ]),
+        min, el('span', { class: 'regel-bis', text: '–' }), max
+      ]);
+
+      function zeigen() { zeile.classList.toggle('aus', !an.checked); }
+      zeigen();
+
+      function speichern() {
+        zeigen();
+        GK.setGameRule(g.id, {
+          aus: !an.checked,
+          min: parseInt(min.value, 10) || 0,
+          max: parseInt(max.value, 10) || 0
+        });
+        renderGames();
+      }
+      an.addEventListener('change', function () { GK.sfx('click'); speichern(); });
+      min.addEventListener('change', speichern);
+      max.addEventListener('change', speichern);
+      return { node: zeile, id: g.id, an: an, min: min, max: max };
+    }
+
+    var regelZeilen = [];
+    function renderRegeln() {
+      regelBox.innerHTML = '';
+      regelZeilen = GK.games.map(regelZeile);
+      regelZeilen.forEach(function (z) { regelBox.appendChild(z.node); });
+    }
+    function syncRegeln() {
+      regelZeilen.forEach(function (z) {
+        var r = GK.spielRegel(z.id);
+        z.an.checked = !r.aus;
+        z.min.value = r.min ? String(r.min) : '';
+        z.max.value = r.max ? String(r.max) : '';
+        z.node.classList.toggle('aus', !!r.aus);
+      });
+    }
+
+    var regelnZurueck = el('button', { class: 'btn btn-ghost btn-small', text: '↩️ ALLE SPIELE OFFEN' });
+    regelnZurueck.addEventListener('click', function () {
+      GK.sfx('click');
+      GK.resetGameRules();
+      syncRegeln();
+      renderGames();
+      GK.toast('Alle Spiele sind offen, ohne Einsatzgrenzen', 'gold', '🎮');
+    });
+
     /* ── Statistik ──
        Der Server rechnet die Zahlen aus (siehe /api/stats), hier werden sie
        nur gezeichnet. Umschaltbar sind Zeitraum, Reihe und Zuschnitt — alles
@@ -1431,6 +1505,7 @@
     renderList();
     renderMP();
     renderQuoten();
+    renderRegeln();
     wahlenFuellen();
     statHolen();
     wipeSync();
@@ -1487,6 +1562,13 @@
             el('div', { style: 'height:8px' }),
             el('div', { class: 'modal-actions' }, [quotenNeutral]),
             el('p', { class: 'hint', text: '50 ist neutral, Zehntel sind möglich — 50,5 ist ein Hauch gnädiger. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat stehen nicht in der Liste: dort werden echte Karten ausgeteilt, da gibt es nichts zu schieben.' })
+          ], true),
+
+          feld('SPIELE & EINSÄTZE', [
+            regelBox,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [regelnZurueck]),
+            el('p', { class: 'hint', text: 'Das Häkchen zeigt oder versteckt ein Spiel — für alle, überall: Spielhalle, Zufallsspiel, Party. Min und Max begrenzen den Einsatz in diesem Spiel; leer heißt, es gilt die Grenze des Spiels selbst. In einer Party kann der Gastgeber zusätzlich eigene Grenzen setzen — es gilt immer die engere.' })
           ], true),
 
           feld('STATISTIK', [
@@ -1688,6 +1770,7 @@
          freigegeben hat — sonst landet der Zufall auf einer Kachel, die es
          dort gar nicht gibt. */
       var topf = GK.games.filter(function (g) {
+        if (GK.gameAus(g.id)) return false;
         if (GK.party && GK.party.an && !GK.party.erlaubt(g.id)) return false;
         return spielbar(g);
       });

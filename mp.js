@@ -835,6 +835,10 @@ function createMP(deps) {
          Nachschub und Buy-in schliessen sich aus: geschenkte Chips waeren
          hier echtes Geld aus dem Nichts. */
       eigeneChips: !!opts.eigeneChips,
+      /* Einsatzrahmen fuer diese Party. 0 heisst: es gilt, was das Spiel
+         (und der Admin) ohnehin vorgeben. Enger gewinnt. */
+      minBet: clamp(int(opts.minBet), 0, 1000000),
+      maxBet: clamp(int(opts.maxBet), 0, 100000000),
       /* Liegengebliebene Gewinne vorzeitiger Aussteiger — gehen an den Sieger. */
       topf: 0,
       spieler: [],
@@ -1012,6 +1016,9 @@ function createMP(deps) {
       if (op.alleFrei !== undefined) pa.alleFrei = !!op.alleFrei;
       if (op.nachschub !== undefined) pa.nachschub = clamp(int(op.nachschub), 0, 100000);
       if (op.eigeneChips !== undefined) pa.eigeneChips = !!op.eigeneChips;
+      if (op.minBet !== undefined) pa.minBet = clamp(int(op.minBet), 0, 1000000);
+      if (op.maxBet !== undefined) pa.maxBet = clamp(int(op.maxBet), 0, 100000000);
+      if (pa.minBet && pa.maxBet && pa.maxBet < pa.minBet) pa.maxBet = pa.minBet;
       /* Buy-in und Nachschub zusammen hiesse: geschenkte Chips landen als
          echtes Guthaben auf dem Konto. Also schliesst das eine das andere aus. */
       if (pa.eigeneChips) pa.nachschub = 0;
@@ -1181,6 +1188,8 @@ function createMP(deps) {
       alleFrei: !!pa.alleFrei,
       nachschub: pa.nachschub || 0,
       eigeneChips: !!pa.eigeneChips,
+      minBet: pa.minBet || 0,
+      maxBet: pa.maxBet || 0,
       topf: pa.topf || 0,
       max: P_MAX,
       startAt: pa.startAt,
@@ -2111,6 +2120,7 @@ function createMP(deps) {
         startChips: pa.startChips, dauer: pa.dauer,
         spiele: pa.spiele.length, max: P_MAX, nachschub: pa.nachschub || 0,
         eigeneChips: !!pa.eigeneChips,
+        minBet: pa.minBet || 0, maxBet: pa.maxBet || 0,
         besetzt: pa.spieler.length,
         spieler: pa.spieler.map(function (s) {
           return { name: s.name, avatar: s.avatar, online: isOnline(s.id) };
