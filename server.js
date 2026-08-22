@@ -709,6 +709,36 @@ function istWiedergabeliste(u) {
   return /\.(pls|m3u|m3u8)$/.test(pfad);
 }
 
+/**
+ * Wenn es die Adresse auch verschluesselt gibt, dann die nehmen.
+ *
+ * Wiedergabelisten nennen ihre Stroeme oft noch mit http — SomaFM tut das
+ * bis heute. Auf einer Seite, die selbst ueber https laeuft, blockt der
+ * Browser so einen Strom als „Mixed Content", und zwar fast lautlos: das
+ * Radio bleibt einfach stumm, und niemand weiss, warum. Weil dieselben
+ * Server ihn meist auch verschluesselt herausgeben, wird das hier einmal
+ * ausprobiert.
+ *
+ * Geprueft wird nur der Kopf der Antwort: ein Strom hoert nie auf, also
+ * wird abgebrochen, sobald klar ist, dass es ihn gibt.
+ */
+function httpsBevorzugen(u) {
+  if (!/^http:\/\//i.test(u)) return Promise.resolve(u);
+  var sicher = u.replace(/^http:/i, 'https:');
+  var abbruch = new AbortController();
+  var uhr = setTimeout(function () { abbruch.abort(); }, PLS_FRIST);
+  return fetch(sicher, { signal: abbruch.signal, redirect: 'follow' })
+    .then(function (r) {
+      clearTimeout(uhr);
+      try { abbruch.abort(); } catch (e) {}      // den Strom nicht weiterlaufen lassen
+      return r.ok ? sicher : u;
+    })
+    .catch(function () {
+      clearTimeout(uhr);
+      return u;                                   // gibt es nicht — dann eben unverschluesselt
+    });
+}
+
 function listeAufloesen(u) {
   if (!istWiedergabeliste(u)) return Promise.resolve(u);
   /* .m3u8 ist meist HLS — daraus wird hier nichts Brauchbares, das muesste
@@ -734,7 +764,7 @@ function listeAufloesen(u) {
         if (!z || z.charAt(0) === '#') continue;
         var m = /^File\d*\s*=\s*(.+)$/i.exec(z);
         var kandidat = m ? m[1].trim() : z;
-        if (/^https?:\/\//i.test(kandidat)) return kandidat;
+        if (/^https?:\/\//i.test(kandidat)) return httpsBevorzugen(kandidat);
       }
       throw new Error('keine Adresse in der Liste');
     })
