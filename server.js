@@ -653,6 +653,16 @@ function stromAdresse(roh) {
   /* Anfuehrungszeichen und spitze Klammern haben in einer Adresse nichts
      verloren und waeren nur ein Weg, aus dem Attribut auszubrechen. */
   if (/["'<>\\]/.test(s)) return '';
+  /* Und dann noch der Rechnername selbst. Der URL-Zerleger von Node ist
+     hier erstaunlich gutmuetig: „https://.somafm.com/" und
+     „https://somafm..com/" laesst er anstandslos durch. Beide gibt es
+     nicht, und wer sie eintraegt, merkt es sonst erst, wenn beim Anklicken
+     nichts kommt. Ein fuehrender Punkt entsteht schnell beim Abtippen. */
+  var name;
+  try { name = new URL(s).hostname; } catch (e) { return ''; }
+  if (!name) return '';
+  if (name.charAt(0) === '.' || name.charAt(name.length - 1) === '.') return '';
+  if (name.indexOf('..') >= 0) return '';
   return s;
 }
 
@@ -903,7 +913,7 @@ function applyOp(op) {
       var wrName = clean(op.name, 40).trim();
       var wrUrl = stromAdresse(op.url);
       if (!wrName) return { error: 'Name fehlt', code: 400 };
-      if (!wrUrl) return { error: 'Adresse muss mit http:// oder https:// anfangen', code: 400 };
+      if (!wrUrl) return { error: 'Adresse unbrauchbar — sie muss mit http:// oder https:// anfangen und einen gültigen Rechnernamen haben', code: 400 };
       var liste = db.settings.webRadios;
       var eintrag = {
         id: clean(op.id, 40).trim() || webRadioKennung(),
