@@ -766,6 +766,38 @@
       sync();
     });
 
+    /* ── Radio ──
+       Ein Sender spielt eine Reihe von Stücken hintereinander, statt eines
+       im Loop. Der eingebaute Sender nimmt alles, was zum Anstrich passt;
+       weitere kommen aus dem Sound-Pack. */
+    var radioBox = el('div', { class: 'radio-wahl' });
+    var radioAus = el('button', { class: 'btn btn-ghost btn-small', text: '⏹ RADIO AUS' });
+    radioAus.addEventListener('click', function () {
+      M.radioAus(); GK.sfx('click'); sync();
+    });
+
+    function radioBauen() {
+      radioBox.innerHTML = '';
+      (M.sender ? M.sender() : []).forEach(function (sd) {
+        var an = M.radio.an && M.radio.sender === sd.id;
+        var k = el('button', { class: 'radio-kachel' + (an ? ' sel' : ''), type: 'button' }, [
+          el('span', { class: 'radio-ic', text: an ? '📡' : '📻' }),
+          el('span', { class: 'radio-text' }, [
+            el('span', { class: 'radio-name', text: sd.name }),
+            el('span', { class: 'radio-was', text: sd.was || '' })
+          ])
+        ]);
+        k.addEventListener('click', function () {
+          if (M.radio.an && M.radio.sender === sd.id) { M.radioAus(); }
+          else if (!M.radioAn(sd.id)) { GK.toast('Für diesen Sender gibt es kein Stück', 'bad', '📻'); }
+          GK.sfx('chip');
+          sync();
+        });
+        radioBox.appendChild(k);
+      });
+    }
+    radioBauen();
+
     var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: M.volume });
     var musicVolLabel = el('b', { text: M.volume });
     var sfxVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: GK.volume() });
@@ -778,6 +810,8 @@
         r.classList.toggle('playing', on);
         r.querySelector('.tr-play').textContent = on ? '⏸' : '▶';
       });
+      radioBauen();
+      radioAus.hidden = !M.radio.an;
       offBtn.textContent = M.enabled ? '🔇 MUSIK AUS' : '🎵 MUSIK AN';
       offBtn.className = 'btn btn-full ' + (M.enabled ? 'btn-danger' : 'btn-lime');
       musicVolLabel.textContent = M.volume;
@@ -798,6 +832,12 @@
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),
         list,
+        el('div', { style: 'height:14px' }),
+        el('div', { class: 'bet-label', text: '📻 RADIO' }),
+        el('div', { style: 'height:6px' }),
+        radioBox,
+        el('p', { class: 'hint', text: 'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.' }),
+        radioAus,
         el('div', { style: 'height:14px' }),
         el('div', { class: 'bet-label', text: 'MUSIK-LAUTSTÄRKE' }),
         el('div', { class: 'range-row' }, [musicVol, el('div', { class: 'info-box', style: 'min-width:66px' }, [musicVolLabel, el('span', { text: 'Musik' })])]),
@@ -2215,7 +2255,12 @@
     var unlock = function () {
       GK.sound.init();
       GK.sound.resume();
-      if (GK.music.wanted) GK.music.start();   // war beim letzten Mal an
+      if (GK.music.wanted) {
+        /* Lief zuletzt das Radio, geht es damit weiter — sonst mit dem
+           zuletzt gewählten Stück. */
+        if (GK.music._radioWunsch) GK.music.radioAn(GK.music._radioWunsch);
+        else GK.music.start();
+      }
       document.removeEventListener('pointerdown', unlock);
       document.removeEventListener('keydown', unlock);
     };

@@ -277,6 +277,12 @@
       'Red, gold and velvet. Light bulbs instead of neon tubes.',
     'Für diesen Anstrich ist kein Stück hinterlegt.':
       'No track is set up for this skin.',
+    '📻 RADIO': '📻 RADIO', '⏹ RADIO AUS': '⏹ RADIO OFF',
+    'Bunt gemischt': 'Mixed bag',
+    'Alles, was zum Anstrich passt — gemischt': 'Everything that fits the skin — shuffled',
+    'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.':
+      'A station plays its tracks one after another and moves on by itself. Clicking a track above ends the broadcast.',
+    'Für diesen Sender gibt es kein Stück': 'This station has no track to play',
     'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿). Jederzeit abschaltbar.':
       'Five techno loops, generated live in the browser — two deep dub pieces, one crooked minimal groove and two acid numbers. Plus whatever the sound pack carries as a file (💿). Switchable off at any time.',
     'aus dem Sound-Pack': 'from the sound pack',

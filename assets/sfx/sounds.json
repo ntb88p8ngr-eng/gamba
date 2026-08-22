@@ -179,5 +179,10 @@
     {
       "_": "Hintergrundmusik aus Dateien. Leer lassen = nur die eingebauten Loops. Felder: id (Kennung), name, mood (Untertitel), file, volume (0..1), bpm (nur Anzeige), skins (Liste von Anstrichen, ohne = ueberall). Anleitung: assets/sfx/README.md"
     }
+  ],
+  "radio": [
+    {
+      "_": "Radiosender: spielen mehrere Stuecke hintereinander. Felder: id, name, was (Untertitel), tracks (Liste von Musik-Kennungen, ohne = alles was zum Anstrich passt), mischen (true/false), dauer (Sekunden je erzeugtem Loop; Dateien laufen bis zum Ende), skins. Der eingebaute Sender 'Bunt gemischt' braucht keinen Eintrag."
+    }
   ]
 }

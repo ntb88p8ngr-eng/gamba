@@ -216,6 +216,50 @@ Welche Anstriche es gibt, steht in `assets/skins/README.md`.
 
 ---
 
+## Radio
+
+Unter der Stückauswahl steht das **Radio**: ein Sender spielt mehrere
+Stücke hintereinander und schaltet von selbst weiter, statt eines im Loop
+zu lassen.
+
+Der Sender **Bunt gemischt** ist eingebaut und braucht keinen Eintrag —
+er nimmt alles, was zum laufenden Anstrich gehört, und mischt es. Eigene
+Sender kommen aus dem Block `radio`:
+
+```json
+"radio": [
+  {
+    "id": "vegas-fm",
+    "name": "Vegas FM",
+    "was": "Lounge, Swing und ein bisschen Rauch",
+    "tracks": ["vegas-lounge", "swing-nacht", "keller"],
+    "mischen": false,
+    "dauer": 240,
+    "skins": ["old-vegas"]
+  }
+]
+```
+
+| Feld | Pflicht | Wofür |
+|---|---|---|
+| `id` | ja | Kennung, unter der sich die Auswahl den Sender merkt |
+| `name` | — | Was auf der Kachel steht |
+| `was` | — | Die kleine Zeile darunter |
+| `tracks` | — | Kennungen in Sendereihenfolge; ohne das Feld alles, was zum Anstrich passt |
+| `mischen` | — | `false` behält die Reihenfolge bei, sonst wird gemischt |
+| `dauer` | — | Sekunden je Stück, mindestens 30, Voreinstellung 210 |
+| `skins` | — | Liste von Anstrichen; ohne das Feld läuft der Sender überall |
+
+`dauer` gilt nur für die eingebauten Loops — die enden nie von allein.
+Eine Datei läuft bis zum Ende und gibt dann weiter, egal was dort steht.
+In `tracks` dürfen beide Arten stehen, eingebaute Loops (`keller`,
+`nebel`, `beton`, `turbo`, `saeure`) genauso wie eigene Dateien.
+
+Wer oben ein Stück von Hand anklickt, beendet die Sendung — die eigene
+Wahl gewinnt.
+
+---
+
 ## Dateiformate
 
 MP3, OGG, WAV und M4A funktionieren; MP3 spielt überall. Kurze Effekte sind

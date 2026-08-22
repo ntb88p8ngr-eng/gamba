@@ -132,6 +132,35 @@
     return raus;
   };
 
+  /**
+   * Radiosender aus dem Pack.
+   *
+   * Ein Sender ist nichts als eine Reihenfolge: welche Stuecke, in welcher
+   * Ordnung, wie lange jedes. Ohne `tracks` nimmt er alles, was zum
+   * laufenden Anstrich passt — das ist der Normalfall und braucht keinen
+   * Eintrag.
+   */
+  pack.radio = function () {
+    var m = pack.manifest;
+    var roh = m && Array.isArray(m.radio) ? m.radio : [];
+    var raus = [];
+    roh.forEach(function (r) {
+      if (!r || typeof r !== 'object' || !r.id) return;
+      raus.push({
+        id: String(r.id).slice(0, 40),
+        name: String(r.name || r.id).slice(0, 60),
+        was: String(r.was || r.mood || '').slice(0, 90),
+        tracks: Array.isArray(r.tracks) && r.tracks.length ? r.tracks.slice() : null,
+        mischen: r.mischen !== false,
+        /* Sekunden je Stueck — gilt nur fuer die erzeugten Loops, die von
+           sich aus endlos laufen. Dateien wechseln, wenn sie zu Ende sind. */
+        dauer: Math.max(30, Number(r.dauer) || 210),
+        skins: Array.isArray(r.skins) && r.skins.length ? r.skins.slice() : null
+      });
+    });
+    return raus;
+  };
+
   function note(msg) {
     if (pack.problems.indexOf(msg) >= 0) return;
     pack.problems.push(msg);

@@ -632,6 +632,123 @@
     }
   }
 
+  /* ── Radio ────────────────────────────────────────────────────────
+     Ein Sender ist eine Reihenfolge von Stücken, die von selbst
+     weiterläuft. Die eingebauten Loops enden nie von allein — für sie
+     zählt eine Uhr; eine Datei wechselt, wenn sie durch ist.
+
+     Der Sender „Bunt gemischt" braucht keinen Eintrag: er nimmt alles,
+     was zum laufenden Anstrich gehört, und mischt es. Weitere Sender
+     kommen aus dem Sound-Pack (Block "radio" in sounds.json). */
+  var EIGEN_SENDER = {
+    id: 'bunt', name: 'Bunt gemischt', was: 'Alles, was zum Anstrich passt — gemischt',
+    tracks: null, mischen: true, dauer: 210, skins: null
+  };
+
+  Music.radio = { an: false, sender: '', reihe: [], pos: 0, _uhr: null };
+
+  /** Alle Sender, die zum laufenden Anstrich passen. */
+  Music.sender = function () {
+    var skin = GK.skin ? GK.skin() : 'default';
+    var liste = [EIGEN_SENDER];
+    if (GK.sfxPack && GK.sfxPack.radio) {
+      GK.sfxPack.radio().forEach(function (r) {
+        if (!r.skins || r.skins.indexOf(skin) >= 0) liste.push(r);
+      });
+    }
+    return liste;
+  };
+
+  function senderVon(id) {
+    var alle = Music.sender();
+    for (var i = 0; i < alle.length; i++) if (alle[i].id === id) return alle[i];
+    return alle[0];
+  }
+
+  /** Die Reihenfolge eines Senders aufbauen — als echte Positionen in TRACKS. */
+  function reiheBauen(sender) {
+    var erlaubt = Music.sichtbar();
+    var raus = [];
+    if (sender.tracks) {
+      /* Feste Liste: die Reihenfolge des Senders zählt, und was es nicht
+         gibt (oder nicht zum Anstrich passt), fällt still weg. */
+      sender.tracks.forEach(function (id) {
+        erlaubt.forEach(function (x) { if (x.track.id === id) raus.push(x.idx); });
+      });
+    } else {
+      erlaubt.forEach(function (x) { raus.push(x.idx); });
+    }
+    if (sender.mischen && raus.length > 2) {
+      for (var i = raus.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = raus[i]; raus[i] = raus[j]; raus[j] = t;
+      }
+    }
+    return raus;
+  }
+
+  function uhrAus() {
+    if (Music.radio._uhr) { clearTimeout(Music.radio._uhr); Music.radio._uhr = null; }
+  }
+
+  /** Uhr für das laufende Stück stellen — nur die erzeugten Loops brauchen sie. */
+  function uhrStellen() {
+    uhrAus();
+    if (!Music.radio.an || istDatei()) return;
+    var sender = senderVon(Music.radio.sender);
+    Music.radio._uhr = setTimeout(function () {
+      Music.radio._uhr = null;
+      Music.weiter();
+    }, sender.dauer * 1000);
+  }
+
+  /** Nächstes Stück im Sender. Am Ende der Reihe geht es von vorn los. */
+  Music.weiter = function () {
+    if (!Music.radio.an) return;
+    if (!Music.radio.reihe.length) { Music.radioAus(); return; }
+    Music.radio.pos = (Music.radio.pos + 1) % Music.radio.reihe.length;
+    /* Nur einmal durch: war die Reihe zu Ende, wird für die nächste Runde
+       neu gemischt — sonst hört man ewig dieselbe Abfolge. */
+    if (Music.radio.pos === 0) {
+      Music.radio.reihe = reiheBauen(senderVon(Music.radio.sender));
+    }
+    spieleIntern(Music.radio.reihe[Music.radio.pos]);
+    if (GK.emit) GK.emit('musik-liste');
+  };
+
+  /** Stück wechseln, ohne das Radio abzuschalten. */
+  function spieleIntern(idx) {
+    var vorher = Music.trackIdx;
+    Music.trackIdx = GK.clamp(idx, 0, TRACKS.length - 1);
+    Music._step = 0;
+    if (ctx()) Music._nextTime = ctx().currentTime + 0.1;
+    if (istDatei(vorher) && !istDatei()) dateiAus();
+    Music.playing = false;
+    Music.start();
+    applyTone();
+    save();
+  }
+
+  Music.radioAn = function (id) {
+    var sender = senderVon(id || Music.radio.sender || EIGEN_SENDER.id);
+    Music.radio.an = true;
+    Music.radio.sender = sender.id;
+    Music.radio.reihe = reiheBauen(sender);
+    Music.radio.pos = 0;
+    if (!Music.radio.reihe.length) { Music.radio.an = false; return false; }
+    spieleIntern(Music.radio.reihe[0]);
+    if (GK.emit) GK.emit('musik-liste');
+    return true;
+  };
+
+  Music.radioAus = function () {
+    Music.radio.an = false;
+    uhrAus();
+    if (audio) audio.loop = true;
+    save();
+    if (GK.emit) GK.emit('musik-liste');
+  };
+
   /* ── Datei-Stücke ──
      Ein Audio-Element in Schleife, mehr braucht es nicht. Es hängt bewusst
      nicht am Audio-Kontext: die Lautstärke regelt derselbe Regler, aber der
@@ -645,8 +762,16 @@
       audio.addEventListener('error', function () {
         var tr = TRACKS[Music.trackIdx];
         if (GK.toast) GK.toast('Musikdatei nicht abspielbar: ' + (tr && tr.name), 'bad', '🎵');
+        /* Im Radio hält eine kaputte Datei die Sendung nicht auf. */
+        if (Music.radio.an) setTimeout(Music.weiter, 400);
+      });
+      /* Im Radio läuft eine Datei einmal durch und gibt dann weiter; ohne
+         Radio wiederholt sie sich wie ein Loop. */
+      audio.addEventListener('ended', function () {
+        if (Music.radio.an) Music.weiter();
       });
     }
+    audio.loop = !Music.radio.an;
     return audio;
   }
 
@@ -683,6 +808,7 @@
          nur den Wunsch und starten beim nächsten Klick. */
       var p = a.play();
       if (p && p.catch) p.catch(function () { Music.playing = false; });
+      uhrStellen();
       return true;
     }
     dateiAus();
@@ -695,6 +821,7 @@
     Music._nextTime = ctx().currentTime + 0.1;
     Music._timer = setInterval(tick, 25);
     applyTone();
+    uhrStellen();
     return true;
   };
 
@@ -704,6 +831,9 @@
     dateiAus();
     Music.playing = false;
     if (Music._timer) { clearInterval(Music._timer); Music._timer = null; }
+    /* Die Senderwahl bleibt stehen: wer die Musik wieder anmacht, hört das
+       Radio weiter. Nur die Uhr läuft nicht durch die Pause. */
+    uhrAus();
   };
 
   /** Jeder Track bringt seine eigene Klangfarbe mit — von dumpf bis offen. */
@@ -714,6 +844,9 @@
   }
 
   Music.setTrack = function (idx) {
+    /* Wer selbst ein Stück wählt, schaltet das Radio ab — die eigene Wahl
+       gewinnt gegen die Sendung. */
+    if (Music.radio.an) Music.radioAus();
     var vorher = Music.trackIdx;
     Music.trackIdx = GK.clamp(idx, 0, TRACKS.length - 1);
     Music._step = 0;
@@ -746,7 +879,8 @@
   function save() {
     try {
       localStorage.setItem(MKEY, JSON.stringify({
-        enabled: Music.enabled, track: TRACKS[Music.trackIdx].id, volume: Music.volume
+        enabled: Music.enabled, track: TRACKS[Music.trackIdx].id, volume: Music.volume,
+        radio: Music.radio.an ? Music.radio.sender : ''
       }));
     } catch (e) {}
   }
@@ -784,6 +918,9 @@
         Music.trackIdx = GK.clamp(d.trackIdx, 0, TRACKS.length - 1);
       }
       if (d.volume !== undefined) Music.volume = d.volume;
+      /* Der Sender wird nur gemerkt, nicht gestartet — das passiert wie bei
+         der Musik selbst erst nach der ersten Interaktion. */
+      if (d.radio) Music._radioWunsch = d.radio;
       Music.wanted = !!d.enabled;   // erst nach der ersten Interaktion starten
     } catch (e) {}
   };
