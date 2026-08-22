@@ -281,6 +281,16 @@
       "nurRadio": true
     },
     {
+      "id": "vfm-jolene",
+      "dauer": 163,
+      "name": "Jolene",
+      "mood": "Dolly Parton · Country",
+      "file": "music/vegas-fm/Dolly Parton - Jolene.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
       "_": "80s FM. Der Mix laeuft 104 Minuten am Stueck — deshalb steht er als eigener Sender neben den beiden Einzeltiteln und nicht mitten in einer Reihe.",
       "id": "80s-mix",
       "dauer": 6246,
@@ -329,6 +339,7 @@
         "vfm-rising-sun",
         "vfm-gregory-is-here",
         "vfm-because-the-night",
+        "vfm-jolene",
         "vfm-cousin-mary",
         "vfm-gold-digger"
       ],
