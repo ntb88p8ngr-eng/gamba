@@ -907,9 +907,9 @@
     radioTeile.push(radioKopf, radioLuft, radioBox, jetztBox, radioHinweis, radioLuft2);
     radioBauen();
 
-    var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: M.volume });
+    var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '1', value: M.volume });
     var musicVolLabel = el('b', { text: M.volume });
-    var sfxVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: GK.volume() });
+    var sfxVol = el('input', { type: 'range', min: '0', max: '100', step: '1', value: GK.volume() });
     var sfxVolLabel = el('b', { text: GK.volume() });
     var offBtn = el('button', { class: 'btn btn-danger btn-full', text: '🔇 MUSIK AUS' });
 
@@ -926,6 +926,11 @@
       offBtn.className = 'btn btn-full ' + (M.enabled ? 'btn-danger' : 'btn-lime');
       musicVolLabel.textContent = M.volume;
       sfxVolLabel.textContent = GK.volume();
+      /* Auch die Regler selbst nachziehen, nicht nur die Zahl daneben:
+         ändert sich die Lautstärke woanders, stünde der Knopf sonst noch
+         an der alten Stelle und der nächste Tastendruck spränge von dort. */
+      if (musicVol.value !== String(M.volume)) musicVol.value = M.volume;
+      if (sfxVol.value !== String(GK.volume())) sfxVol.value = GK.volume();
       if ($('#vol-slider')) $('#vol-slider').value = GK.volume();
     }
 
