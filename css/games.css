@@ -1267,6 +1267,48 @@
 .radio-was{font-size:.64rem;color:var(--muted);line-height:1.3}
 .radio-wahl+.hint{margin:8px 0 10px}
 
+/* „Läuft gerade": eine Zeile mit Titel, Zeit und einem dünnen Balken.
+   Bewusst schmal — es ist eine Auskunft, keine zweite Bedienung. */
+.radio-jetzt{
+  margin-top:8px;padding:8px 11px;border-radius:13px;
+  border:2px solid var(--line);background:rgba(0,0,0,.28)
+}
+.radio-jetzt[hidden]{display:none}
+.rj-kopf{display:flex;align-items:center;gap:9px}
+.rj-ic{font-size:.8rem;color:var(--lime);flex:0 0 auto;animation:radiopuls 1.6s ease-in-out infinite}
+.rj-text{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.rj-titel{
+  font-family:'Bungee',sans-serif;font-size:.74rem;color:var(--gold);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.rj-was{
+  font-size:.63rem;color:var(--muted);line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.rj-zeit{
+  font-size:.66rem;color:var(--muted);flex:0 0 auto;
+  font-variant-numeric:tabular-nums;letter-spacing:.02em
+}
+.rj-balken{
+  margin-top:7px;height:4px;border-radius:999px;overflow:hidden;
+  background:rgba(255,255,255,.1)
+}
+.rj-balken[hidden]{display:none}
+.rj-balken i{
+  display:block;height:100%;width:0;border-radius:999px;
+  background:var(--gold-grad);transition:width 1s linear
+}
+
+/* Dasselbe im Admin-Panel, nur als eine Zeile Text: dort geht es ums
+   Steuern, nicht ums Zuhören. */
+.radio-admin-stand{
+  padding:9px 12px;border-radius:12px;font-size:.78rem;
+  border:2px solid var(--line);background:rgba(0,0,0,.28);
+  overflow:hidden;text-overflow:ellipsis
+}
+.radio-admin-stand b{color:var(--gold);font-family:'Bungee',sans-serif;font-size:.76rem}
+.radio-admin-stand span{color:var(--muted);font-size:.72rem}
+
 .mp-label{display:block;margin:10px 0 4px;font-size:.76rem;color:var(--gold);font-family:'Bungee',sans-serif}
 /* Zwei Felder nebeneinander — Min und Max gehören zusammen gelesen. */
 .mp-zwei{display:grid;grid-template-columns:1fr 1fr;gap:10px}

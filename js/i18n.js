@@ -281,6 +281,15 @@
     '📻 RADIO': '📻 RADIO', '⏹ RADIO AUS': '⏹ RADIO OFF',
     'Bunt gemischt': 'Mixed bag',
     'Alles, was zum Anstrich passt — gemischt': 'Everything that fits the skin — shuffled',
+    /* Radio: Gleichlauf und die Bedienung im Admin-Panel. */
+    'SENDER': 'STATION', 'STÜCK': 'TRACK',
+    '⏭ WEITER': '⏭ NEXT', '▶ AUFLEGEN': '▶ PLAY',
+    'Wird geladen …': 'Loading …',
+    'Kein Server': 'No server',
+    'Sender läuft nicht': 'Station is not running',
+    'Kein Sender läuft auf dem Server': 'No station is running on the server',
+    'Der Sender läuft auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle. Der eingebaute Mischsender steht nicht hier: seine Stücke entstehen live im Browser und laufen bei jedem für sich.':
+      'The station runs on the server — every listener hears the same track at the same point. NEXT skips the rest, PLAY starts the chosen track right away. Both apply to everyone. The built-in mixed station is not listed here: its tracks are generated live in the browser and run separately for each listener.',
     /* Der Untertitel des Senders steht in sounds.json — Text aus dem
        Sound-Pack wird sonst nicht übersetzt, dieser eine gehört uns. */
     'Swing, Jazz und ein bisschen Rauch': 'Swing, jazz and a little smoke',
@@ -611,6 +620,7 @@
     [/^(.+) Chips$/, '$1 chips'],
     [/^Einsatz (.+)$/, 'Bet $1'],
     [/^Gewinn (.+)$/, 'Win $1'],
+    [/^Stück (\d+) von (\d+)$/, 'Track $1 of $2'],
     [/^(\d+) Runden$/, '$1 rounds'],
     [/^(\d+) Spiele$/, '$1 rounds'],
     [/^(\d+) Siege$/, '$1 wins'],

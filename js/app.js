@@ -838,11 +838,68 @@
       });
     }
 
+    /* ── Läuft gerade ──
+       Eine Zeile, die sagt, was man hört. Bei einem Sender vom Server
+       steht daneben die Zeit — die ist für alle dieselbe, und genau das
+       soll man sehen können. Der Balken läuft im Sekundentakt weiter,
+       ohne dafür beim Server nachzufragen: die Startzeit steht fest,
+       den Rest rechnet der Browser aus. */
+    var jetztTitel = el('span', { class: 'rj-titel', text: '' });
+    var jetztWas = el('span', { class: 'rj-was', text: '' });
+    var jetztZeit = el('span', { class: 'rj-zeit', text: '' });
+    var jetztFuell = el('i');
+    var jetztBalken = el('div', { class: 'rj-balken' }, [jetztFuell]);
+    var jetztBox = el('div', { class: 'radio-jetzt' }, [
+      el('div', { class: 'rj-kopf' }, [
+        el('span', { class: 'rj-ic', text: '▶' }),
+        el('span', { class: 'rj-text' }, [jetztTitel, jetztWas]),
+        jetztZeit
+      ]),
+      jetztBalken
+    ]);
+    var jetztUhr = null;
+
+    function mmss(s) {
+      s = Math.max(0, Math.floor(s || 0));
+      return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+    }
+
+    function jetztMalen() {
+      var laeuft = M.radio.an && M.enabled;
+      jetztBox.hidden = !laeuft;
+      if (!laeuft) return;
+      var t = M.tracks[M.trackIdx] || {};
+      jetztTitel.textContent = t.name || '—';
+      jetztWas.textContent = t.mood || '';
+      /* Nur eine Sendung vom Server hat eine feste Länge. Ein erzeugter
+         Loop hört nie von allein auf — dort wäre jede Zeitangabe
+         erfunden. */
+      if (M.sync && M.sync.an && M.sync.dauer) {
+        var ab = Math.min(M.sync.offset(), M.sync.dauer);
+        jetztZeit.textContent = mmss(ab) + ' / ' + mmss(M.sync.dauer);
+        jetztBalken.hidden = false;
+        jetztFuell.style.width = (100 * ab / M.sync.dauer).toFixed(1) + '%';
+      } else {
+        jetztZeit.textContent = '';
+        jetztBalken.hidden = true;
+      }
+    }
+
+    function jetztUhrStellen() {
+      if (jetztUhr) { clearInterval(jetztUhr); jetztUhr = null; }
+      jetztUhr = setInterval(function () {
+        /* Das Fenster kann zu sein — dann hat der Takt hier nichts mehr
+           zu tun und räumt sich selbst weg. */
+        if (!jetztBox.isConnected) { clearInterval(jetztUhr); jetztUhr = null; return; }
+        jetztMalen();
+      }, 1000);
+    }
+
     var radioKopf = el('div', { class: 'bet-label', text: '📻 RADIO' });
     var radioLuft = el('div', { style: 'height:6px' });
     var radioLuft2 = el('div', { style: 'height:14px' });
     var radioHinweis = el('p', { class: 'hint', text: 'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.' });
-    radioTeile.push(radioKopf, radioLuft, radioBox, radioHinweis, radioLuft2);
+    radioTeile.push(radioKopf, radioLuft, radioBox, jetztBox, radioHinweis, radioLuft2);
     radioBauen();
 
     var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: M.volume });
@@ -858,6 +915,7 @@
         r.querySelector('.tr-play').textContent = on ? '⏸' : '▶';
       });
       radioBauen();
+      jetztMalen();
       radioAus.hidden = !M.radio.an || !(M.sender ? M.sender().length : 0);
       offBtn.textContent = M.enabled ? '🔇 MUSIK AUS' : '🎵 MUSIK AN';
       offBtn.className = 'btn btn-full ' + (M.enabled ? 'btn-danger' : 'btn-lime');
@@ -883,6 +941,7 @@
         radioKopf,
         radioLuft,
         radioBox,
+        jetztBox,
         radioHinweis,
         radioAus,
         radioLuft2,
@@ -896,6 +955,7 @@
       ]
     });
     sync();
+    jetztUhrStellen();
   }
 
   /* ─────────────── ADMIN ─────────────── */
@@ -1839,6 +1899,104 @@
     var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
     statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
 
+    /* ── Radio ──
+       Der Sender läuft auf dem Server, also lässt er sich auch von dort
+       aus bedienen: einmal weiter, oder gleich ein bestimmtes Stück. Was
+       hier gedrückt wird, hören alle — deshalb steht daneben, was gerade
+       läuft, und nicht nur die Knöpfe. */
+    var radioStand = el('div', { class: 'radio-admin-stand', text: 'Wird geladen …' });
+    var radioSenderWahl = el('select', { class: 'mp-feld' });
+    var radioStueckWahl = el('select', { class: 'mp-feld' });
+    var radioSkip = el('button', { class: 'btn btn-small', text: '⏭ WEITER' });
+    var radioAuflegen = el('button', { class: 'btn btn-small btn-lime', text: '▶ AUFLEGEN' });
+    var radioNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
+    var radioSender = [];       // Kennungen der Sender, die auf dem Server laufen
+    var radioUhr = null;
+
+    /** Stücke eines Senders, wie sie im Sound-Pack stehen. */
+    function radioStuecke(senderId) {
+      if (!GK.sfxPack || !GK.sfxPack.radio) return [];
+      var alle = GK.sfxPack.musik ? GK.sfxPack.musik() : [];
+      var st = null;
+      GK.sfxPack.radio().forEach(function (r) { if (r.id === senderId) st = r; });
+      if (!st) return [];
+      if (!st.tracks) return alle;
+      var raus = [];
+      st.tracks.forEach(function (id) {
+        alle.forEach(function (t) { if (t.id === id) raus.push(t); });
+      });
+      return raus;
+    }
+
+    function radioStueckeFuellen() {
+      var vorher = radioStueckWahl.value;
+      radioStueckWahl.innerHTML = '';
+      radioStuecke(radioSenderWahl.value).forEach(function (t) {
+        radioStueckWahl.appendChild(el('option', { value: t.id, text: t.name }));
+      });
+      if (vorher) radioStueckWahl.value = vorher;
+    }
+
+    function radioStandHolen() {
+      if (!GK.net || !GK.net.radio) return;
+      var id = radioSenderWahl.value;
+      if (!id) return;
+      GK.net.radio(id).then(function (d) {
+        if (!d || !d.track) { radioStand.textContent = 'Sender läuft nicht'; return; }
+        var name = d.track, mood = '';
+        (GK.sfxPack && GK.sfxPack.musik ? GK.sfxPack.musik() : []).forEach(function (t) {
+          if (t.id === d.track) { name = t.name; mood = t.mood || ''; }
+        });
+        var ab = Math.max(0, Math.round((d.jetzt - d.start) / 1000));
+        /* Jedes Stück Text für sich: der Untertitel kommt aus dem
+           Sound-Pack und bleibt, wie er dort steht, die Zeit ist nur
+           Zahlen — zu übersetzen ist allein die Zählung am Ende. */
+        radioStand.innerHTML = '';
+        radioStand.appendChild(el('b', { text: '▶ ' + name }));
+        if (mood) radioStand.appendChild(el('span', { text: ' · ' + mood }));
+        radioStand.appendChild(el('span', { text: ' · ' + ab + ' / ' + d.dauer + ' s · ' }));
+        radioStand.appendChild(el('span', { text: 'Stück ' + (d.pos + 1) + ' von ' + d.laenge }));
+      }, function () { radioStand.textContent = 'Kein Server'; });
+    }
+
+    function radioSenderHolen() {
+      if (!GK.net || !GK.net.radio) { radioStand.textContent = 'Kein Server'; return; }
+      GK.net.radio().then(function (d) {
+        radioSender = (d && d.sender) || [];
+        radioSenderWahl.innerHTML = '';
+        radioSender.forEach(function (id) {
+          var name = id;
+          (GK.sfxPack && GK.sfxPack.radio ? GK.sfxPack.radio() : []).forEach(function (r) {
+            if (r.id === id) name = r.name;
+          });
+          radioSenderWahl.appendChild(el('option', { value: id, text: name }));
+        });
+        if (!radioSender.length) { radioStand.textContent = 'Kein Sender läuft auf dem Server'; return; }
+        radioStueckeFuellen();
+        radioStandHolen();
+      }, function () { radioStand.textContent = 'Kein Server'; });
+    }
+
+    radioSenderWahl.addEventListener('change', function () { radioStueckeFuellen(); radioStandHolen(); });
+    radioNeu.addEventListener('click', function () { GK.sfx('click'); radioStandHolen(); });
+    radioSkip.addEventListener('click', function () {
+      GK.sfx('click');
+      GK.net.op('radioSkip', { sender: radioSenderWahl.value }).then(function () {
+        radioStandHolen();
+        /* Wer selbst zuhört, soll den Sprung sofort hören und nicht erst
+           beim nächsten Nachfragen. */
+        if (GK.music && GK.music.syncHolen) GK.music.syncHolen(true);
+      });
+    });
+    radioAuflegen.addEventListener('click', function () {
+      GK.sfx('click');
+      GK.net.op('radioPick', { sender: radioSenderWahl.value, track: radioStueckWahl.value })
+        .then(function () {
+          radioStandHolen();
+          if (GK.music && GK.music.syncHolen) GK.music.syncHolen(true);
+        });
+    });
+
     /* ── Ausfuhr und Zurücksetzen ──
        Ausgeführt wird, was der Server an Rohdaten hat: jede Runde, jede
        Anmeldung, das Party-Protokoll und eine Namensliste. Als JSON zum
@@ -2049,6 +2207,18 @@
             el('p', { class: 'hint', text: 'Jede zu Ende gespielte Party landet hier mit ihren Einstellungen und dem Endstand — die letzten 120 Sitzungen.' })
           ], true),
 
+          feld('RADIO', [
+            radioStand,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'mp-zwei' }, [
+              el('div', {}, [el('label', { class: 'mp-label', text: 'SENDER' }), radioSenderWahl]),
+              el('div', {}, [el('label', { class: 'mp-label', text: 'STÜCK' }), radioStueckWahl])
+            ]),
+            el('div', { style: 'height:10px' }),
+            el('div', { class: 'modal-actions' }, [radioSkip, radioAuflegen, radioNeu]),
+            el('p', { class: 'hint', text: 'Der Sender läuft auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle. Der eingebaute Mischsender steht nicht hier: seine Stücke entstehen live im Browser und laufen bei jedem für sich.' })
+          ], true),
+
           feld('SPIELE & EINSÄTZE', [
             regelBox,
             el('div', { style: 'height:8px' }),
@@ -2112,6 +2282,14 @@
         ])
       ]
     });
+
+    /* Der Sender läuft weiter, während das Panel offen steht — die Anzeige
+       zieht im Takt nach und räumt sich weg, sobald das Fenster zu ist. */
+    radioSenderHolen();
+    radioUhr = setInterval(function () {
+      if (!radioStand.isConnected) { clearInterval(radioUhr); radioUhr = null; return; }
+      radioStandHolen();
+    }, 5000);
   }
 
   /* ─────────────── BOOT ─────────────── */
