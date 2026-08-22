@@ -773,11 +773,60 @@ function serveStatic(req, res, urlPath) {
   }
   fs.stat(file, function (err, st) {
     if (err || !st.isFile()) { res.writeHead(404); res.end('Nicht gefunden'); return; }
+    var typ = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+
+    /* Teilstuecke ausliefern.
+
+       Fuer ein Bild von zwoelf Kilobyte spielt das keine Rolle, fuer ein
+       Musikstueck von zwoelf Megabyte schon: der Browser fordert Musik
+       stueckweise an und bricht die Verbindung ab, sobald er genug im Puffer
+       hat. Ohne Range-Antwort schickt der Server jedes Mal die ganze Datei,
+       der Browser wirft den Rest weg — und Vorspulen geht gar nicht, weil er
+       nicht mitten in die Datei springen kann. */
+    var bereich = null;
+    var rq = req.headers.range;
+    if (rq) {
+      var m = /^bytes=(\d*)-(\d*)$/.exec(String(rq).trim());
+      if (m && (m[1] || m[2])) {
+        var von, bis;
+        if (m[1]) {                       // "bytes=500-"  oder  "bytes=500-999"
+          von = parseInt(m[1], 10);
+          bis = m[2] ? parseInt(m[2], 10) : st.size - 1;
+        } else {                          // "bytes=-500" — die letzten 500
+          von = st.size - parseInt(m[2], 10);
+          bis = st.size - 1;
+        }
+        if (von < 0) von = 0;
+        if (bis >= st.size) bis = st.size - 1;
+        if (von > bis || von >= st.size) {
+          res.writeHead(416, { 'Content-Range': 'bytes */' + st.size });
+          res.end();
+          return;
+        }
+        bereich = { von: von, bis: bis };
+      }
+    }
+
+    if (bereich) {
+      res.writeHead(206, {
+        'Content-Type': typ,
+        'Content-Length': bereich.bis - bereich.von + 1,
+        'Content-Range': 'bytes ' + bereich.von + '-' + bereich.bis + '/' + st.size,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'no-cache'
+      });
+      if (req.method === 'HEAD') { res.end(); return; }
+      fs.createReadStream(file, { start: bereich.von, end: bereich.bis }).pipe(res);
+      return;
+    }
+
     res.writeHead(200, {
-      'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+      'Content-Type': typ,
       'Content-Length': st.size,
+      'Accept-Ranges': 'bytes',
       'Cache-Control': 'no-cache'
     });
+    if (req.method === 'HEAD') { res.end(); return; }
     fs.createReadStream(file).pipe(res);
   });
 }

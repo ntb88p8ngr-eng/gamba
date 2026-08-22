@@ -281,11 +281,14 @@
     '📻 RADIO': '📻 RADIO', '⏹ RADIO AUS': '⏹ RADIO OFF',
     'Bunt gemischt': 'Mixed bag',
     'Alles, was zum Anstrich passt — gemischt': 'Everything that fits the skin — shuffled',
+    /* Der Untertitel des Senders steht in sounds.json — Text aus dem
+       Sound-Pack wird sonst nicht übersetzt, dieser eine gehört uns. */
+    'Swing, Jazz und ein bisschen Rauch': 'Swing, jazz and a little smoke',
     'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.':
       'A station plays its tracks one after another and moves on by itself. Clicking a track above ends the broadcast.',
     'Für diesen Sender gibt es kein Stück': 'This station has no track to play',
-    'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿). Jederzeit abschaltbar.':
-      'Five techno loops, generated live in the browser — two deep dub pieces, one crooked minimal groove and two acid numbers. Plus whatever the sound pack carries as a file (💿). Switchable off at any time.',
+    'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿) — ganze Sendungen laufen nur unten im Radio. Jederzeit abschaltbar.':
+      'Five techno loops, generated live in the browser — two deep dub pieces, one crooked minimal groove and two acid numbers. Plus whatever the sound pack carries as a file (💿) — full shows only play down in the radio. Switchable off at any time.',
     'aus dem Sound-Pack': 'from the sound pack',
     'Neue Party': 'New party', 'Partymodus': 'Party mode',
     'PARTY AUFMACHEN': 'OPEN PARTY', 'PARTY STARTEN': 'START PARTY',

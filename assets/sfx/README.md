@@ -204,10 +204,22 @@ unter **🎵 Musik & Sound** in derselben Liste, erkennbar am 💿.
 | `volume` | — | 0 bis 1, Feinabgleich gegen die eingebauten Stücke |
 | `bpm` | — | nur Anzeige |
 | `skins` | — | Liste von Anstrichen; ohne das Feld läuft es überall |
+| `nurRadio` | — | `true` = läuft nur im Sender, steht nicht in der Stückauswahl |
 
 Anders als die Klänge wird Musik nicht vorab dekodiert, sondern als ganze
 Datei in Schleife abgespielt — ein Stück von drei Minuten gehört nicht in
 einen Puffer. Nimm also etwas, das sich nahtlos wiederholt.
+
+Der Pfad darf heißen wie die Datei auf der Platte, Leerzeichen und Klammern
+eingeschlossen (`music/vegas-fm/Take Five.mp3`) — die Adresse wird beim
+Laden kodiert.
+
+`nurRadio` ist für ganze Sendungen gedacht. Ein Sender wie Vegas FM bringt
+zehn Titel mit; stünden die alle einzeln in der Auswahl, wäre von den
+eingebauten Stücken nichts mehr zu sehen. Mit `nurRadio` laufen sie im
+Radio ganz normal mit und tauchen sonst nirgends auf. Wer das Radio
+abschaltet, während so ein Titel läuft, landet auf dem ersten Stück der
+Auswahl — sonst spielte Musik, die in keiner Liste steht.
 
 `skins` verbindet Musik mit dem Anstrich der Seite: `["old-vegas"]` heißt,
 das Stück taucht nur unter Old Vegas auf. Wer den Anstrich wechselt,

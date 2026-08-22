@@ -874,7 +874,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿). Jederzeit abschaltbar.',
+      text: 'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿) — ganze Sendungen laufen nur unten im Radio. Jederzeit abschaltbar.',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),
