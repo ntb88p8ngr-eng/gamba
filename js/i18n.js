@@ -293,6 +293,8 @@
     /* Der Untertitel des Senders steht in sounds.json — Text aus dem
        Sound-Pack wird sonst nicht übersetzt, dieser eine gehört uns. */
     'Swing, Jazz und ein bisschen Rauch': 'Swing, jazz and a little smoke',
+    'Neon, Synthies und ein langer Mix': 'Neon, synths and one long mix',
+    'Eine Stunde und drei Viertel am Stück': 'An hour and three quarters, unbroken',
     'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.':
       'A station plays its tracks one after another and moves on by itself. Clicking a track above ends the broadcast.',
     'Für diesen Sender gibt es kein Stück': 'This station has no track to play',

@@ -279,6 +279,37 @@
       "volume": 0.85,
       "skins": ["old-vegas"],
       "nurRadio": true
+    },
+    {
+      "_": "80s FM. Der Mix laeuft 104 Minuten am Stueck — deshalb steht er als eigener Sender neben den beiden Einzeltiteln und nicht mitten in einer Reihe.",
+      "id": "80s-mix",
+      "dauer": 6246,
+      "name": "80s Mix",
+      "mood": "Eine Stunde und drei Viertel am Stück",
+      "file": "music/80s-fm/80smix.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "80s-i-ran",
+      "dauer": 238,
+      "name": "I Ran (So Far Away)",
+      "mood": "A Flock Of Seagulls · New Wave",
+      "file": "music/80s-fm/A Flock Of Seagulls - I Ran (So Far Away).mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "80s-jessies-girl",
+      "dauer": 195,
+      "name": "Jessie's Girl",
+      "mood": "Rick Springfield · Power-Pop",
+      "file": "music/80s-fm/Rick Springfield - Jessie's Girl.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
     }
   ],
   "radio": [
@@ -302,6 +333,18 @@
         "vfm-gold-digger"
       ],
       "mischen": true,
+      "skins": ["old-vegas"]
+    },
+    {
+      "id": "80s-fm",
+      "name": "80s FM",
+      "was": "Neon, Synthies und ein langer Mix",
+      "tracks": [
+        "80s-i-ran",
+        "80s-jessies-girl",
+        "80s-mix"
+      ],
+      "mischen": false,
       "skins": ["old-vegas"]
     }
   ]

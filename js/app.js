@@ -637,7 +637,12 @@
           bildReihe.appendChild(k);
         };
         liste.forEach(function (b, i) {
-          mach(b.id, GK.skinBildPfad(GK.skin(), b.id), String(i + 1));
+          /* Ein Film taugt nicht als Kachelbild — für ihn steht sein
+             Standbild dort, und statt einer Nummer ein Filmzeichen. */
+          mach(b.id,
+               GK.skinBildVorschau ? GK.skinBildVorschau(GK.skin(), b.id)
+                                   : GK.skinBildPfad(GK.skin(), b.id),
+               b.film ? '🎬 Film' : String(i + 1));
         });
         mach('wechsel', '', '🔄 Wechsel');
       }
