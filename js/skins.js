@@ -39,7 +39,9 @@
       bilder: [
         { id: '1', datei: 'hintergrund1.webp' },
         { id: '2', datei: 'hintergrund2.webp' },
-        { id: '3', datei: 'hintergrund3.webp' }
+        { id: '3', datei: 'hintergrund3.webp' },
+        { id: '4', datei: 'hintergrund4.webp' },
+        { id: '5', datei: 'hintergrund5.webp' }
       ]
     }
   ];

@@ -21,11 +21,15 @@ heller Text lesbar bleibt.
 
 Datei mit demselben Namen ersetzen, Seite neu laden. Fertig.
 
-## Ein viertes Bild dazu
+## Noch ein Bild dazu
 
-1. Datei als `hintergrund4.webp` ablegen.
+1. Datei als `hintergrund6.webp` ablegen — durchnummeriert weiter, ohne
+   „bild" im Namen.
 2. In `js/skins.js` beim Skin `old-vegas` die Liste `bilder` um
-   `{ id: '4', datei: 'hintergrund4.webp' }` ergänzen.
+   `{ id: '6', datei: 'hintergrund6.webp' }` ergänzen.
+
+Ohne den zweiten Schritt passiert nichts: die Datei liegt dann zwar da,
+steht aber in keiner Auswahl.
 
 Fehlt eine Datei, bleibt die Fläche an dieser Stelle leer und es zählt
 nur der dunkelrote Verlauf darunter.
