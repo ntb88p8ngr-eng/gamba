@@ -550,6 +550,10 @@
        jetzt schon. */
     if (Music._wunschId) {
       for (var k = 0; k < TRACKS.length; k++) {
+        /* Ein reines Sender-Stück nur dann, wenn auch der Sender wieder
+           anläuft — sonst hinge man nach dem Neuladen auf einem Titel, den
+           die Auswahl gar nicht anbietet. */
+        if (TRACKS[k].nurRadio && !Music._radioWunsch && !Music.radio.an) continue;
         if (TRACKS[k].id === Music._wunschId && TRACKS[k] !== TRACKS[Music.trackIdx]) {
           Music.trackIdx = k;
           if (Music.enabled && Music.playing) { Music.playing = false; Music.start(); }
@@ -569,13 +573,31 @@
    * Zurück kommen Paare aus Stück und echter Position, damit setTrack()
    * weiterhin mit der Position in TRACKS arbeitet.
    */
-  Music.sichtbar = function () {
+  function zumAnstrich() {
     var skin = GK.skin ? GK.skin() : 'default';
     var raus = [];
     TRACKS.forEach(function (t, i) {
       if (!t.skins || t.skins.indexOf(skin) >= 0) raus.push({ track: t, idx: i });
     });
     return raus;
+  }
+
+  /**
+   * Alles, was der Sender spielen darf — auch die Stücke, die nur zum
+   * Radio gehören.
+   */
+  Music.fuerRadio = zumAnstrich;
+
+  /**
+   * Was in der Stückauswahl steht.
+   *
+   * Dasselbe wie oben, abzüglich der Stücke mit `nurRadio`. Ein Sender wie
+   * Vegas FM bringt zehn Titel mit; stünden die alle einzeln in der Liste,
+   * bliebe von der Auswahl nichts als eine Titelliste. Sie laufen im Radio,
+   * und dort gehören sie hin.
+   */
+  Music.sichtbar = function () {
+    return zumAnstrich().filter(function (x) { return !x.track.nurRadio; });
   };
 
   function ensureChain() {
@@ -676,7 +698,7 @@
 
   /** Die Reihenfolge eines Senders aufbauen — als echte Positionen in TRACKS. */
   function reiheBauen(sender) {
-    var erlaubt = Music.sichtbar();
+    var erlaubt = Music.fuerRadio();
     var raus = [];
     if (sender.tracks) {
       /* Feste Liste: die Reihenfolge des Senders zählt, und was es nicht
@@ -754,6 +776,19 @@
     Music.radio.an = false;
     uhrAus();
     if (audio) audio.loop = true;
+    /* Lief gerade ein Stück, das nur zum Sender gehört, kann es hier nicht
+       weiterlaufen: es steht in keiner Liste, die Auswahl zeigte also
+       Musik ohne markiertes Stück. Also zurück auf das erste, das man auch
+       selbst hätte wählen können. */
+    var erlaubt = Music.sichtbar();
+    if (TRACKS[Music.trackIdx].nurRadio && erlaubt.length) {
+      var lief = Music.enabled && Music.playing;
+      dateiAus();                       // das Sender-Stück läuft sonst weiter
+      Music.trackIdx = erlaubt[0].idx;
+      Music._step = 0;
+      Music.playing = false;
+      if (lief) Music.start();
+    }
     save();
     if (GK.emit) GK.emit('musik-liste');
   };
@@ -906,8 +941,13 @@
       Music.sender().forEach(function (sd) { if (sd.id === Music.radio.sender) gibt = true; });
       if (!gibt) Music.radioAus();
     }
+    /* Gehört das laufende Stück überhaupt hierher? Das entscheidet der
+       Anstrich, nicht die Auswahlliste — ein Sender-Stück steht dort nie
+       und würde sonst bei jedem Anstrichwechsel weggeschaltet, obwohl es
+       gerade völlig richtig läuft. Der Ersatz kommt dagegen aus der
+       Auswahl: darauf soll man auch von Hand kommen können. */
+    var passt = Music.fuerRadio().some(function (x) { return x.idx === Music.trackIdx; });
     var erlaubt = Music.sichtbar();
-    var passt = erlaubt.some(function (x) { return x.idx === Music.trackIdx; });
     if (passt || !erlaubt.length) { if (GK.emit) GK.emit('musik-liste'); return; }
     /* Das laufende Stück gehört nicht hierher — auf das erste erlaubte
        umschalten, aber nur weiterspielen, wenn vorher etwas lief. */

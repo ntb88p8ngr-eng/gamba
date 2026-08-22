@@ -93,7 +93,12 @@
 
   function url(file) {
     if (/^(https?:)?\/\//.test(file) || file.charAt(0) === '/') return file;
-    return BASE + file;
+    /* Dateien kommen so, wie sie auf der Platte heissen — und Musikstuecke
+       heissen nun einmal „Fly Me To The Moon (2008 Remastered).mp3". Ein
+       Leerzeichen im src bricht die Adresse, deshalb hier einmal durch
+       encodeURI. Das laesst bereits kodierte Pfade in Ruhe (%20 bleibt %20)
+       und ruehrt / ( ) ' nicht an — nur das, was wirklich stoert. */
+    return encodeURI(BASE + file);
   }
 
   /** Pfad im Pack aufloesen — auch fuer andere Module (Musik). */
@@ -126,6 +131,10 @@
         volume: t.volume === undefined ? 1 : Number(t.volume) || 0,
         /* Leere Liste hiesse „nirgends" — das ist nie gemeint, also null. */
         skins: Array.isArray(t.skins) && t.skins.length ? t.skins.slice() : null,
+        /* Ein Stueck, das nur zum Sender gehoert. Es laeuft im Radio ganz
+           normal mit, steht aber nicht in der Stueckauswahl — bei zehn
+           Titeln aus einem Sender waere die Liste sonst nur noch Sender. */
+        nurRadio: t.nurRadio === true || t.radioOnly === true,
         datei: true
       });
     });

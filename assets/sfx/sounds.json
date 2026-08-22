@@ -177,12 +177,122 @@
   },
   "music": [
     {
-      "_": "Hintergrundmusik aus Dateien. Leer lassen = nur die eingebauten Loops. Felder: id (Kennung), name, mood (Untertitel), file, volume (0..1), bpm (nur Anzeige), skins (Liste von Anstrichen, ohne = ueberall). Anleitung: assets/sfx/README.md"
+      "_": "Hintergrundmusik aus Dateien. Leer lassen = nur die eingebauten Loops. Felder: id (Kennung), name, mood (Untertitel), file, volume (0..1), bpm (nur Anzeige), skins (Liste von Anstrichen, ohne = ueberall), nurRadio (true = laeuft nur im Sender, steht nicht in der Stueckauswahl). Anleitung: assets/sfx/README.md"
+    },
+    {
+      "_": "Die zehn Titel von Vegas FM. nurRadio, weil sie als Sendung gedacht sind und nicht als zehn einzelne Eintraege in der Auswahl.",
+      "id": "vfm-las-vegas",
+      "name": "Las Vegas",
+      "mood": "Dean Martin · Swing",
+      "file": "music/vegas-fm/Dean Martin - Las Vegas.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-jailhouse-rock",
+      "name": "Jailhouse Rock",
+      "mood": "Elvis Presley · Rock 'n' Roll",
+      "file": "music/vegas-fm/Elvis Presley - Jailhouse Rock.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-fly-me-to-the-moon",
+      "name": "Fly Me To The Moon",
+      "mood": "Swing · Bar-Klassiker",
+      "file": "music/vegas-fm/Fly Me To The Moon (2008 Remastered).mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-gold-digger",
+      "name": "Gold Digger",
+      "mood": "Kanye West feat. Jamie Foxx · Hip-Hop",
+      "file": "music/vegas-fm/Gold Digger - Kanye West ft Jamie Foxx (Dirty) - Zweanky1 (192k).mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-gregory-is-here",
+      "name": "Gregory Is Here",
+      "mood": "Horace Silver · Hard Bop",
+      "file": "music/vegas-fm/Horace Silver-Gregory is Here.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-rising-sun",
+      "name": "House of the Rising Sun",
+      "mood": "Blues · Klassiker",
+      "file": "music/vegas-fm/House of the Rising Sun.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-cousin-mary",
+      "name": "Cousin Mary",
+      "mood": "John Coltrane · Hard Bop",
+      "file": "music/vegas-fm/John Coltrane - Cousin Mary.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-sentimental-mood",
+      "name": "In a Sentimental Mood",
+      "mood": "John Coltrane · Ballade",
+      "file": "music/vegas-fm/John Coltrane - In A Sentimental Mood.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-because-the-night",
+      "name": "Because the Night",
+      "mood": "Patti Smith · Rock",
+      "file": "music/vegas-fm/Patti Smith's  Because the Night.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
+    },
+    {
+      "id": "vfm-take-five",
+      "name": "Take Five",
+      "mood": "Dave Brubeck Quartet · Cool Jazz",
+      "file": "music/vegas-fm/Take Five.mp3",
+      "volume": 0.85,
+      "skins": ["old-vegas"],
+      "nurRadio": true
     }
   ],
   "radio": [
     {
       "_": "Radiosender: spielen mehrere Stuecke hintereinander. Felder: id, name, was (Untertitel), tracks (Liste von Musik-Kennungen, ohne = alles was zum Anstrich passt), mischen (true/false), dauer (Sekunden je erzeugtem Loop; Dateien laufen bis zum Ende), skins. Der eingebaute Sender 'Bunt gemischt' braucht keinen Eintrag."
+    },
+    {
+      "id": "vegas-fm",
+      "name": "Vegas FM",
+      "was": "Swing, Jazz und ein bisschen Rauch",
+      "tracks": [
+        "vfm-las-vegas",
+        "vfm-fly-me-to-the-moon",
+        "vfm-take-five",
+        "vfm-jailhouse-rock",
+        "vfm-sentimental-mood",
+        "vfm-rising-sun",
+        "vfm-gregory-is-here",
+        "vfm-because-the-night",
+        "vfm-cousin-mary",
+        "vfm-gold-digger"
+      ],
+      "mischen": true,
+      "skins": ["old-vegas"]
     }
   ]
 }
