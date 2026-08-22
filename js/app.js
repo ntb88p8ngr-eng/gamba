@@ -810,10 +810,16 @@
     radioAus.addEventListener('click', function () {
       M.radioAus(); GK.sfx('click'); sync();
     });
+    /* Der ganze Abschnitt hängt daran, ob es für den laufenden Anstrich
+       überhaupt einen Sender gibt — ein leerer Kasten mit Überschrift wäre
+       nur eine Frage ohne Antwort. */
+    var radioTeile = [];
 
     function radioBauen() {
       radioBox.innerHTML = '';
-      (M.sender ? M.sender() : []).forEach(function (sd) {
+      var sender = M.sender ? M.sender() : [];
+      radioTeile.forEach(function (n) { n.hidden = !sender.length; });
+      sender.forEach(function (sd) {
         var an = M.radio.an && M.radio.sender === sd.id;
         var k = el('button', { class: 'radio-kachel' + (an ? ' sel' : ''), type: 'button' }, [
           el('span', { class: 'radio-ic', text: an ? '📡' : '📻' }),
@@ -831,6 +837,12 @@
         radioBox.appendChild(k);
       });
     }
+
+    var radioKopf = el('div', { class: 'bet-label', text: '📻 RADIO' });
+    var radioLuft = el('div', { style: 'height:6px' });
+    var radioLuft2 = el('div', { style: 'height:14px' });
+    var radioHinweis = el('p', { class: 'hint', text: 'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.' });
+    radioTeile.push(radioKopf, radioLuft, radioBox, radioHinweis, radioLuft2);
     radioBauen();
 
     var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: M.volume });
@@ -846,7 +858,7 @@
         r.querySelector('.tr-play').textContent = on ? '⏸' : '▶';
       });
       radioBauen();
-      radioAus.hidden = !M.radio.an;
+      radioAus.hidden = !M.radio.an || !(M.sender ? M.sender().length : 0);
       offBtn.textContent = M.enabled ? '🔇 MUSIK AUS' : '🎵 MUSIK AN';
       offBtn.className = 'btn btn-full ' + (M.enabled ? 'btn-danger' : 'btn-lime');
       musicVolLabel.textContent = M.volume;
@@ -868,12 +880,12 @@
         el('div', { style: 'height:8px' }),
         list,
         el('div', { style: 'height:14px' }),
-        el('div', { class: 'bet-label', text: '📻 RADIO' }),
-        el('div', { style: 'height:6px' }),
+        radioKopf,
+        radioLuft,
         radioBox,
-        el('p', { class: 'hint', text: 'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.' }),
+        radioHinweis,
         radioAus,
-        el('div', { style: 'height:14px' }),
+        radioLuft2,
         el('div', { class: 'bet-label', text: 'MUSIK-LAUTSTÄRKE' }),
         el('div', { class: 'range-row' }, [musicVol, el('div', { class: 'info-box', style: 'min-width:66px' }, [musicVolLabel, el('span', { text: 'Musik' })])]),
         el('div', { style: 'height:10px' }),

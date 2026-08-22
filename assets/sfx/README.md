@@ -223,8 +223,13 @@ Stücke hintereinander und schaltet von selbst weiter, statt eines im Loop
 zu lassen.
 
 Der Sender **Bunt gemischt** ist eingebaut und braucht keinen Eintrag —
-er nimmt alles, was zum laufenden Anstrich gehört, und mischt es. Eigene
-Sender kommen aus dem Block `radio`:
+er nimmt alles, was zum laufenden Anstrich gehört, und mischt es. Er
+gehört allerdings zu **Old Vegas**: unter dem Standard-Anstrich gibt es
+ihn nicht, und ohne weitere Sender fehlt der Radio-Abschnitt dort ganz.
+Wer ihn überall haben will, ändert in `js/music.js` beim Sender
+`EIGEN_SENDER` die Zeile `skins: ['old-vegas']` auf `skins: null`.
+
+Eigene Sender kommen aus dem Block `radio`:
 
 ```json
 "radio": [
@@ -256,7 +261,13 @@ In `tracks` dürfen beide Arten stehen, eingebaute Loops (`keller`,
 `nebel`, `beton`, `turbo`, `saeure`) genauso wie eigene Dateien.
 
 Wer oben ein Stück von Hand anklickt, beendet die Sendung — die eigene
-Wahl gewinnt.
+Wahl gewinnt. Wechselt jemand den Anstrich, während ein Sender läuft, den
+es dort nicht gibt, hört die Sendung ebenfalls auf; die Musik selbst
+läuft mit dem angefangenen Stück weiter.
+
+Gibt es für den laufenden Anstrich gar keinen Sender, verschwindet der
+ganze Abschnitt aus dem Fenster — eine Überschrift über einem leeren
+Kasten wäre nur eine Frage ohne Antwort.
 
 ---
 

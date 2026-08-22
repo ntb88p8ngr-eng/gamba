@@ -642,7 +642,12 @@
      kommen aus dem Sound-Pack (Block "radio" in sounds.json). */
   var EIGEN_SENDER = {
     id: 'bunt', name: 'Bunt gemischt', was: 'Alles, was zum Anstrich passt — gemischt',
-    tracks: null, mischen: true, dauer: 210, skins: null
+    tracks: null, mischen: true, dauer: 210,
+    /* Der eingebaute Sender gehört zu Old Vegas: dort passt ein Radio ins
+       Bild, im Standard-Anstrich bleibt es bei der Stückauswahl. Wie bei
+       den Sendern aus dem Pack ist das nur eine Liste von Anstrichen —
+       null hieße „überall". */
+    skins: ['old-vegas']
   };
 
   Music.radio = { an: false, sender: '', reihe: [], pos: 0, _uhr: null };
@@ -650,7 +655,8 @@
   /** Alle Sender, die zum laufenden Anstrich passen. */
   Music.sender = function () {
     var skin = GK.skin ? GK.skin() : 'default';
-    var liste = [EIGEN_SENDER];
+    var liste = [];
+    if (!EIGEN_SENDER.skins || EIGEN_SENDER.skins.indexOf(skin) >= 0) liste.push(EIGEN_SENDER);
     if (GK.sfxPack && GK.sfxPack.radio) {
       GK.sfxPack.radio().forEach(function (r) {
         if (!r.skins || r.skins.indexOf(skin) >= 0) liste.push(r);
@@ -662,7 +668,10 @@
   function senderVon(id) {
     var alle = Music.sender();
     for (var i = 0; i < alle.length; i++) if (alle[i].id === id) return alle[i];
-    return alle[0];
+    /* Kennt der laufende Anstrich diesen Sender nicht, hilft der erste, den
+       es hier gibt — und wenn es gar keinen gibt, der eingebaute als
+       Notnagel, damit senderVon nie undefined liefert. */
+    return alle[0] || EIGEN_SENDER;
   }
 
   /** Die Reihenfolge eines Senders aufbauen — als echte Positionen in TRACKS. */
@@ -890,6 +899,13 @@
   GK.on('sfx-pack', packLaden);
   GK.on('skin', function () {
     packLaden();
+    /* Läuft ein Sender, den es unter dem neuen Anstrich nicht gibt, hört die
+       Sendung auf — sonst spielte ein Radio weiter, das nirgends mehr steht. */
+    if (Music.radio.an) {
+      var gibt = false;
+      Music.sender().forEach(function (sd) { if (sd.id === Music.radio.sender) gibt = true; });
+      if (!gibt) Music.radioAus();
+    }
     var erlaubt = Music.sichtbar();
     var passt = erlaubt.some(function (x) { return x.idx === Music.trackIdx; });
     if (passt || !erlaubt.length) { if (GK.emit) GK.emit('musik-liste'); return; }
