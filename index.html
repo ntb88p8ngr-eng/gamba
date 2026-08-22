@@ -30,6 +30,12 @@ try {
        während die andere abblendet. Ohne Skin bleiben beide leer. -->
   <div class="bg-bild" data-bg="a"></div>
   <div class="bg-bild" data-bg="b"></div>
+  <!-- Ein Hintergrund darf auch ein Film sein. Er hängt hier still im
+       Haus und wird erst bestückt, wenn ihn jemand auswählt — sonst lüde
+       jeder Besuch ein paar Megabyte, die er nie zu sehen bekommt.
+       muted und playsinline sind Pflicht: ohne beides lässt kein Browser
+       einen Film von allein anlaufen. -->
+  <video class="bg-film" data-bg="film" muted loop playsinline preload="none"></video>
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
   <div class="blob blob-3"></div>

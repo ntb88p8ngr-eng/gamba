@@ -892,6 +892,9 @@ var MIME = {
   '.wav': 'audio/wav',
   '.m4a': 'audio/mp4',
   '.webm': 'audio/webm',
+  /* Ein Hintergrund darf auch ein Film sein — siehe assets/skins/README.md.
+     Ohne den richtigen Typ spielt Safari ihn gar nicht erst an. */
+  '.mp4': 'video/mp4',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2'
 };
