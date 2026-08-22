@@ -205,6 +205,7 @@ unter **🎵 Musik & Sound** in derselben Liste, erkennbar am 💿.
 | `bpm` | — | nur Anzeige |
 | `skins` | — | Liste von Anstrichen; ohne das Feld läuft es überall |
 | `nurRadio` | — | `true` = läuft nur im Sender, steht nicht in der Stückauswahl |
+| `dauer` | — | Länge in Sekunden; der Server braucht sie, um die Sendung zu takten |
 
 Anders als die Klänge wird Musik nicht vorab dekodiert, sondern als ganze
 Datei in Schleife abgespielt — ein Stück von drei Minuten gehört nicht in
@@ -267,8 +268,29 @@ Eigene Sender kommen aus dem Block `radio`:
 | `dauer` | — | Sekunden je Stück, mindestens 30, Voreinstellung 210 |
 | `skins` | — | Liste von Anstrichen; ohne das Feld läuft der Sender überall |
 
-`dauer` gilt nur für die eingebauten Loops — die enden nie von allein.
-Eine Datei läuft bis zum Ende und gibt dann weiter, egal was dort steht.
+## Gleichlauf
+
+Ein Sender aus diesem Block läuft nicht im Browser, sondern auf dem
+Server: der weiß, welches Stück gerade dran ist und seit wann. Wer
+einschaltet, kommt mitten hinein — wie bei einem echten Radio, und alle
+hören dasselbe Stück an derselben Stelle. Im Musikfenster steht unter den
+Sendern, was gerade läuft; im Admin-Panel lässt sich weiterschalten oder
+ein Stück auflegen, für alle zugleich.
+
+Dafür braucht der Server die Länge jedes Stücks — sonst weiß er nicht,
+wann das nächste dran ist. Deshalb das Feld `dauer` in Sekunden. Fehlt
+es, nimmt er die `dauer` des Senders und schaltet nach dieser Zeit
+weiter, egal wie lang die Datei wirklich ist.
+
+Der eingebaute Sender **Bunt gemischt** bleibt im Browser. Er spielt die
+live erzeugten Loops, und die entstehen in jedem Browser einzeln; es gibt
+keine Datei, in die man springen könnte, also auch nichts abzugleichen.
+
+Läuft kein Server (`index.html` direkt geöffnet), spielt jeder Sender
+lokal weiter — dann eben mit eigener Reihenfolge.
+
+`dauer` beim Sender gilt nur für die eingebauten Loops — die enden nie
+von allein. Eine Datei läuft bis zum Ende und gibt dann weiter.
 In `tracks` dürfen beide Arten stehen, eingebaute Loops (`keller`,
 `nebel`, `beton`, `turbo`, `saeure`) genauso wie eigene Dateien.
 

@@ -459,9 +459,168 @@ var mp = require('./mp.js')({
   if (zurueck) console.log('[gambaking] ' + zurueck + ' Chips von offenen Tischen zurückgebucht.');
 })();
 
+/* ─────────────── Radio ───────────────
+   Ein Sender laeuft hier, nicht im Browser.
+
+   Vorher wuerfelte jeder Zuhoerer seine eigene Reihenfolge: zwei Leute im
+   selben Raum hoerten zwei verschiedene Stuecke. Ein Radio ist aber genau
+   das Gegenteil davon — es laeuft, ob jemand zuhoert oder nicht, und wer
+   einschaltet, kommt mitten hinein.
+
+   Deshalb steht hier die Uhr. Der Server merkt sich je Sender die
+   Reihenfolge, das laufende Stueck und wann es angefangen hat; die
+   Browser fragen nur, was gerade laeuft, und spulen an die passende
+   Stelle. Weitergeschaltet wird nicht aktiv, sondern beim Nachsehen: wer
+   fragt, bekommt den Stand, der sich aus der verstrichenen Zeit ergibt.
+   Ohne Zuhoerer rechnet niemand — und trotzdem stimmt die Zeit, wenn
+   wieder jemand einschaltet.
+
+   Was hier laeuft, sind die Sender aus assets/sfx/sounds.json. Der
+   eingebaute Mischsender bleibt im Browser: er spielt die live erzeugten
+   Loops, und die entstehen in jedem Browser einzeln — die lassen sich
+   nicht auf dieselbe Sekunde bringen, weil es keine Datei gibt, in die
+   man springen koennte. */
+
+var RADIO_DAUER = 210;            // Rueckfall, wenn ein Stueck keine Laenge nennt
+var RADIO_MAX_SPRUNG = 12 * 3600e3;   // laenger her? Dann faengt der Sender neu an
+
+var sfxPack = null;
+
+function packLesen() {
+  try {
+    sfxPack = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'sfx', 'sounds.json'), 'utf8'));
+  } catch (e) {
+    sfxPack = null;
+    console.warn('Sound-Pack nicht lesbar — Radio bleibt aus:', e.message);
+  }
+}
+packLesen();
+
+/** Alle Stuecke aus dem Pack, als Verzeichnis id -> Eintrag. */
+function packStuecke() {
+  var raus = {};
+  var liste = sfxPack && Array.isArray(sfxPack.music) ? sfxPack.music : [];
+  liste.forEach(function (t) { if (t && t.id && t.file) raus[t.id] = t; });
+  return raus;
+}
+
+/** Ein Sender aus dem Pack. Ohne Eintrag: null — dann laeuft er lokal. */
+function packSender(id) {
+  var liste = sfxPack && Array.isArray(sfxPack.radio) ? sfxPack.radio : [];
+  for (var i = 0; i < liste.length; i++) {
+    if (liste[i] && liste[i].id === id) return liste[i];
+  }
+  return null;
+}
+
+/* Was gerade laeuft, je Sender. Bewusst nur im Speicher: ein Neustart
+   faengt die Sendung von vorn an, und das ist genau richtig — eine
+   Startzeit von gestern in der Datenbank waere nichts wert. */
+var radios = {};
+
+function stueckDauer(st, id) {
+  var t = packStuecke()[id];
+  var d = t && Number(t.dauer);
+  if (d && d > 0) return Math.round(d);
+  return Math.max(30, Math.round(Number(st.dauer) || RADIO_DAUER));
+}
+
+/** Die Stuecke eines Senders in Sendereihenfolge, gemischt falls gewuenscht. */
+function radioReihe(st) {
+  var da = packStuecke();
+  var ids = Array.isArray(st.tracks) && st.tracks.length
+    ? st.tracks.filter(function (id) { return !!da[id]; })
+    : Object.keys(da);
+  if (st.mischen !== false && ids.length > 2) {
+    for (var i = ids.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+    }
+  }
+  return ids;
+}
+
+/**
+ * Stand eines Senders — und dabei so weit vorspulen, wie Zeit vergangen ist.
+ *
+ * Am Ende der Reihe wird neu gemischt, sonst hoerte man ewig dieselbe
+ * Abfolge. Die Schleife ist nach oben begrenzt: laeuft der Server lange
+ * ohne Zuhoerer, faengt der Sender lieber neu an, als zehntausend
+ * Titelwechsel nachzurechnen.
+ */
+function radioStand(id) {
+  var st = packSender(id);
+  if (!st) return null;
+  var r = radios[id];
+  var jetzt = Date.now();
+  if (!r || !r.reihe.length) r = radios[id] = { reihe: radioReihe(st), pos: 0, start: jetzt };
+  if (!r.reihe.length) return null;
+  if (jetzt - r.start > RADIO_MAX_SPRUNG) { r.reihe = radioReihe(st); r.pos = 0; r.start = jetzt; }
+
+  var wache = 0;
+  while (jetzt - r.start >= stueckDauer(st, r.reihe[r.pos]) * 1000) {
+    r.start += stueckDauer(st, r.reihe[r.pos]) * 1000;
+    r.pos++;
+    if (r.pos >= r.reihe.length) { r.reihe = radioReihe(st); r.pos = 0; }
+    if (++wache > 4000) { r.start = jetzt; r.pos = 0; break; }
+  }
+
+  var dauer = stueckDauer(st, r.reihe[r.pos]);
+  return {
+    sender: id,
+    name: st.name || id,
+    track: r.reihe[r.pos],
+    naechster: r.reihe[(r.pos + 1) % r.reihe.length],
+    start: r.start,
+    dauer: dauer,
+    /* Die Serverzeit mitschicken: die Uhr im Browser geht fast nie
+       genau, und ohne diesen Abgleich spulte jeder um seinen eigenen
+       Fehler daneben. */
+    jetzt: jetzt,
+    laenge: r.reihe.length,
+    pos: r.pos
+  };
+}
+
+/** Weiterschalten — der Rest des laufenden Stuecks faellt weg. */
+function radioWeiter(id) {
+  var st = packSender(id);
+  if (!st) return null;
+  radioStand(id);                       // erst auf Stand bringen
+  var r = radios[id];
+  if (!r) return null;
+  r.pos++;
+  if (r.pos >= r.reihe.length) { r.reihe = radioReihe(st); r.pos = 0; }
+  r.start = Date.now();
+  return radioStand(id);
+}
+
+/** Ein bestimmtes Stueck auflegen. */
+function radioWaehlen(id, trackId) {
+  var st = packSender(id);
+  if (!st) return null;
+  radioStand(id);
+  var r = radios[id];
+  if (!r) return null;
+  var wo = r.reihe.indexOf(trackId);
+  if (wo < 0) {
+    /* Nicht in der laufenden Reihe, aber im Sender? Dann direkt dahinter
+       einsortieren, statt die Reihe wegzuwerfen. */
+    if (!packStuecke()[trackId]) return { error: 'Unbekanntes Stück' };
+    if (Array.isArray(st.tracks) && st.tracks.length && st.tracks.indexOf(trackId) < 0) {
+      return { error: 'Gehört nicht zu diesem Sender' };
+    }
+    r.reihe.splice(r.pos + 1, 0, trackId);
+    wo = r.pos + 1;
+  }
+  r.pos = wo;
+  r.start = Date.now();
+  return radioStand(id);
+}
+
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -677,6 +836,24 @@ function applyOp(op) {
       if (!pin) return { error: 'PIN darf nicht leer sein', code: 400 };
       db.settings.adminPin = pin;
       break;
+    }
+
+    /* Radio: der Admin darf umschalten. Beides aendert nichts an der
+       Datenbank — der Sender laeuft im Speicher —, deshalb geht die
+       Antwort hier direkt raus und nicht durch saveDB(). */
+    case 'radioSkip': {
+      var rs = radioWeiter(clean(op.sender, 40));
+      if (!rs) return { error: 'Sender nicht gefunden', code: 404 };
+      pushFeed('Radio weitergeschaltet', 'admin');
+      return { radio: rs, state: publicState() };
+    }
+
+    case 'radioPick': {
+      var rp = radioWaehlen(clean(op.sender, 40), clean(op.track, 40));
+      if (!rp) return { error: 'Sender nicht gefunden', code: 404 };
+      if (rp.error) return { error: rp.error, code: 400 };
+      pushFeed('Radio: Stück gewählt', 'admin');
+      return { radio: rp, state: publicState() };
     }
 
     case 'wipe': {
@@ -917,6 +1094,29 @@ function handleRequest(req, res) {
         partyLog: db.partyLog || []
       });
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Was laeuft gerade im Radio? ──
+     Offen fuer jeden: es steht ohnehin gleich im Musikfenster. Ohne
+     Sender in der Adresse kommt die Liste der Sender, die hier laufen —
+     daran erkennt der Browser, welcher Sender synchron geht und welcher
+     bei ihm allein spielt. */
+  if (url.indexOf('/api/radio') === 0 && req.method === 'GET') {
+    var rFrage = (url.split('?')[1] || '');
+    var rId = '';
+    rFrage.split('&').forEach(function (teil) {
+      var st = teil.split('=');
+      if (st[0] === 'sender') { try { rId = decodeURIComponent(st[1] || ''); } catch (e) { rId = ''; } }
+    });
+    if (!rId) {
+      var alle = (sfxPack && Array.isArray(sfxPack.radio) ? sfxPack.radio : [])
+        .filter(function (s) { return s && s.id; })
+        .map(function (s) { return s.id; });
+      return sendJSON(res, 200, { sender: alle, jetzt: Date.now() });
+    }
+    var stand = radioStand(rId);
+    if (!stand) return sendJSON(res, 404, { error: 'Sender läuft nicht auf dem Server' });
+    return sendJSON(res, 200, stand);
   }
 
   /* ── Protokoll der Partys ──

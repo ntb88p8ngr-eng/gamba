@@ -674,6 +674,128 @@
 
   Music.radio = { an: false, sender: '', reihe: [], pos: 0, _uhr: null };
 
+  /* ── Gleichlauf ───────────────────────────────────────────────────
+     Ein Sender aus dem Pack läuft nicht hier, sondern auf dem Server:
+     der weiß, welches Stück gerade dran ist und seit wann. Wer
+     einschaltet, kommt mitten hinein — wie bei einem echten Radio, und
+     alle hören dasselbe.
+
+     Der eingebaute Mischsender bleibt lokal. Er spielt die live erzeugten
+     Loops, und die entstehen in jedem Browser einzeln; es gibt keine
+     Datei, in die man springen könnte, also auch nichts abzugleichen.
+
+     `versatz` fängt den Unterschied der Uhren ab. Ohne ihn spulte jeder
+     um seinen eigenen Uhrenfehler daneben. */
+  Music.sync = {
+    an: false,        // läuft der laufende Sender über den Server?
+    track: '',
+    start: 0,         // Serverzeit, zu der das Stück begann
+    dauer: 0,
+    versatz: 0,       // Serverzeit − Browserzeit
+    _uhr: null,
+    _holt: false
+  };
+
+  /* Wie oft zwischendurch nachgefragt wird. Für den Gleichlauf allein
+     täte es viel seltener — die Startzeit steht ja fest. Es geht um den
+     Admin: schaltet er weiter, hören die anderen sonst minutenlang das
+     alte Stück zu Ende. Zehn Sekunden sind der Preis dafür, und die
+     Antwort ist ein paar Zeilen JSON. */
+  var SYNC_NACH = 10000;
+  var SYNC_TOLERANZ = 2.5;  // ab so viel Sekunden Abweichung wird nachgespult
+
+  /** Serverzeit, so gut wie dieser Browser sie kennt. */
+  function serverJetzt() { return Date.now() + Music.sync.versatz; }
+
+  function syncUhrAus() {
+    if (Music.sync._uhr) { clearTimeout(Music.sync._uhr); Music.sync._uhr = null; }
+  }
+
+  /** Position im laufenden Stück, in Sekunden. */
+  Music.sync.offset = function () {
+    if (!Music.sync.an || !Music.sync.start) return 0;
+    return Math.max(0, (serverJetzt() - Music.sync.start) / 1000);
+  };
+
+  /**
+   * Den Stand beim Server holen und übernehmen.
+   *
+   * Steht dort ein anderes Stück, wird gewechselt; steht dasselbe, wird
+   * nur nachgespult, falls die Abweichung auffällt. Blindes Nachspulen
+   * bei jeder Antwort würde man hören.
+   */
+  function syncHolen(erzwingen) {
+    if (!Music.radio.an || Music.sync._holt) return;
+    var sender = Music.radio.sender;
+    if (!GK.net || !GK.net.radio) { syncAus(); return; }
+    Music.sync._holt = true;
+    GK.net.radio(sender).then(function (d) {
+      Music.sync._holt = false;
+      if (!Music.radio.an || Music.radio.sender !== sender) return;
+      if (!d || !d.track) { syncAus(); return; }
+      Music.sync.an = true;
+      Music.sync.versatz = d.jetzt - Date.now();
+      Music.sync.start = d.start;
+      Music.sync.dauer = d.dauer;
+      var idx = -1;
+      for (var i = 0; i < TRACKS.length; i++) if (TRACKS[i].id === d.track) idx = i;
+      if (idx < 0) { syncPlanen(6000); return; }   // Stück (noch) nicht bekannt
+      var wechsel = Music.sync.track !== d.track || Music.trackIdx !== idx;
+      Music.sync.track = d.track;
+      if (wechsel || erzwingen) {
+        spieleIntern(idx);
+        syncSpulen(true);
+      } else {
+        syncSpulen(false);
+      }
+      /* Kurz nach dem Ende des Stücks wieder nachsehen — dann steht dort
+         schon das nächste. */
+      var rest = Math.max(1, Music.sync.dauer - Music.sync.offset());
+      syncPlanen(Math.min(SYNC_NACH, rest * 1000 + 700));
+      if (GK.emit) GK.emit('musik-liste');
+    }, function () {
+      Music.sync._holt = false;
+      /* Kein Server, kein Gleichlauf: dann läuft der Sender eben hier.
+         Besser lokale Musik als gar keine. */
+      if (!Music.sync.an) syncAus();
+      else syncPlanen(15000);
+    });
+  }
+  Music.syncHolen = syncHolen;
+
+  function syncPlanen(ms) {
+    syncUhrAus();
+    if (!Music.radio.an || !Music.sync.an) return;
+    Music.sync._uhr = setTimeout(function () { Music.sync._uhr = null; syncHolen(false); }, ms);
+  }
+
+  /** An die Stelle spulen, an der der Sender gerade steht. */
+  function syncSpulen(immer) {
+    if (!Music.sync.an || !audio || !istDatei()) return;
+    var soll = Music.sync.offset();
+    if (soll >= Music.sync.dauer) return;          // gleich kommt ohnehin das nächste
+    if (!isFinite(audio.duration) || !audio.duration) {
+      /* Die Länge steht noch nicht fest — sobald sie da ist, nachziehen. */
+      audio.addEventListener('loadedmetadata', function once() {
+        audio.removeEventListener('loadedmetadata', once);
+        syncSpulen(true);
+      });
+      return;
+    }
+    if (soll > audio.duration - 1) return;
+    if (immer || Math.abs(audio.currentTime - soll) > SYNC_TOLERANZ) {
+      try { audio.currentTime = soll; } catch (e) {}
+    }
+  }
+
+  function syncAus() {
+    Music.sync.an = false;
+    Music.sync.track = '';
+    Music.sync.start = 0;
+    Music.sync.dauer = 0;
+    syncUhrAus();
+  }
+
   /** Alle Sender, die zum laufenden Anstrich passen. */
   Music.sender = function () {
     var skin = GK.skin ? GK.skin() : 'default';
@@ -725,7 +847,8 @@
   /** Uhr für das laufende Stück stellen — nur die erzeugten Loops brauchen sie. */
   function uhrStellen() {
     uhrAus();
-    if (!Music.radio.an || istDatei()) return;
+    /* Im Gleichlauf zählt allein die Serveruhr. */
+    if (!Music.radio.an || Music.sync.an || istDatei()) return;
     var sender = senderVon(Music.radio.sender);
     Music.radio._uhr = setTimeout(function () {
       Music.radio._uhr = null;
@@ -736,6 +859,10 @@
   /** Nächstes Stück im Sender. Am Ende der Reihe geht es von vorn los. */
   Music.weiter = function () {
     if (!Music.radio.an) return;
+    /* Im Gleichlauf entscheidet der Server, was als Nächstes kommt —
+       hier wird nur nachgefragt. Sonst liefe jeder Browser der Sendung
+       davon, sobald sein Stück durch ist. */
+    if (Music.sync.an) { syncHolen(false); return; }
     if (!Music.radio.reihe.length) { Music.radioAus(); return; }
     Music.radio.pos = (Music.radio.pos + 1) % Music.radio.reihe.length;
     /* Nur einmal durch: war die Reihe zu Ende, wird für die nächste Runde
@@ -766,8 +893,13 @@
     Music.radio.sender = sender.id;
     Music.radio.reihe = reiheBauen(sender);
     Music.radio.pos = 0;
+    syncAus();
     if (!Music.radio.reihe.length) { Music.radio.an = false; return false; }
+    /* Erst einmal lokal anfangen, damit sofort etwas läuft. Kennt der
+       Server den Sender, übernimmt er gleich darauf — dann springt es
+       einmal auf die Stelle, an der die Sendung gerade steht. */
     spieleIntern(Music.radio.reihe[0]);
+    syncHolen(true);
     if (GK.emit) GK.emit('musik-liste');
     return true;
   };
@@ -775,6 +907,7 @@
   Music.radioAus = function () {
     Music.radio.an = false;
     uhrAus();
+    syncAus();
     if (audio) audio.loop = true;
     /* Lief gerade ein Stück, das nur zum Sender gehört, kann es hier nicht
        weiterlaufen: es steht in keiner Liste, die Auswahl zeigte also
@@ -876,8 +1009,11 @@
     Music.playing = false;
     if (Music._timer) { clearInterval(Music._timer); Music._timer = null; }
     /* Die Senderwahl bleibt stehen: wer die Musik wieder anmacht, hört das
-       Radio weiter. Nur die Uhr läuft nicht durch die Pause. */
+       Radio weiter. Nur die Uhr läuft nicht durch die Pause — auch die
+       vom Server, sonst schaltete das Nachfragen die Musik von allein
+       wieder ein. */
     uhrAus();
+    syncUhrAus();
   };
 
   /** Jeder Track bringt seine eigene Klangfarbe mit — von dumpf bis offen. */
@@ -913,7 +1049,13 @@
 
   Music.toggle = function () {
     if (Music.playing && Music.enabled) Music.stop();
-    else Music.start();
+    else {
+      Music.start();
+      /* Nach einer Pause steht die Sendung woanders — also nachsehen und
+         an die richtige Stelle springen, statt dort weiterzumachen, wo
+         man ausgestiegen ist. */
+      if (Music.radio.an) syncHolen(true);
+    }
     save();
     return Music.enabled;
   };

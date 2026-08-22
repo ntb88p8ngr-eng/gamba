@@ -182,6 +182,7 @@
     {
       "_": "Die zehn Titel von Vegas FM. nurRadio, weil sie als Sendung gedacht sind und nicht als zehn einzelne Eintraege in der Auswahl.",
       "id": "vfm-las-vegas",
+      "dauer": 253,
       "name": "Las Vegas",
       "mood": "Dean Martin · Swing",
       "file": "music/vegas-fm/Dean Martin - Las Vegas.mp3",
@@ -191,6 +192,7 @@
     },
     {
       "id": "vfm-jailhouse-rock",
+      "dauer": 156,
       "name": "Jailhouse Rock",
       "mood": "Elvis Presley · Rock 'n' Roll",
       "file": "music/vegas-fm/Elvis Presley - Jailhouse Rock.mp3",
@@ -200,6 +202,7 @@
     },
     {
       "id": "vfm-fly-me-to-the-moon",
+      "dauer": 148,
       "name": "Fly Me To The Moon",
       "mood": "Swing · Bar-Klassiker",
       "file": "music/vegas-fm/Fly Me To The Moon (2008 Remastered).mp3",
@@ -209,6 +212,7 @@
     },
     {
       "id": "vfm-gold-digger",
+      "dauer": 209,
       "name": "Gold Digger",
       "mood": "Kanye West feat. Jamie Foxx · Hip-Hop",
       "file": "music/vegas-fm/Gold Digger - Kanye West ft Jamie Foxx (Dirty) - Zweanky1 (192k).mp3",
@@ -218,6 +222,7 @@
     },
     {
       "id": "vfm-gregory-is-here",
+      "dauer": 398,
       "name": "Gregory Is Here",
       "mood": "Horace Silver · Hard Bop",
       "file": "music/vegas-fm/Horace Silver-Gregory is Here.mp3",
@@ -227,6 +232,7 @@
     },
     {
       "id": "vfm-rising-sun",
+      "dauer": 269,
       "name": "House of the Rising Sun",
       "mood": "Blues · Klassiker",
       "file": "music/vegas-fm/House of the Rising Sun.mp3",
@@ -236,6 +242,7 @@
     },
     {
       "id": "vfm-cousin-mary",
+      "dauer": 352,
       "name": "Cousin Mary",
       "mood": "John Coltrane · Hard Bop",
       "file": "music/vegas-fm/John Coltrane - Cousin Mary.mp3",
@@ -245,6 +252,7 @@
     },
     {
       "id": "vfm-sentimental-mood",
+      "dauer": 256,
       "name": "In a Sentimental Mood",
       "mood": "John Coltrane · Ballade",
       "file": "music/vegas-fm/John Coltrane - In A Sentimental Mood.mp3",
@@ -254,6 +262,7 @@
     },
     {
       "id": "vfm-because-the-night",
+      "dauer": 190,
       "name": "Because the Night",
       "mood": "Patti Smith · Rock",
       "file": "music/vegas-fm/Patti Smith's  Because the Night.mp3",
@@ -263,6 +272,7 @@
     },
     {
       "id": "vfm-take-five",
+      "dauer": 324,
       "name": "Take Five",
       "mood": "Dave Brubeck Quartet · Cool Jazz",
       "file": "music/vegas-fm/Take Five.mp3",

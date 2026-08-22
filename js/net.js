@@ -107,6 +107,21 @@
     return api('api/partys', { method: 'POST', body: JSON.stringify(body) });
   };
 
+  /**
+   * Was läuft gerade im Radio?
+   *
+   * Offen für jeden — es steht ohnehin gleich im Musikfenster. Ohne
+   * Sender kommt die Liste derer, die auf dem Server laufen; daran
+   * erkennt der Browser, welcher Sender im Gleichlauf geht.
+   *
+   * Läuft kein Server, kommt null zurück und der Sender spielt lokal
+   * weiter — besser die eigene Reihenfolge als gar keine Musik.
+   */
+  Net.radio = function (sender) {
+    if (!Net.online) return Promise.resolve(null);
+    return api('api/radio' + (sender ? '?sender=' + encodeURIComponent(sender) : ''));
+  };
+
   /** Rohdaten der Statistik holen (nur Admin) — für die Ausfuhr als Datei. */
   Net.statExport = function () {
     if (!Net.online) return Promise.resolve(null);
