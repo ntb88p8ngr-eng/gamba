@@ -279,11 +279,20 @@
     'Für diesen Anstrich ist kein Stück hinterlegt.':
       'No track is set up for this skin.',
     '📻 RADIO': '📻 RADIO', '⏹ RADIO AUS': '⏹ RADIO OFF',
-    'Bunt gemischt': 'Mixed bag',
-    'Alles, was zum Anstrich passt — gemischt': 'Everything that fits the skin — shuffled',
     /* Radio: Gleichlauf und die Bedienung im Admin-Panel. */
     'SENDER': 'STATION', 'STÜCK': 'TRACK',
     '⏭ WEITER': '⏭ NEXT', '▶ AUFLEGEN': '▶ PLAY',
+    /* Webradios */
+    'WEBRADIOS': 'WEB RADIOS', 'Webradio': 'Web radio', 'live': 'live',
+    'NAME': 'NAME', 'SYMBOL': 'ICON',
+    'ADRESSE DES STROMS': 'STREAM ADDRESS', 'UNTERZEILE': 'SUBTITLE',
+    'IN WELCHEN ANSTRICHEN?': 'IN WHICH SKINS?',
+    '＋ ANLEGEN': '＋ ADD', '✓ ÄNDERN': '✓ SAVE', '✕ FORMULAR LEEREN': '✕ CLEAR FORM',
+    'Noch kein Webradio angelegt.': 'No web radio set up yet.',
+    'überall': 'everywhere',
+    'Webradio gespeichert': 'Web radio saved',
+    'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Ein Webradio läuft, wie es läuft: es lässt sich nicht spulen und nicht weiterschalten, und was gerade gespielt wird, verrät der Strom nicht. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.':
+      'The address of a radio stream as a station on the net provides it — it must start with http:// or https://. A web radio runs the way it runs: it cannot be seeked or skipped, and the stream does not say what is playing. With no boxes ticked it appears in every skin. Click a row to load it for editing.',
     'Wird geladen …': 'Loading …',
     'Kein Server': 'No server',
     'Sender läuft nicht': 'Station is not running',

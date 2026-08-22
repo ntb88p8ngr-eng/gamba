@@ -324,7 +324,7 @@
   ],
   "radio": [
     {
-      "_": "Radiosender: spielen mehrere Stuecke hintereinander. Felder: id, name, was (Untertitel), tracks (Liste von Musik-Kennungen, ohne = alles was zum Anstrich passt), mischen (true/false), dauer (Sekunden je erzeugtem Loop; Dateien laufen bis zum Ende), skins. Der eingebaute Sender 'Bunt gemischt' braucht keinen Eintrag."
+      "_": "Radiosender: spielen mehrere Stuecke hintereinander. Felder: id, name, was (Untertitel), tracks (Liste von Musik-Kennungen, ohne = alles was zum Anstrich passt), mischen (true/false), dauer (Sekunden je erzeugtem Loop; Dateien laufen bis zum Ende), skins. Webradios stehen nicht hier — die legt der Admin im Panel an."
     },
     {
       "id": "vegas-fm",

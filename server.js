@@ -98,7 +98,12 @@ function emptyDB() {
       /* Naechster Wipe: Zeitpunkt in Millisekunden, 0 = keiner geplant.
          wipeXp sagt, ob dabei auch die Stufen fallen. */
       wipeAt: 0,
-      wipeXp: false
+      wipeXp: false,
+      /* Webradios, die der Admin im Panel anlegt: { id, name, icon, url,
+         skins }. Anders als die Sender aus dem Sound-Pack liegen sie hier
+         und nicht in einer Datei — sie sollen sich im laufenden Betrieb
+         anlegen lassen, ohne dass jemand ans Dateisystem muss. */
+      webRadios: []
     }
   };
 }
@@ -115,6 +120,7 @@ function loadDB() {
     db.settings = Object.assign(emptyDB().settings, db.settings || {});
     if (!db.settings.spielLuck || typeof db.settings.spielLuck !== 'object') db.settings.spielLuck = {};
     if (!db.settings.spielRegel || typeof db.settings.spielRegel !== 'object') db.settings.spielRegel = {};
+    if (!Array.isArray(db.settings.webRadios)) db.settings.webRadios = [];
     return db;
   } catch (e) {
     return emptyDB();
@@ -358,7 +364,11 @@ function publicState() {
     spielLuck: db.settings.spielLuck || {},
     spielRegel: db.settings.spielRegel || {},
     wipeAt: db.settings.wipeAt || 0,
-    wipeXp: !!db.settings.wipeXp
+    wipeXp: !!db.settings.wipeXp,
+    /* Die Webradios gehen an jeden: sie stehen ohnehin gleich in der
+       Senderauswahl, und ohne sie wüsste der Browser nicht, was es zu
+       hören gibt. */
+    webRadios: db.settings.webRadios || []
   };
 }
 
@@ -618,9 +628,54 @@ function radioWaehlen(id, trackId) {
   return radioStand(id);
 }
 
+/* ─────────────── Webradios ───────────────
+   Ein Webradio ist kein Sender wie die aus dem Sound-Pack: es gibt keine
+   Stueckliste, keine Laengen und nichts zu takten. Der Browser haengt
+   sich an einen Strom, der ohnehin schon laeuft — damit hoeren alle
+   dasselbe, ganz ohne Uhr auf dem Server.
+
+   Angelegt werden sie im Admin-Panel und liegen deshalb in der Datenbank,
+   nicht in einer Datei. */
+
+var WEBRADIO_MAX = 40;
+
+/**
+ * Adresse eines Stroms pruefen.
+ *
+ * Das hier ist eine Adresse, die jeder Browser spaeter laedt — deshalb
+ * wird sie nicht einfach durchgereicht. Erlaubt sind http und https, mehr
+ * nicht: javascript: und data: waeren sonst ein offenes Scheunentor.
+ */
+function stromAdresse(roh) {
+  var s = clean(roh, 500).trim();
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) return '';
+  /* Anfuehrungszeichen und spitze Klammern haben in einer Adresse nichts
+     verloren und waeren nur ein Weg, aus dem Attribut auszubrechen. */
+  if (/["'<>\\]/.test(s)) return '';
+  return s;
+}
+
+/** Nur Anstriche, die es wirklich gibt — der Rest faellt still weg. */
+var SKIN_IDS = { 'default': 1, 'old-vegas': 1 };
+
+function skinListe(roh) {
+  if (!Array.isArray(roh)) return [];
+  var raus = [];
+  roh.forEach(function (s) {
+    var id = clean(s, 40).trim();
+    if (SKIN_IDS[id] && raus.indexOf(id) < 0) raus.push(id);
+  });
+  return raus;
+}
+
+function webRadioKennung() {
+  return 'wr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -841,6 +896,45 @@ function applyOp(op) {
     /* Radio: der Admin darf umschalten. Beides aendert nichts an der
        Datenbank — der Sender laeuft im Speicher —, deshalb geht die
        Antwort hier direkt raus und nicht durch saveDB(). */
+    /* Webradio anlegen oder aendern. Dieselbe Operation fuer beides: mit
+       Kennung wird der vorhandene Eintrag ueberschrieben, ohne kommt ein
+       neuer dazu. */
+    case 'webRadioSet': {
+      var wrName = clean(op.name, 40).trim();
+      var wrUrl = stromAdresse(op.url);
+      if (!wrName) return { error: 'Name fehlt', code: 400 };
+      if (!wrUrl) return { error: 'Adresse muss mit http:// oder https:// anfangen', code: 400 };
+      var liste = db.settings.webRadios;
+      var eintrag = {
+        id: clean(op.id, 40).trim() || webRadioKennung(),
+        name: wrName,
+        /* Ein Zeichen als Symbol reicht — ein Emoji zaehlt in JavaScript
+           gern als zwei, deshalb vier Stellen Luft statt einer. */
+        icon: clean(op.icon, 4).trim() || '📻',
+        was: clean(op.was, 90).trim(),
+        url: wrUrl,
+        skins: skinListe(op.skins)
+      };
+      var wo = -1;
+      for (var wi = 0; wi < liste.length; wi++) if (liste[wi].id === eintrag.id) wo = wi;
+      if (wo >= 0) liste[wo] = eintrag;
+      else {
+        if (liste.length >= WEBRADIO_MAX) return { error: 'Zu viele Webradios', code: 400 };
+        liste.push(eintrag);
+      }
+      pushFeed('Webradio ' + (wo >= 0 ? 'geändert' : 'angelegt') + ': ' + eintrag.name, 'admin');
+      break;
+    }
+
+    case 'webRadioDel': {
+      var delId = clean(op.id, 40).trim();
+      var vorher = db.settings.webRadios.length;
+      db.settings.webRadios = db.settings.webRadios.filter(function (r) { return r.id !== delId; });
+      if (db.settings.webRadios.length === vorher) return { error: 'Nicht gefunden', code: 404 };
+      pushFeed('Webradio entfernt', 'admin');
+      break;
+    }
+
     case 'radioSkip': {
       var rs = radioWeiter(clean(op.sender, 40));
       if (!rs) return { error: 'Sender nicht gefunden', code: 404 };

@@ -655,22 +655,16 @@
   }
 
   /* ── Radio ────────────────────────────────────────────────────────
-     Ein Sender ist eine Reihenfolge von Stücken, die von selbst
-     weiterläuft. Die eingebauten Loops enden nie von allein — für sie
-     zählt eine Uhr; eine Datei wechselt, wenn sie durch ist.
+     Es gibt zwei Arten von Sendern, und sie haben wenig gemeinsam.
 
-     Der Sender „Bunt gemischt" braucht keinen Eintrag: er nimmt alles,
-     was zum laufenden Anstrich gehört, und mischt es. Weitere Sender
-     kommen aus dem Sound-Pack (Block "radio" in sounds.json). */
-  var EIGEN_SENDER = {
-    id: 'bunt', name: 'Bunt gemischt', was: 'Alles, was zum Anstrich passt — gemischt',
-    tracks: null, mischen: true, dauer: 210,
-    /* Der eingebaute Sender gehört zu Old Vegas: dort passt ein Radio ins
-       Bild, im Standard-Anstrich bleibt es bei der Stückauswahl. Wie bei
-       den Sendern aus dem Pack ist das nur eine Liste von Anstrichen —
-       null hieße „überall". */
-    skins: ['old-vegas']
-  };
+     Ein Sender aus dem Sound-Pack spielt eigene Dateien in fester
+     Reihenfolge. Was gerade dran ist, weiß der Server; der Browser fragt
+     nach und spult an die Stelle. Das ist der Gleichlauf weiter unten.
+
+     Ein Webradio ist ein fremder Strom, der ohnehin schon läuft. Da gibt
+     es keine Stückliste, keine Länge und nichts zu takten — man hängt
+     sich dran, und damit hören alle dasselbe. Angelegt werden sie im
+     Admin-Panel; hierher kommen sie über den Serverstand. */
 
   Music.radio = { an: false, sender: '', reihe: [], pos: 0, _uhr: null };
 
@@ -726,6 +720,9 @@
    */
   function syncHolen(erzwingen) {
     if (!Music.radio.an || Music.sync._holt) return;
+    /* Ein Webradio läuft von sich aus gleich — da gibt es nichts
+       abzugleichen und niemanden zu fragen. */
+    if (Music.strom.an) return;
     var sender = Music.radio.sender;
     if (!GK.net || !GK.net.radio) { syncAus(); return; }
     Music.sync._holt = true;
@@ -796,26 +793,41 @@
     syncUhrAus();
   }
 
-  /** Alle Sender, die zum laufenden Anstrich passen. */
+  /** Die Webradios, die der Admin angelegt hat. */
+  Music.webRadios = function () {
+    var s = GK.state && GK.state.webRadios;
+    return Array.isArray(s) ? s : [];
+  };
+
+  /**
+   * Alle Sender, die zum laufenden Anstrich passen.
+   *
+   * Erst die aus dem Sound-Pack, dann die Webradios. Eine leere
+   * Anstrichliste heißt „überall" — sonst wäre ein Sender ohne Häkchen
+   * nirgends zu hören, und das meint niemand.
+   */
   Music.sender = function () {
     var skin = GK.skin ? GK.skin() : 'default';
+    var passt = function (r) { return !r.skins || !r.skins.length || r.skins.indexOf(skin) >= 0; };
     var liste = [];
-    if (!EIGEN_SENDER.skins || EIGEN_SENDER.skins.indexOf(skin) >= 0) liste.push(EIGEN_SENDER);
     if (GK.sfxPack && GK.sfxPack.radio) {
-      GK.sfxPack.radio().forEach(function (r) {
-        if (!r.skins || r.skins.indexOf(skin) >= 0) liste.push(r);
-      });
+      GK.sfxPack.radio().forEach(function (r) { if (passt(r)) liste.push(r); });
     }
+    Music.webRadios().forEach(function (r) {
+      if (!r || !r.url || !passt(r)) return;
+      liste.push({
+        id: r.id, name: r.name, was: r.was || '', icon: r.icon || '📻',
+        url: r.url, web: true
+      });
+    });
     return liste;
   };
 
+  /** Sender zu einer Kennung — oder null, wenn es ihn hier nicht gibt. */
   function senderVon(id) {
     var alle = Music.sender();
     for (var i = 0; i < alle.length; i++) if (alle[i].id === id) return alle[i];
-    /* Kennt der laufende Anstrich diesen Sender nicht, hilft der erste, den
-       es hier gibt — und wenn es gar keinen gibt, der eingebaute als
-       Notnagel, damit senderVon nie undefined liefert. */
-    return alle[0] || EIGEN_SENDER;
+    return null;
   }
 
   /** Die Reihenfolge eines Senders aufbauen — als echte Positionen in TRACKS. */
@@ -847,8 +859,9 @@
   /** Uhr für das laufende Stück stellen — nur die erzeugten Loops brauchen sie. */
   function uhrStellen() {
     uhrAus();
-    /* Im Gleichlauf zählt allein die Serveruhr. */
-    if (!Music.radio.an || Music.sync.an || istDatei()) return;
+    /* Im Gleichlauf zählt allein die Serveruhr, und ein Webradio endet
+       überhaupt nicht. */
+    if (!Music.radio.an || Music.sync.an || Music.strom.an || istDatei()) return;
     var sender = senderVon(Music.radio.sender);
     Music.radio._uhr = setTimeout(function () {
       Music.radio._uhr = null;
@@ -858,7 +871,7 @@
 
   /** Nächstes Stück im Sender. Am Ende der Reihe geht es von vorn los. */
   Music.weiter = function () {
-    if (!Music.radio.an) return;
+    if (!Music.radio.an || Music.strom.an) return;
     /* Im Gleichlauf entscheidet der Server, was als Nächstes kommt —
        hier wird nur nachgefragt. Sonst liefe jeder Browser der Sendung
        davon, sobald sein Stück durch ist. */
@@ -888,12 +901,24 @@
   }
 
   Music.radioAn = function (id) {
-    var sender = senderVon(id || Music.radio.sender || EIGEN_SENDER.id);
+    var sender = senderVon(id || Music.radio.sender);
+    if (!sender) return false;
     Music.radio.an = true;
     Music.radio.sender = sender.id;
-    Music.radio.reihe = reiheBauen(sender);
     Music.radio.pos = 0;
     syncAus();
+
+    /* Ein Webradio hat keine Reihenfolge — es läuft schon. */
+    if (sender.web) {
+      Music.radio.reihe = [];
+      if (!stromAn(sender)) { Music.radio.an = false; return false; }
+      if (GK.emit) GK.emit('musik-liste');
+      save();
+      return true;
+    }
+
+    stromAus();
+    Music.radio.reihe = reiheBauen(sender);
     if (!Music.radio.reihe.length) { Music.radio.an = false; return false; }
     /* Erst einmal lokal anfangen, damit sofort etwas läuft. Kennt der
        Server den Sender, übernimmt er gleich darauf — dann springt es
@@ -904,11 +929,59 @@
     return true;
   };
 
+  /* ── Webradio ─────────────────────────────────────────────────────
+     Ein fremder Strom. Er wird nicht in Schleife gelegt und nicht
+     gespult: er hat kein Ende und keinen Anfang, an den man springen
+     könnte. Ausser der Lautstärke gibt es hier nichts zu regeln.
+
+     Läuft er, schweigt alles andere — der Sequenzer der eingebauten
+     Loops ebenso wie ein Stück aus einer Datei. */
+  Music.strom = { an: false, name: '', url: '' };
+
+  function stromAn(sender) {
+    var a = dateiElement();
+    if (!a) return false;
+    /* Der Generator hat hier nichts mehr zu tun. */
+    if (Music._timer) { clearInterval(Music._timer); Music._timer = null; }
+    Music.enabled = true;
+    Music.strom.an = true;
+    Music.strom.name = sender.name;
+    Music.strom.url = sender.url;
+    a.loop = false;
+    if (a.dataset.quelle !== sender.url) { a.src = sender.url; a.dataset.quelle = sender.url; }
+    applyGain();
+    dateiLautstaerke();
+    Music.playing = true;
+    var p = a.play();
+    if (p && p['catch']) p['catch'](function () { Music.playing = false; });
+    return true;
+  }
+
+  function stromAus() {
+    if (!Music.strom.an) return;
+    Music.strom.an = false;
+    Music.strom.name = '';
+    Music.strom.url = '';
+    dateiAus();
+    if (audio) audio.dataset.quelle = '';
+  }
+
   Music.radioAus = function () {
+    var warStrom = Music.strom.an;
     Music.radio.an = false;
     uhrAus();
     syncAus();
+    stromAus();
     if (audio) audio.loop = true;
+    /* Nach einem Webradio läuft überhaupt nichts mehr — es gehörte zu
+       keinem Stück aus der Liste. Wer die Musik wiederhaben will, wählt
+       eines; das von vorher steht noch markiert da. */
+    if (warStrom) {
+      Music.playing = false;
+      save();
+      if (GK.emit) GK.emit('musik-liste');
+      return;
+    }
     /* Lief gerade ein Stück, das nur zum Sender gehört, kann es hier nicht
        weiterlaufen: es steht in keiner Liste, die Auswahl zeigte also
        Musik ohne markiertes Stück. Also zurück auf das erste, das man auch
@@ -937,14 +1010,29 @@
       audio.loop = true;
       audio.preload = 'none';
       audio.addEventListener('error', function () {
+        /* Ein Webradio, das nicht antwortet, ist nicht zu retten: es gibt
+           kein nächstes Stück, auf das man ausweichen könnte. */
+        if (Music.strom.an) {
+          var name = Music.strom.name;
+          Music.radioAus();
+          if (GK.toast) GK.toast('Webradio nicht erreichbar: ' + name, 'bad', '📻');
+          return;
+        }
         var tr = TRACKS[Music.trackIdx];
         if (GK.toast) GK.toast('Musikdatei nicht abspielbar: ' + (tr && tr.name), 'bad', '🎵');
         /* Im Radio hält eine kaputte Datei die Sendung nicht auf. */
         if (Music.radio.an) setTimeout(Music.weiter, 400);
       });
       /* Im Radio läuft eine Datei einmal durch und gibt dann weiter; ohne
-         Radio wiederholt sie sich wie ein Loop. */
+         Radio wiederholt sie sich wie ein Loop. Ein Strom endet nie von
+         selbst — tut er es doch, ist die Verbindung weg. */
       audio.addEventListener('ended', function () {
+        if (Music.strom.an) {
+          var name = Music.strom.name;
+          Music.radioAus();
+          if (GK.toast) GK.toast('Webradio abgerissen: ' + name, 'bad', '📻');
+          return;
+        }
         if (Music.radio.an) Music.weiter();
       });
     }
@@ -954,7 +1042,9 @@
 
   function dateiLautstaerke() {
     if (!audio) return;
-    var tr = TRACKS[Music.trackIdx];
+    /* Ein fremder Strom bringt keinen eigenen Feinabgleich mit — dort
+       zählt allein der Regler. */
+    var tr = Music.strom.an ? null : TRACKS[Music.trackIdx];
     var eigen = tr && tr.volume !== undefined ? tr.volume : 1;
     audio.volume = Math.max(0, Math.min(1, (Music.volume / 100) * 0.9 * eigen));
   }
@@ -971,6 +1061,13 @@
 
   Music.start = function () {
     Music.enabled = true;
+    /* Läuft ein Webradio, gibt es nichts zu wählen: es wird wieder
+       angehängt, wo es gerade steht. */
+    if (Music.strom.an) {
+      var sd = senderVon(Music.radio.sender);
+      if (sd && sd.web) return stromAn(sd);
+      stromAus();
+    }
     if (istDatei()) {
       /* Der Generator schweigt, solange eine Datei läuft. */
       if (Music._timer) { clearInterval(Music._timer); Music._timer = null; }
@@ -1083,6 +1180,9 @@
       Music.sender().forEach(function (sd) { if (sd.id === Music.radio.sender) gibt = true; });
       if (!gibt) Music.radioAus();
     }
+    /* Läuft danach noch ein Webradio, ist alles Weitere gegenstandslos:
+       es hängt an keinem Stück aus der Liste. */
+    if (Music.strom.an) { if (GK.emit) GK.emit('musik-liste'); return; }
     /* Gehört das laufende Stück überhaupt hierher? Das entscheidet der
        Anstrich, nicht die Auswahlliste — ein Sender-Stück steht dort nie
        und würde sonst bei jedem Anstrichwechsel weggeschaltet, obwohl es

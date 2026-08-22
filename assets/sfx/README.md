@@ -235,14 +235,18 @@ Unter der Stückauswahl steht das **Radio**: ein Sender spielt mehrere
 Stücke hintereinander und schaltet von selbst weiter, statt eines im Loop
 zu lassen.
 
-Der Sender **Bunt gemischt** ist eingebaut und braucht keinen Eintrag —
-er nimmt alles, was zum laufenden Anstrich gehört, und mischt es. Er
-gehört allerdings zu **Old Vegas**: unter dem Standard-Anstrich gibt es
-ihn nicht, und ohne weitere Sender fehlt der Radio-Abschnitt dort ganz.
-Wer ihn überall haben will, ändert in `js/music.js` beim Sender
-`EIGEN_SENDER` die Zeile `skins: ['old-vegas']` auf `skins: null`.
+Es gibt zwei Arten von Sendern, und sie haben wenig gemeinsam.
 
-Eigene Sender kommen aus dem Block `radio`:
+Die einen kommen aus dem Block `radio` hier in dieser Datei und spielen
+Stücke aus dem Pack. Die anderen sind **Webradios**: fremde Ströme, die
+ohnehin schon laufen. Die legt der Admin im Panel an, nicht hier — sie
+liegen beim Server und lassen sich im Betrieb ändern, ohne dass jemand an
+eine Datei muss.
+
+Gibt es für den laufenden Anstrich keinen Sender, fehlt der
+Radio-Abschnitt im Musikfenster ganz.
+
+Sender aus dem Pack:
 
 ```json
 "radio": [
@@ -282,12 +286,13 @@ wann das nächste dran ist. Deshalb das Feld `dauer` in Sekunden. Fehlt
 es, nimmt er die `dauer` des Senders und schaltet nach dieser Zeit
 weiter, egal wie lang die Datei wirklich ist.
 
-Der eingebaute Sender **Bunt gemischt** bleibt im Browser. Er spielt die
-live erzeugten Loops, und die entstehen in jedem Browser einzeln; es gibt
-keine Datei, in die man springen könnte, also auch nichts abzugleichen.
+Ein **Webradio** braucht davon nichts: es läuft ohnehin schon, und wer
+sich dranhängt, hört dasselbe wie alle anderen. Spulen, weiterschalten
+und Titel anzeigen geht dort nicht — der Strom gibt es nicht her.
 
 Läuft kein Server (`index.html` direkt geöffnet), spielt jeder Sender
-lokal weiter — dann eben mit eigener Reihenfolge.
+lokal weiter — dann eben mit eigener Reihenfolge. Webradios gibt es dann
+gar nicht, denn sie stehen beim Server.
 
 `dauer` beim Sender gilt nur für die eingebauten Loops — die enden nie
 von allein. Eine Datei läuft bis zum Ende und gibt dann weiter.

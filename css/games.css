@@ -1309,6 +1309,21 @@
 .radio-admin-stand b{color:var(--gold);font-family:'Bungee',sans-serif;font-size:.76rem}
 .radio-admin-stand span{color:var(--muted);font-size:.72rem}
 
+/* Webradios im Admin-Panel: eine Zeile je Sender, anklickbar zum Ändern. */
+.webradio-liste{display:flex;flex-direction:column;gap:6px}
+.webradio-zeile{
+  display:flex;align-items:center;gap:9px;cursor:pointer;
+  padding:7px 10px;border-radius:12px;border:2px solid var(--line);
+  background:rgba(255,255,255,.05);transition:border-color .15s
+}
+.webradio-zeile:hover{border-color:var(--cyan)}
+.webradio-ic{font-size:1.1rem;flex:0 0 auto}
+.webradio-text{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.webradio-text b{font-family:'Bungee',sans-serif;font-size:.74rem}
+.webradio-text span{font-size:.64rem;color:var(--muted)}
+.webradio-skins{display:flex;flex-wrap:wrap;gap:8px}
+.webradio-skin{flex:0 1 auto;padding:7px 11px}
+
 .mp-label{display:block;margin:10px 0 4px;font-size:.76rem;color:var(--gold);font-family:'Bungee',sans-serif}
 /* Zwei Felder nebeneinander — Min und Max gehören zusammen gelesen. */
 .mp-zwei{display:grid;grid-template-columns:1fr 1fr;gap:10px}

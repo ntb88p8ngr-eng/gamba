@@ -827,7 +827,9 @@
       sender.forEach(function (sd) {
         var an = M.radio.an && M.radio.sender === sd.id;
         var k = el('button', { class: 'radio-kachel' + (an ? ' sel' : ''), type: 'button' }, [
-          el('span', { class: 'radio-ic', text: an ? '📡' : '📻' }),
+          /* Ein Webradio bringt sein eigenes Zeichen mit; die Sender aus
+             dem Pack behalten das Antennensymbol, solange sie laufen. */
+          el('span', { class: 'radio-ic', text: an ? '📡' : (sd.icon || '📻') }),
           el('span', { class: 'radio-text' }, [
             el('span', { class: 'radio-name', text: sd.name }),
             el('span', { class: 'radio-was', text: sd.was || '' })
@@ -873,6 +875,15 @@
       var laeuft = M.radio.an && M.enabled;
       jetztBox.hidden = !laeuft;
       if (!laeuft) return;
+      /* Bei einem Webradio weiß niemand, was gerade gespielt wird — der
+         Strom sagt es nicht. Dann steht dort der Sender selbst. */
+      if (M.strom && M.strom.an) {
+        jetztTitel.textContent = M.strom.name || '—';
+        jetztWas.textContent = 'Webradio';
+        jetztZeit.textContent = 'live';
+        jetztBalken.hidden = true;
+        return;
+      }
       var t = M.tracks[M.trackIdx] || {};
       jetztTitel.textContent = t.name || '—';
       jetztWas.textContent = t.mood || '';
@@ -907,9 +918,9 @@
     radioTeile.push(radioKopf, radioLuft, radioBox, jetztBox, radioHinweis, radioLuft2);
     radioBauen();
 
-    var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: M.volume });
+    var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '1', value: M.volume });
     var musicVolLabel = el('b', { text: M.volume });
-    var sfxVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: GK.volume() });
+    var sfxVol = el('input', { type: 'range', min: '0', max: '100', step: '1', value: GK.volume() });
     var sfxVolLabel = el('b', { text: GK.volume() });
     var offBtn = el('button', { class: 'btn btn-danger btn-full', text: '🔇 MUSIK AUS' });
 
@@ -926,6 +937,11 @@
       offBtn.className = 'btn btn-full ' + (M.enabled ? 'btn-danger' : 'btn-lime');
       musicVolLabel.textContent = M.volume;
       sfxVolLabel.textContent = GK.volume();
+      /* Auch die Regler selbst nachziehen, nicht nur die Zahl daneben:
+         ändert sich die Lautstärke woanders, stünde der Knopf sonst noch
+         an der alten Stelle und der nächste Tastendruck spränge von dort. */
+      if (musicVol.value !== String(M.volume)) musicVol.value = M.volume;
+      if (sfxVol.value !== String(GK.volume())) sfxVol.value = GK.volume();
       if ($('#vol-slider')) $('#vol-slider').value = GK.volume();
     }
 
@@ -1904,6 +1920,98 @@
     var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
     statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
 
+    /* ── Webradios ──
+       Ein fremder Strom, der ohnehin schon läuft: keine Stückliste, keine
+       Längen, nichts zu takten. Angelegt wird er hier und liegt danach
+       beim Server, damit ihn alle sehen.
+
+       Dasselbe Formular legt an und ändert: wer einen Eintrag anklickt,
+       holt ihn zum Bearbeiten herunter. */
+    var wrListe = el('div', { class: 'webradio-liste' });
+    var wrName = el('input', { class: 'mp-feld', type: 'text', maxlength: '40', placeholder: 'z. B. Radio Paradise' });
+    var wrIcon = el('input', { class: 'mp-feld', type: 'text', maxlength: '4', placeholder: '📻' });
+    var wrUrl = el('input', { class: 'mp-feld', type: 'url', maxlength: '500', placeholder: 'https://…' });
+    var wrWas = el('input', { class: 'mp-feld', type: 'text', maxlength: '90', placeholder: 'Kurze Zeile darunter (optional)' });
+    var wrSkinBox = el('div', { class: 'webradio-skins' });
+    var wrSpeichern = el('button', { class: 'btn btn-small btn-lime', text: '＋ ANLEGEN' });
+    var wrNeu = el('button', { class: 'btn btn-small btn-ghost', text: '✕ FORMULAR LEEREN' });
+    var wrId = '';                 // leer = ein neuer Eintrag
+
+    var wrSkinFelder = GK.skins.map(function (sk) {
+      var box = el('input', { type: 'checkbox' });
+      box.dataset.skin = sk.id;
+      wrSkinBox.appendChild(el('label', { class: 'party-schalter webradio-skin' }, [
+        box, el('span', {}, [el('b', { text: sk.emoji + ' ' + sk.name })])
+      ]));
+      return box;
+    });
+
+    function wrFormular(eintrag) {
+      wrId = (eintrag && eintrag.id) || '';
+      wrName.value = (eintrag && eintrag.name) || '';
+      wrIcon.value = (eintrag && eintrag.icon) || '';
+      wrUrl.value = (eintrag && eintrag.url) || '';
+      wrWas.value = (eintrag && eintrag.was) || '';
+      var gewaehlt = (eintrag && eintrag.skins) || [];
+      wrSkinFelder.forEach(function (b) { b.checked = gewaehlt.indexOf(b.dataset.skin) >= 0; });
+      wrSpeichern.textContent = wrId ? '✓ ÄNDERN' : '＋ ANLEGEN';
+    }
+
+    function wrBauen() {
+      wrListe.innerHTML = '';
+      var alle = (GK.state.webRadios || []);
+      if (!alle.length) {
+        wrListe.appendChild(el('p', { class: 'hint', text: 'Noch kein Webradio angelegt.' }));
+        return;
+      }
+      alle.forEach(function (r) {
+        var wo = (r.skins && r.skins.length)
+          ? r.skins.map(function (id) { return GK.skinInfo(id).name; }).join(', ')
+          : 'überall';
+        var weg = el('button', { class: 'btn btn-small btn-danger', text: '🗑' });
+        weg.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          if (!window.confirm(GK.txt('Webradio „' + r.name + '" entfernen?',
+                                     'Remove web radio "' + r.name + '"?'))) return;
+          GK.net.op('webRadioDel', { id: r.id }).then(function () {
+            if (wrId === r.id) wrFormular(null);
+            wrBauen();
+          });
+        });
+        var zeile = el('div', { class: 'webradio-zeile' }, [
+          el('span', { class: 'webradio-ic', text: r.icon || '📻' }),
+          el('span', { class: 'webradio-text' }, [
+            el('b', { text: r.name }),
+            el('span', { text: wo })
+          ]),
+          weg
+        ]);
+        /* Anklicken holt den Eintrag ins Formular — Ändern ist häufiger
+           als Löschen, also liegt es auf der ganzen Zeile. */
+        zeile.addEventListener('click', function () { wrFormular(r); GK.sfx('chip'); });
+        wrListe.appendChild(zeile);
+      });
+    }
+
+    wrNeu.addEventListener('click', function () { GK.sfx('click'); wrFormular(null); });
+    wrSpeichern.addEventListener('click', function () {
+      GK.sfx('click');
+      var skins = wrSkinFelder.filter(function (b) { return b.checked; })
+                              .map(function (b) { return b.dataset.skin; });
+      GK.net.op('webRadioSet', {
+        id: wrId, name: wrName.value, icon: wrIcon.value,
+        url: wrUrl.value, was: wrWas.value, skins: skins
+      }).then(function (out) {
+        if (!out || out.error) return;             // die Meldung kommt vom Netzteil
+        wrFormular(null);
+        wrBauen();
+        GK.toast('Webradio gespeichert', 'gold', '📻');
+      });
+    });
+    GK.on('musik-liste', function () { if (wrListe.isConnected) wrBauen(); });
+    wrFormular(null);
+    wrBauen();
+
     /* ── Radio ──
        Der Sender läuft auf dem Server, also lässt er sich auch von dort
        aus bedienen: einmal weiter, oder gleich ein bestimmtes Stück. Was
@@ -2210,6 +2318,22 @@
             el('div', { style: 'height:8px' }),
             el('div', { class: 'modal-actions' }, [partyNeu]),
             el('p', { class: 'hint', text: 'Jede zu Ende gespielte Party landet hier mit ihren Einstellungen und dem Endstand — die letzten 120 Sitzungen.' })
+          ], true),
+
+          feld('WEBRADIOS', [
+            wrListe,
+            el('div', { style: 'height:10px' }),
+            el('div', { class: 'mp-zwei' }, [
+              el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), wrName]),
+              el('div', {}, [el('label', { class: 'mp-label', text: 'SYMBOL' }), wrIcon])
+            ]),
+            el('label', { class: 'mp-label', text: 'ADRESSE DES STROMS' }), wrUrl,
+            el('label', { class: 'mp-label', text: 'UNTERZEILE' }), wrWas,
+            el('label', { class: 'mp-label', text: 'IN WELCHEN ANSTRICHEN?' }),
+            wrSkinBox,
+            el('div', { style: 'height:10px' }),
+            el('div', { class: 'modal-actions' }, [wrSpeichern, wrNeu]),
+            el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Ein Webradio läuft, wie es läuft: es lässt sich nicht spulen und nicht weiterschalten, und was gerade gespielt wird, verrät der Strom nicht. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
           ], true),
 
           feld('RADIO', [
