@@ -2333,7 +2333,7 @@
             wrSkinBox,
             el('div', { style: 'height:10px' }),
             el('div', { class: 'modal-actions' }, [wrSpeichern, wrNeu]),
-            el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Ein Webradio läuft, wie es läuft: es lässt sich nicht spulen und nicht weiterschalten, und was gerade gespielt wird, verrät der Strom nicht. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
+            el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft: es lässt sich nicht spulen und nicht weiterschalten, und was gerade gespielt wird, verrät der Strom nicht. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
           ], true),
 
           feld('RADIO', [

@@ -683,6 +683,70 @@ function webRadioKennung() {
   return 'wr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+/**
+ * Eine Adresse aufloesen, wenn sie auf eine Wiedergabeliste zeigt.
+ *
+ * Sender geben ihre Stroeme fast nie direkt heraus, sondern als .pls oder
+ * .m3u — eine winzige Textdatei, in der die eigentliche Adresse steht. Ein
+ * <audio> im Browser kann damit nichts anfangen; es spielt Musik, keine
+ * Textdateien. Wer so eine Adresse eintraegt, bekaeme deshalb ein Radio,
+ * das nie klingt.
+ *
+ * Also holt der Server die Datei einmal und nimmt die erste Adresse
+ * heraus. Das passiert nur hier beim Anlegen, nicht bei jedem Zuhoerer.
+ *
+ * Geholt wird nur, was der Admin selbst eintraegt — jemand anders kommt an
+ * diese Operation nicht heran. Trotzdem mit kurzer Frist und Deckel auf
+ * der Groesse: eine Wiedergabeliste ist ein paar Zeilen lang, alles
+ * daruber ist ohnehin nicht das, was wir suchen.
+ */
+var PLS_FRIST = 6000;
+var PLS_MAX = 64 * 1024;
+
+function istWiedergabeliste(u) {
+  var pfad = '';
+  try { pfad = new URL(u).pathname.toLowerCase(); } catch (e) { return false; }
+  return /\.(pls|m3u|m3u8)$/.test(pfad);
+}
+
+function listeAufloesen(u) {
+  if (!istWiedergabeliste(u)) return Promise.resolve(u);
+  /* .m3u8 ist meist HLS — daraus wird hier nichts Brauchbares, das muesste
+     der Browser koennen, und ausser Safari kann es keiner. Lieber die
+     Adresse lassen, wie sie ist, als etwas Falsches herauszuziehen. */
+  if (/\.m3u8$/.test(new URL(u).pathname.toLowerCase())) return Promise.resolve(u);
+
+  var abbruch = new AbortController();
+  var uhr = setTimeout(function () { abbruch.abort(); }, PLS_FRIST);
+  return fetch(u, { signal: abbruch.signal, redirect: 'follow' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function (text) {
+      clearTimeout(uhr);
+      var kurz = text.slice(0, PLS_MAX);
+      /* .pls schreibt „File1=…", .m3u stellt die Adresse nackt in eine
+         Zeile. Beides faengt derselbe Griff ab. */
+      var zeilen = kurz.split(/\r?\n/);
+      for (var i = 0; i < zeilen.length; i++) {
+        var z = zeilen[i].trim();
+        if (!z || z.charAt(0) === '#') continue;
+        var m = /^File\d*\s*=\s*(.+)$/i.exec(z);
+        var kandidat = m ? m[1].trim() : z;
+        if (/^https?:\/\//i.test(kandidat)) return kandidat;
+      }
+      throw new Error('keine Adresse in der Liste');
+    })
+    .catch(function (e) {
+      clearTimeout(uhr);
+      /* Nicht erreichbar? Dann bleibt die Adresse, wie sie eingetippt
+         wurde — vielleicht weiss der Browser mehr als wir. */
+      console.warn('[gambaking] Wiedergabeliste nicht auflösbar:', e.message);
+      return u;
+    });
+}
+
 /* ─────────────── Operationen ─────────────── */
 
 var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1 };
@@ -1403,9 +1467,18 @@ function handleRequest(req, res) {
 
   if (url === '/api/op' && req.method === 'POST') {
     return readBody(req).then(function (body) {
-      var out = applyOp(body);
-      if (out.error) sendJSON(res, out.code || 400, { error: out.error, state: publicState() });
-      else sendJSON(res, 200, out);
+      /* Zeigt die Adresse eines Webradios auf eine Wiedergabeliste, wird
+         sie vorher aufgeloest. Das geht ueber das Netz und damit nicht
+         nebenbei in applyOp — das rechnet ohne Warten. */
+      var vorher = (body && body.type === 'webRadioSet' && validToken(body.token))
+        ? listeAufloesen(stromAdresse(body.url) || '')
+        : Promise.resolve(null);
+      return vorher.then(function (aufgeloest) {
+        if (aufgeloest) body.url = aufgeloest;
+        var out = applyOp(body);
+        if (out.error) sendJSON(res, out.code || 400, { error: out.error, state: publicState() });
+        else sendJSON(res, 200, out);
+      });
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 
