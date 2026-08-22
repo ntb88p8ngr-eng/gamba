@@ -21,15 +21,25 @@ ganze Seite mit — Knöpfe, Ränder, Leuchten, Kacheln, Tabellen.
 
 ## Eigene Bilder
 
-Ein Bild ist optional. Liegt es da, legt es sich über den Verlauf; fehlt
-es, bleibt es beim Verlauf — die Seite bleibt in jedem Fall benutzbar.
+Ein Skin darf mehrere Hintergründe mitbringen. Welche das sind, steht in
+`js/skins.js` in der Liste `bilder` des Skins:
 
-| Datei | Wofür |
-|---|---|
-| `hintergrund.webp` | Hintergrundbild hinter der ganzen Seite |
+```js
+bilder: [
+  { id: '1', datei: 'hintergrund1.webp' },
+  { id: '2', datei: 'hintergrund2.webp' }
+]
+```
 
-Empfohlen: 1920×1080 oder größer, `.webp`, dunkel genug, dass heller Text
-darauf lesbar bleibt.
+Ab zwei Bildern erscheint im Konto-Fenster unter den Skin-Kacheln eine
+Reihe mit einer Vorschau je Bild, dazu **🔄 Wechsel** — dann laufen alle
+der Reihe nach durch, alle 45 Sekunden eines, weich überblendet. Die Wahl
+merkt sich das Gerät je Skin.
+
+Bilder sind optional: ohne sie bleibt der Verlauf aus `css/skins.css`.
+Empfohlen: 1920×1080 oder größer, `.webp`. Wie hell das Bild ist, spielt
+kaum eine Rolle — der Schleier darüber sorgt dafür, dass heller Text
+lesbar bleibt.
 
 ---
 

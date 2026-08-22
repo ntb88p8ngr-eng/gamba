@@ -275,6 +275,7 @@
     'Neon, Lila und Chaos — wie gehabt.': 'Neon, purple and chaos — as always.',
     'Rot, Gold und Samt. Glühbirnen statt Neonröhren.':
       'Red, gold and velvet. Light bulbs instead of neon tubes.',
+    '🔄 Wechsel': '🔄 Cycle',
     'Für diesen Anstrich ist kein Stück hinterlegt.':
       'No track is set up for this skin.',
     '📻 RADIO': '📻 RADIO', '⏹ RADIO AUS': '⏹ RADIO OFF',

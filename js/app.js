@@ -611,6 +611,37 @@
 
     /* Anstrich der Seite — gehört wie die Sprache zum Gerät. */
     if (GK.skins && GK.setSkin) {
+      /* Bringt ein Skin mehrere Hintergründe mit, steht darunter eine zweite
+         Reihe: die Bilder als Vorschau, dazu „Wechsel" für alle der Reihe
+         nach. Sie wird bei jedem Skinwechsel neu gebaut, weil ein anderer
+         Anstrich andere (oder gar keine) Bilder hat. */
+      var bildReihe = el('div', { class: 'skin-bilder' });
+
+      function bilderBauen() {
+        bildReihe.innerHTML = '';
+        var liste = GK.skinBilder ? GK.skinBilder() : [];
+        if (liste.length < 2) { bildReihe.hidden = true; return; }
+        bildReihe.hidden = false;
+        var jetztBild = GK.skinBild();
+        var mach = function (bildId, hintergrund, beschriftung) {
+          var k = el('button', {
+            class: 'skin-bild' + (bildId === jetztBild ? ' sel' : ''), type: 'button',
+            title: beschriftung
+          }, [el('span', { class: 'skin-bild-text', text: beschriftung })]);
+          if (hintergrund) k.style.backgroundImage = 'url("' + hintergrund + '")';
+          k.addEventListener('click', function () {
+            GK.setSkinBild(bildId);
+            GK.sfx('chip');
+            bilderBauen();
+          });
+          bildReihe.appendChild(k);
+        };
+        liste.forEach(function (b, i) {
+          mach(b.id, GK.skinBildPfad(GK.skin(), b.id), String(i + 1));
+        });
+        mach('wechsel', '', '🔄 Wechsel');
+      }
+
       var kacheln = GK.skins.map(function (sk) {
         var k = el('button', {
           class: 'skin-kachel' + (sk.id === GK.skin() ? ' sel' : ''), type: 'button'
@@ -625,14 +656,18 @@
           GK.setSkin(sk.id);
           GK.sfx('chip');
           kacheln.forEach(function (o) { o.classList.toggle('sel', o === k); });
+          bilderBauen();
           GK.toast(sk.emoji + ' ' + sk.name, 'gold', sk.emoji);
         });
         return k;
       });
+      bilderBauen();
       nodes.push(
         el('div', { class: 'bet-label', text: 'ANSTRICH' }),
         el('div', { style: 'height:6px' }),
         el('div', { class: 'skin-wahl' }, kacheln),
+        el('div', { style: 'height:8px' }),
+        bildReihe,
         el('div', { style: 'height:14px' })
       );
     }
