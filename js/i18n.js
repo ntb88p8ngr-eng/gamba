@@ -255,6 +255,31 @@
     'Die Party ist vorbei.': 'The party is over.',
     'Geht aufs Konto': 'Goes to the account',
     'WÄHL DEINEN AVATAR': 'PICK YOUR AVATAR',
+
+    /* Stufentitel — sie stehen im Konto, im Leaderboard und in der Lobby. */
+    'Chip-Küken': 'Chip chick', 'Zocker': 'Gambler', 'Hochroller': 'High roller',
+    'Casino-Hai': 'Casino shark', 'Legende': 'Legend', 'GambaKing': 'GambaKing',
+    'Großmeister': 'Grandmaster', 'Chip-Baron': 'Chip baron', 'Neon-Fürst': 'Neon prince',
+    'Glücksgott': 'God of luck', 'Unsterblicher': 'Immortal', 'Mythos': 'Myth',
+    'Spiele': 'Rounds', 'PASSWORT ÄNDERN': 'CHANGE PASSWORD',
+    '🔑 PASSWORT ÄNDERN': '🔑 CHANGE PASSWORD', '🚪 ABMELDEN': '🚪 LOG OUT',
+    'aktuelles Passwort': 'current password', 'neues Passwort (min. 4)': 'new password (min. 4)',
+
+    /* Anstrich der Seite */
+    'ANSTRICH': 'SKIN', 'HINTERGRUND-TRACKS': 'BACKGROUND TRACKS',
+    'MUSIK-LAUTSTÄRKE': 'MUSIC VOLUME', 'SPIEL-SOUNDS': 'GAME SOUNDS',
+    'Musik & Sound': 'Music & sound',
+    '🔇 MUSIK AUS': '🔇 MUSIC OFF', '🎵 MUSIK AN': '🎵 MUSIC ON',
+    'Musik': 'Music', 'Effekte': 'Effects',
+    '👑 GambaKing': '👑 GambaKing', '🎲 Old Vegas': '🎲 Old Vegas',
+    'Neon, Lila und Chaos — wie gehabt.': 'Neon, purple and chaos — as always.',
+    'Rot, Gold und Samt. Glühbirnen statt Neonröhren.':
+      'Red, gold and velvet. Light bulbs instead of neon tubes.',
+    'Für diesen Anstrich ist kein Stück hinterlegt.':
+      'No track is set up for this skin.',
+    'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿). Jederzeit abschaltbar.':
+      'Five techno loops, generated live in the browser — two deep dub pieces, one crooked minimal groove and two acid numbers. Plus whatever the sound pack carries as a file (💿). Switchable off at any time.',
+    'aus dem Sound-Pack': 'from the sound pack',
     'Neue Party': 'New party', 'Partymodus': 'Party mode',
     'PARTY AUFMACHEN': 'OPEN PARTY', 'PARTY STARTEN': 'START PARTY',
     'PARTY VERLASSEN': 'LEAVE PARTY', 'MITMACHEN': 'JOIN', 'LÄUFT': 'RUNNING', 'VOLL': 'FULL',
@@ -569,6 +594,10 @@
     [/^Lv (\d+)$/, 'Lv $1'],
     [/^Level (\d+) nötig$/, 'Needs level $1'],
     [/^Ab Level (\d+)$/, 'From level $1'],
+    /* Vor der allgemeinen Chips-Regel: sonst schluckt die den ganzen Satz
+       und der Stufentitel bliebe deutsch. */
+    [/^Level (\d+) · (.+) · (.+) Chips$/,
+      function (m, l, ti, c) { return 'Level ' + l + ' · ' + (WB[ti] || ti) + ' · ' + c + ' chips'; }],
     [/^(.+) Chips$/, '$1 chips'],
     [/^Einsatz (.+)$/, 'Bet $1'],
     [/^Gewinn (.+)$/, 'Win $1'],

@@ -513,6 +513,7 @@
 
   var Music = GK.music = {
     tracks: TRACKS,
+    _wunschId: '',
     enabled: false,
     trackIdx: 0,
     volume: 35,
@@ -522,6 +523,59 @@
     _nextTime: 0,
     _gain: null,
     _filter: null
+  };
+
+  /* ── Stücke aus dem Sound-Pack ────────────────────────────────────
+     Die eingebauten Stücke entstehen im Browser Ton für Ton. Daneben darf
+     jedes Pack eigene Musik als fertige Datei mitbringen (Block "music" in
+     assets/sfx/sounds.json) — die läuft nicht durch den Sequenzer, sondern
+     als ganz gewöhnliches Audio-Element in Schleife.
+
+     Beides steht in derselben Liste, damit die Auswahl im Musikfenster
+     nichts davon wissen muss. `datei: true` unterscheidet sie. */
+  var audio = null;              // Element für Datei-Stücke, einmal angelegt
+
+  function packLaden() {
+    if (!GK.sfxPack || !GK.sfxPack.musik) return;
+    var neu = GK.sfxPack.musik();
+    if (!neu.length) return;
+    /* Zweimal einlesen (etwa nach GK.sfxPack.reload()) soll die Liste nicht
+       verdoppeln: gleiche Kennung, gleicher Platz. */
+    neu.forEach(function (t) {
+      var da = -1;
+      for (var i = 0; i < TRACKS.length; i++) if (TRACKS[i].id === t.id) da = i;
+      if (da >= 0) TRACKS[da] = t; else TRACKS.push(t);
+    });
+    /* Beim Start war das gemerkte Stück vielleicht noch gar nicht da —
+       jetzt schon. */
+    if (Music._wunschId) {
+      for (var k = 0; k < TRACKS.length; k++) {
+        if (TRACKS[k].id === Music._wunschId && TRACKS[k] !== TRACKS[Music.trackIdx]) {
+          Music.trackIdx = k;
+          if (Music.enabled && Music.playing) { Music.playing = false; Music.start(); }
+        }
+      }
+    }
+    if (GK.emit) GK.emit('musik-liste');
+  }
+
+  /**
+   * Welche Stücke gehören zum laufenden Anstrich?
+   *
+   * Ein Stück ohne `skins` erscheint überall. Steht dort eine Liste, taucht
+   * es nur unter diesen Skins auf — Old Vegas darf seine eigene Musik haben,
+   * ohne dass sie im Standard-Anstrich in der Auswahl steht.
+   *
+   * Zurück kommen Paare aus Stück und echter Position, damit setTrack()
+   * weiterhin mit der Position in TRACKS arbeitet.
+   */
+  Music.sichtbar = function () {
+    var skin = GK.skin ? GK.skin() : 'default';
+    var raus = [];
+    TRACKS.forEach(function (t, i) {
+      if (!t.skins || t.skins.indexOf(skin) >= 0) raus.push({ track: t, idx: i });
+    });
+    return raus;
   };
 
   function ensureChain() {
@@ -578,10 +632,62 @@
     }
   }
 
+  /* ── Datei-Stücke ──
+     Ein Audio-Element in Schleife, mehr braucht es nicht. Es hängt bewusst
+     nicht am Audio-Kontext: die Lautstärke regelt derselbe Regler, aber der
+     Klangfilter der eingebauten Stücke hat hier nichts zu suchen — die
+     Datei klingt so, wie sie gemischt wurde. */
+  function dateiElement() {
+    if (!audio) {
+      audio = new Audio();
+      audio.loop = true;
+      audio.preload = 'none';
+      audio.addEventListener('error', function () {
+        var tr = TRACKS[Music.trackIdx];
+        if (GK.toast) GK.toast('Musikdatei nicht abspielbar: ' + (tr && tr.name), 'bad', '🎵');
+      });
+    }
+    return audio;
+  }
+
+  function dateiLautstaerke() {
+    if (!audio) return;
+    var tr = TRACKS[Music.trackIdx];
+    var eigen = tr && tr.volume !== undefined ? tr.volume : 1;
+    audio.volume = Math.max(0, Math.min(1, (Music.volume / 100) * 0.9 * eigen));
+  }
+
+  function dateiAus() {
+    if (audio && !audio.paused) audio.pause();
+  }
+
+  /** Läuft gerade ein Stück aus einer Datei? */
+  function istDatei(i) {
+    var tr = TRACKS[i === undefined ? Music.trackIdx : i];
+    return !!(tr && tr.datei);
+  }
+
   Music.start = function () {
+    Music.enabled = true;
+    if (istDatei()) {
+      /* Der Generator schweigt, solange eine Datei läuft. */
+      if (Music._timer) { clearInterval(Music._timer); Music._timer = null; }
+      applyGain();
+      var a = dateiElement();
+      var tr = TRACKS[Music.trackIdx];
+      if (a.dataset.quelle !== tr.url) { a.src = tr.url; a.dataset.quelle = tr.url; }
+      dateiLautstaerke();
+      Music.playing = true;
+      /* Ohne vorherige Interaktion lehnt der Browser das Abspielen ab —
+         das ist kein Fehler, sondern die übliche Regel; wir merken uns
+         nur den Wunsch und starten beim nächsten Klick. */
+      var p = a.play();
+      if (p && p.catch) p.catch(function () { Music.playing = false; });
+      return true;
+    }
+    dateiAus();
     if (!ensureChain()) return false;
     GK.sound.resume();
-    Music.enabled = true;
     applyGain();
     if (Music.playing) return true;
     Music.playing = true;
@@ -595,6 +701,7 @@
   Music.stop = function () {
     Music.enabled = false;
     applyGain();
+    dateiAus();
     Music.playing = false;
     if (Music._timer) { clearInterval(Music._timer); Music._timer = null; }
   };
@@ -607,10 +714,15 @@
   }
 
   Music.setTrack = function (idx) {
+    var vorher = Music.trackIdx;
     Music.trackIdx = GK.clamp(idx, 0, TRACKS.length - 1);
     Music._step = 0;
     if (ctx()) Music._nextTime = ctx().currentTime + 0.1;
-    if (!Music.playing) Music.start();
+    /* Beim Wechsel weg von einer Datei muss die auch wirklich aufhören —
+       sie läuft sonst unter dem neuen Stück weiter. */
+    if (istDatei(vorher) && !istDatei()) dateiAus();
+    if (istDatei()) { Music.playing = false; Music.start(); }
+    else if (!Music.playing) Music.start();
     applyTone();
     save();
   };
@@ -618,6 +730,7 @@
   Music.setVolume = function (v) {
     Music.volume = GK.clamp(Math.round(Number(v) || 0), 0, 100);
     applyGain();
+    dateiLautstaerke();
     save();
   };
 
@@ -637,6 +750,24 @@
       }));
     } catch (e) {}
   }
+  /* Das Sound-Pack kommt asynchron — sobald es da ist, wandern seine Stücke
+     in die Liste. Und wer den Anstrich wechselt, soll nicht plötzlich Musik
+     hören, die zum anderen Skin gehört. */
+  GK.on('sfx-pack', packLaden);
+  GK.on('skin', function () {
+    packLaden();
+    var erlaubt = Music.sichtbar();
+    var passt = erlaubt.some(function (x) { return x.idx === Music.trackIdx; });
+    if (passt || !erlaubt.length) { if (GK.emit) GK.emit('musik-liste'); return; }
+    /* Das laufende Stück gehört nicht hierher — auf das erste erlaubte
+       umschalten, aber nur weiterspielen, wenn vorher etwas lief. */
+    var lief = Music.enabled && Music.playing;
+    Music.trackIdx = erlaubt[0].idx;
+    if (lief) { Music.playing = false; Music.start(); } else { dateiAus(); }
+    save();
+    if (GK.emit) GK.emit('musik-liste');
+  });
+
   Music.load = function () {
     try {
       var d = JSON.parse(localStorage.getItem(MKEY) || '{}');
@@ -645,6 +776,9 @@
          Alte Stände haben noch eine Nummer — die zaehlt weiter, solange sie
          passt. */
       if (d.track) {
+        /* Gemerkt wird auch der Wunsch selbst: ein Stück aus dem Sound-Pack
+           steht beim Laden noch nicht in der Liste (packLaden holt es nach). */
+        Music._wunschId = d.track;
         for (var i = 0; i < TRACKS.length; i++) if (TRACKS[i].id === d.track) Music.trackIdx = i;
       } else if (d.trackIdx !== undefined) {
         Music.trackIdx = GK.clamp(d.trackIdx, 0, TRACKS.length - 1);

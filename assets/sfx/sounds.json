@@ -6,46 +6,149 @@
     "volume": 1,
     "preload": true
   },
-  
   "sounds": {
     "_": "Globale Belegung. Kurzform: \"click\": \"ui/klick.mp3\". Mehrere Varianten: \"card\": [\"a.mp3\", \"b.mp3\"]. Langform mit allen Reglern siehe README.",
-
-
-    "click":     { "files": ["ui/click.mp3"], "volume": 0.6, "rateJitter": 0.06 },
-    "hover":     { "files": ["ui/hover.mp3"], "volume": 0.3, "rateJitter": 0.06 },
-    "chip":      { "files": [] },
-    "spin":      { "files": ["ui/spin.mp3"], "volume": 0.3, "rateJitter": 0.06 },
-    "tick":      { "files": [] },
-    "reel":      { "files": [] },
-    "card":      { "files": ["ui/card.mp3"], "volume": 0.6, "rateJitter": 0.06 },
-    "coin":      { "files": ["ui/coin.mp3"], "volume": 0.2, "rateJitter": 0.06 },
-    "cash":      { "files": ["ui/cash.mp3"], "volume": 0.6, "rateJitter": 0.06 },
-    "win":       { "files": ["ui/win.mp3"], "volume": 0.6, "rateJitter": 0.06 },
-    "bigwin":    { "files": ["ui/bigwin.mp3"], "volume": 0.6, "rateJitter": 0.06 },
-    "jackpot":   { "files": ["ui/jackpot.mp3"], "volume": 0.8, "rateJitter": 0.06 },
-    "lose":      { "files": ["ui/lose.mp3"], "volume": 0.7, "rateJitter": 0.06 },
-    "error":     { "files": ["ui/error.mp3"], "volume": 0.8, "rateJitter": 0.06 },
-    "boom":      { "files": [] },
-    "gem":       { "files": [] },
-    "rocket":    { "files": [] },
-    "hoof":      { "files": ["ui/hoof.mp3"], "volume": 0.3, "rateJitter": 1.00 },
-    "startbell": { "files": [] },
-    "whoosh":    { "files": [] },
-    "waddle":    { "files": [] },
-    "soul":      { "files": [] },
-    "snuff":     { "files": [] },
-    "growl":     { "files": [] },
-    "plop":      { "files": [] },
-    "tension":   { "files": [] },
-    "freespin":  { "files": [] },
-    "freespin2": { "files": [] }
+    "click": {
+      "files": [
+        "ui/click.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
+    },
+    "hover": {
+      "files": [
+        "ui/hover.mp3"
+      ],
+      "volume": 0.3,
+      "rateJitter": 0.06
+    },
+    "chip": {
+      "files": []
+    },
+    "spin": {
+      "files": [
+        "ui/spin.mp3"
+      ],
+      "volume": 0.3,
+      "rateJitter": 0.06
+    },
+    "tick": {
+      "files": []
+    },
+    "reel": {
+      "files": []
+    },
+    "card": {
+      "files": [
+        "ui/card.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
+    },
+    "coin": {
+      "files": [
+        "ui/coin.mp3"
+      ],
+      "volume": 0.2,
+      "rateJitter": 0.06
+    },
+    "cash": {
+      "files": [
+        "ui/cash.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
+    },
+    "win": {
+      "files": [
+        "ui/win.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
+    },
+    "bigwin": {
+      "files": [
+        "ui/bigwin.mp3"
+      ],
+      "volume": 0.6,
+      "rateJitter": 0.06
+    },
+    "jackpot": {
+      "files": [
+        "ui/jackpot.mp3"
+      ],
+      "volume": 0.8,
+      "rateJitter": 0.06
+    },
+    "lose": {
+      "files": [
+        "ui/lose.mp3"
+      ],
+      "volume": 0.7,
+      "rateJitter": 0.06
+    },
+    "error": {
+      "files": [
+        "ui/error.mp3"
+      ],
+      "volume": 0.8,
+      "rateJitter": 0.06
+    },
+    "boom": {
+      "files": []
+    },
+    "gem": {
+      "files": []
+    },
+    "rocket": {
+      "files": []
+    },
+    "hoof": {
+      "files": [
+        "ui/hoof.mp3"
+      ],
+      "volume": 0.3,
+      "rateJitter": 1.0
+    },
+    "startbell": {
+      "files": []
+    },
+    "whoosh": {
+      "files": []
+    },
+    "waddle": {
+      "files": []
+    },
+    "soul": {
+      "files": []
+    },
+    "snuff": {
+      "files": []
+    },
+    "growl": {
+      "files": []
+    },
+    "plop": {
+      "files": []
+    },
+    "tension": {
+      "files": []
+    },
+    "freespin": {
+      "files": []
+    },
+    "freespin2": {
+      "files": []
+    }
   },
-  
   "games": {
     "_": "Pro Spiel abweichende Klaenge. Ein Eintrag hier ueberschreibt nur die Felder, die er selbst setzt — \"boom\": { \"volume\": 1.6 } behaelt also die globale Datei und dreht nur lauter.",
     "slots": {},
     "roulette": {
-      "spin": { "file": "roulette/spin.mp3", "volume": 0.3 }
+      "spin": {
+        "file": "roulette/spin.mp3",
+        "volume": 0.3
+      }
     },
     "blackjack": {},
     "coinflip": {},
@@ -54,7 +157,10 @@
     "mines": {},
     "wheel": {},
     "plinko": {
-      "lose": { "file": "plinko/loss.mp3", "volume": 0.2 }
+      "lose": {
+        "file": "plinko/loss.mp3",
+        "volume": 0.2
+      }
     },
     "scratch": {},
     "horses": {},
@@ -68,5 +174,10 @@
     "jump": {},
     "smaugcave": {},
     "baccarat": {}
-  }
+  },
+  "music": [
+    {
+      "_": "Hintergrundmusik aus Dateien. Leer lassen = nur die eingebauten Loops. Felder: id (Kennung), name, mood (Untertitel), file, volume (0..1), bpm (nur Anzeige), skins (Liste von Anstrichen, ohne = ueberall). Anleitung: assets/sfx/README.md"
+    }
+  ]
 }

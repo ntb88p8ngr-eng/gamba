@@ -609,6 +609,34 @@
       );
     }
 
+    /* Anstrich der Seite — gehört wie die Sprache zum Gerät. */
+    if (GK.skins && GK.setSkin) {
+      var kacheln = GK.skins.map(function (sk) {
+        var k = el('button', {
+          class: 'skin-kachel' + (sk.id === GK.skin() ? ' sel' : ''), type: 'button'
+        }, [
+          el('span', { class: 'skin-probe skin-probe-' + sk.id }),
+          el('span', { class: 'skin-text' }, [
+            el('span', { class: 'skin-name', text: sk.emoji + ' ' + sk.name }),
+            el('span', { class: 'skin-was', text: sk.was })
+          ])
+        ]);
+        k.addEventListener('click', function () {
+          GK.setSkin(sk.id);
+          GK.sfx('chip');
+          kacheln.forEach(function (o) { o.classList.toggle('sel', o === k); });
+          GK.toast(sk.emoji + ' ' + sk.name, 'gold', sk.emoji);
+        });
+        return k;
+      });
+      nodes.push(
+        el('div', { class: 'bet-label', text: 'ANSTRICH' }),
+        el('div', { style: 'height:6px' }),
+        el('div', { class: 'skin-wahl' }, kacheln),
+        el('div', { style: 'height:14px' })
+      );
+    }
+
     if (GK.net.online) {
       var oldP = el('input', { class: 'input', type: 'password', placeholder: 'aktuelles Passwort' });
       var newP = el('input', { class: 'input', type: 'password', placeholder: 'neues Passwort (min. 4)' });
@@ -688,29 +716,55 @@
     GK.sfx('click');
     var M = GK.music;
 
+    /* Gezeigt wird, was zum laufenden Anstrich gehört: ein Stück aus dem
+       Sound-Pack darf sich auf Skins beschränken. Die Position in der Liste
+       taugt deshalb nicht als Kennung — setTrack bekommt den echten Index. */
     var trackRows = [];
-    var list = el('div', { class: 'track-list' }, M.tracks.map(function (t, i) {
-      var fast = t.bpm >= 125;
-      var row = el('button', {
-        class: 'track-row' + (i === M.trackIdx && M.enabled ? ' playing' : '') + (fast ? ' fast' : '')
-      }, [
-        el('span', { class: 'tr-eq' }, [el('i'), el('i'), el('i')]),
-        el('span', { class: 'tr-meta' }, [
-          el('span', { class: 'tr-name', text: t.name }),
-          el('span', { class: 'tr-mood', text: t.mood })
-        ]),
-        el('span', { class: 'tr-bpm', text: (fast ? '⚡ ' : '') + t.bpm }),
-        el('span', { class: 'tr-play', text: i === M.trackIdx && M.enabled ? '⏸' : '▶' })
-      ]);
-      row.addEventListener('click', function () {
-        if (i === M.trackIdx && M.enabled) { M.stop(); }
-        else { M.setTrack(i); }
-        sync();
-        GK.sfx('chip');
+    var list = el('div', { class: 'track-list' });
+
+    function listeBauen() {
+      trackRows = [];
+      list.innerHTML = '';
+      var sichtbar = M.sichtbar ? M.sichtbar() : M.tracks.map(function (t, i) {
+        return { track: t, idx: i };
       });
-      trackRows.push(row);
-      return row;
-    }));
+      if (!sichtbar.length) {
+        list.appendChild(el('p', { class: 'hint', text: 'Für diesen Anstrich ist kein Stück hinterlegt.' }));
+        return;
+      }
+      sichtbar.forEach(function (x) {
+        var t = x.track, i = x.idx;
+        var fast = t.bpm >= 125;
+        var row = el('button', {
+          class: 'track-row' + (i === M.trackIdx && M.enabled ? ' playing' : '') + (fast ? ' fast' : '')
+        }, [
+          el('span', { class: 'tr-eq' }, [el('i'), el('i'), el('i')]),
+          el('span', { class: 'tr-meta' }, [
+            el('span', { class: 'tr-name', text: t.name + (t.datei ? ' 💿' : '') }),
+            el('span', { class: 'tr-mood', text: t.mood })
+          ]),
+          el('span', { class: 'tr-bpm', text: t.bpm ? (fast ? '⚡ ' : '') + t.bpm : '💿' }),
+          el('span', { class: 'tr-play', text: i === M.trackIdx && M.enabled ? '⏸' : '▶' })
+        ]);
+        row.dataset.idx = String(i);
+        row.addEventListener('click', function () {
+          if (i === M.trackIdx && M.enabled) { M.stop(); }
+          else { M.setTrack(i); }
+          sync();
+          GK.sfx('chip');
+        });
+        trackRows.push(row);
+        list.appendChild(row);
+      });
+    }
+    listeBauen();
+    /* Kommt das Sound-Pack nach oder wechselt der Anstrich, wird die Liste
+       neu gebaut — das Fenster steht dann oft schon offen. */
+    GK.on('musik-liste', function () {
+      if (!list.isConnected) return;
+      listeBauen();
+      sync();
+    });
 
     var musicVol = el('input', { type: 'range', min: '0', max: '100', step: '5', value: M.volume });
     var musicVolLabel = el('b', { text: M.volume });
@@ -719,8 +773,8 @@
     var offBtn = el('button', { class: 'btn btn-danger btn-full', text: '🔇 MUSIK AUS' });
 
     function sync() {
-      trackRows.forEach(function (r, i) {
-        var on = i === M.trackIdx && M.enabled;
+      trackRows.forEach(function (r) {
+        var on = Number(r.dataset.idx) === M.trackIdx && M.enabled;
         r.classList.toggle('playing', on);
         r.querySelector('.tr-play').textContent = on ? '⏸' : '▶';
       });
@@ -739,7 +793,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Keine Downloads, jederzeit abschaltbar.',
+      text: 'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿). Jederzeit abschaltbar.',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),

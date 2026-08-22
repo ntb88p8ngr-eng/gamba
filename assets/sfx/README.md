@@ -36,7 +36,8 @@ aufrufen, dann `GK.sfx('click')`.
   "version": 1,
   "defaults": { "volume": 1, "preload": false },
   "sounds":   { "click": "…", "coin": "…" },
-  "games":    { "crash": { "boom": "…" } }
+  "games":    { "crash": { "boom": "…" } },
+  "music":    [ { "id": "lounge", "name": "…", "file": "…" } ]
 }
 ```
 
@@ -45,6 +46,7 @@ aufrufen, dann `GK.sfx('click')`.
 | `defaults` | gilt für alle Klänge |
 | `sounds` | globale Belegung, greift überall |
 | `games` | Abweichungen für ein einzelnes Spiel |
+| `music` | Hintergrundmusik als Datei |
 
 ---
 
@@ -170,6 +172,47 @@ Gültige ids — alle 21 Spiele stehen auch schon als leere Einträge in
 `click`, `chip`, `coin` und `lose` hört man am häufigsten — dort lohnt sich
 `files` mit mehreren Varianten und ein bisschen `rateJitter` am meisten,
 sonst wird die Wiederholung schnell aufdringlich.
+
+---
+
+## Eigene Musik
+
+Die fünf eingebauten Hintergrund-Tracks entstehen live im Browser. Daneben
+darf jedes Pack eigene Musik als fertige Datei mitbringen — sie erscheint
+unter **🎵 Musik & Sound** in derselben Liste, erkennbar am 💿.
+
+```json
+"music": [
+  {
+    "id": "vegas-lounge",
+    "name": "Vegas Lounge",
+    "mood": "Big Band · Bläser und Besen",
+    "file": "musik/vegas-lounge.mp3",
+    "volume": 0.9,
+    "bpm": 96,
+    "skins": ["old-vegas"]
+  }
+]
+```
+
+| Feld | Pflicht | Wofür |
+|---|---|---|
+| `id` | ja | Kennung, unter der sich die Auswahl das Stück merkt |
+| `file` | ja | Pfad, relativ zu diesem Ordner |
+| `name` | — | Was in der Liste steht |
+| `mood` | — | Die kleine Zeile darunter |
+| `volume` | — | 0 bis 1, Feinabgleich gegen die eingebauten Stücke |
+| `bpm` | — | nur Anzeige |
+| `skins` | — | Liste von Anstrichen; ohne das Feld läuft es überall |
+
+Anders als die Klänge wird Musik nicht vorab dekodiert, sondern als ganze
+Datei in Schleife abgespielt — ein Stück von drei Minuten gehört nicht in
+einen Puffer. Nimm also etwas, das sich nahtlos wiederholt.
+
+`skins` verbindet Musik mit dem Anstrich der Seite: `["old-vegas"]` heißt,
+das Stück taucht nur unter Old Vegas auf. Wer den Anstrich wechselt,
+während ein fremdes Stück läuft, landet automatisch auf einem erlaubten.
+Welche Anstriche es gibt, steht in `assets/skins/README.md`.
 
 ---
 

@@ -96,6 +96,42 @@
     return BASE + file;
   }
 
+  /** Pfad im Pack aufloesen — auch fuer andere Module (Musik). */
+  pack.url = url;
+
+  /**
+   * Musikstuecke aus dem Pack.
+   *
+   * Anders als die Klaenge werden sie nicht in den Audio-Kontext geladen,
+   * sondern von js/music.js als ganze Datei abgespielt — ein Stueck dauert
+   * Minuten, das gehoert nicht in einen dekodierten Puffer.
+   *
+   * Zurueck kommt eine geputzte Liste: nur Eintraege mit Kennung und Datei,
+   * Pfade schon aufgeloest, `skins` immer eine Liste oder null.
+   */
+  pack.musik = function () {
+    var m = pack.manifest;
+    var roh = m && Array.isArray(m.music) ? m.music : [];
+    var raus = [];
+    roh.forEach(function (t) {
+      if (!t || typeof t !== 'object') return;
+      var datei = t.file || (Array.isArray(t.files) ? t.files[0] : null);
+      if (!t.id || !datei) return;
+      raus.push({
+        id: String(t.id).slice(0, 40),
+        name: String(t.name || t.id).slice(0, 60),
+        mood: String(t.mood || 'aus dem Sound-Pack').slice(0, 80),
+        bpm: Number(t.bpm) || 0,
+        url: url(String(datei)),
+        volume: t.volume === undefined ? 1 : Number(t.volume) || 0,
+        /* Leere Liste hiesse „nirgends" — das ist nie gemeint, also null. */
+        skins: Array.isArray(t.skins) && t.skins.length ? t.skins.slice() : null,
+        datei: true
+      });
+    });
+    return raus;
+  };
+
   function note(msg) {
     if (pack.problems.indexOf(msg) >= 0) return;
     pack.problems.push(msg);
@@ -473,6 +509,9 @@
               : 'sounds.json: ' + res.hint, 'bad', '🔇');
           }
         }
+        /* Die Musik im Pack interessiert js/music.js — das erfaehrt hier,
+           dass es nachsehen kann. */
+        if (GK.emit) GK.emit('sfx-pack');
         if (res.data) {
           var unbekannt = checkNames();
           pack.unknown = unbekannt;

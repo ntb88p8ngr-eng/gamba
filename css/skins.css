@@ -1,0 +1,129 @@
+/* ═══════════════════════════════════════════════════════════
+   GAMBAKING — Skins
+
+   Ein Skin hängt an einem Attribut am Wurzelelement und ändert vor allem
+   eines: die Farbvariablen aus style.css. Weil praktisch jede Regel im
+   Haus über var(--pink), var(--gold) und Geschwister geht, färbt sich die
+   ganze Seite mit — Knöpfe, Ränder, Leuchten, Kacheln, Tabellen.
+
+   Danach folgt der Hintergrund: eigene Verläufe, eigener Boden, und wenn
+   unter assets/skins/<id>/ ein Bild liegt, legt es sich darüber. Fehlt es,
+   bleibt es beim Verlauf — deshalb steht das Bild immer *vor* dem Verlauf
+   in derselben background-Liste und nie allein.
+
+   Neuen Skin anlegen: Kennung in js/skins.js eintragen, hier einen Block
+   [data-skin="…"] dazu. Mehr braucht es nicht.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─────────────────────── OLD VEGAS ───────────────────────
+   Rot, Gold und Samt: das Casino von 1965, nicht das von 2025.
+   Statt Neonröhren glühen Birnen, statt Cyan blitzt Messing. */
+:root[data-skin="old-vegas"]{
+  --pink:#e01b3c;          /* das Rot der Teppiche */
+  --purple:#8c1226;        /* Samt im Schatten */
+  --cyan:#ffcf5a;          /* was vorher kalt blitzte, glänzt jetzt messingfarben */
+  --lime:#63c46a;          /* Gewinn bleibt grün, nur wärmer */
+  --gold:#ffd76a;
+  --orange:#ff9a2e;
+  --red:#ff5566;
+  --blue:#3f7fbf;
+
+  --bg:#1a0407;
+  --bg-2:#2c070d;
+  --panel:rgba(64,11,19,.74);
+  --panel-solid:#400b13;
+  --line:rgba(255,215,106,.24);   /* Haarlinien in Gold statt Weiß */
+  --text:#fff4e2;
+  --muted:#d7ab7d;
+
+  --neon:linear-gradient(135deg,#ff3b52,#b60f26 45%,#ffcf5a);
+  --gold-grad:linear-gradient(180deg,#fff2c0,#ffd76a 45%,#c8860f);
+  --shadow:0 18px 50px rgba(0,0,0,.62);
+  --glow-pink:0 0 24px rgba(224,27,60,.55);
+  --glow-cyan:0 0 24px rgba(255,207,90,.5);
+}
+
+/* Der Hintergrund: das Foto aus dem Skin-Ordner, darüber ein Schleier.
+   Die Reihenfolge ist wichtig — in CSS liegt die erste Schicht oben. Das
+   Bild steht deshalb weit unten, der Schleier darüber: ein echtes
+   Casinofoto ist bunt und hell, und heller Text darauf wäre unlesbar.
+   Wie dunkel es wirkt, regelt allein dieser Schleier; die Datei bleibt
+   unangetastet. Fehlt sie, bleibt der Verlauf ganz unten übrig. */
+:root[data-skin="old-vegas"] .bg-fx{
+  background:
+    linear-gradient(180deg,rgba(20,3,8,.72),rgba(12,3,10,.80) 55%,rgba(26,6,11,.88)),
+    radial-gradient(1100px 700px at 15% -10%, rgba(107,13,28,.55) 0%, transparent 62%),
+    radial-gradient(900px 600px at 90% 0%, rgba(58,5,16,.5) 0%, transparent 58%),
+    url("../assets/skins/old-vegas/hintergrund.webp") center/cover no-repeat fixed,
+    linear-gradient(180deg,#1a0407,#12030a 70%,#20060b);
+}
+/* Am Handy lädt ein festgestellter Hintergrund ruckelig — dort scrollt er mit. */
+@media (max-width:820px){
+  :root[data-skin="old-vegas"] .bg-fx{background-attachment:scroll}
+}
+/* Die Lichtflecken werden zu Scheinwerfern über der Bühne. */
+:root[data-skin="old-vegas"] .blob-1{background:#e01b3c;opacity:.28}
+:root[data-skin="old-vegas"] .blob-2{background:#ffcf5a;opacity:.20}
+:root[data-skin="old-vegas"] .blob-3{background:#ff7a1e;opacity:.16}
+:root[data-skin="old-vegas"] .blob-4{background:#ffd76a;opacity:.14}
+
+/* Der Boden: goldenes Gitter statt pink-cyan, und deutlich ruhiger. */
+/* Über einem Foto braucht es kein Neongitter mehr — es bliebe nur Unruhe. */
+:root[data-skin="old-vegas"] .grid-floor{display:none}
+/* Weniger Fernsehflimmern, dafür ein Hauch Vignette wie im Samtvorhang. */
+:root[data-skin="old-vegas"] .scanlines{
+  background:
+    repeating-linear-gradient(180deg,rgba(255,255,255,.02) 0 1px,transparent 1px 5px),
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0,0,0,.55) 100%);
+}
+
+/* Der Multiplayer-Knopf trägt seine Farben fest im Blatt und blieb deshalb
+   eiskalt blau mitten im roten Saal. Hier bekommt er Filzgrün — die Farbe
+   der Tische, nicht der Leuchtreklame. */
+:root[data-skin="old-vegas"] .btn-mp{
+  background:linear-gradient(135deg,#1f8a5c,#0d5b3c);
+  border-color:rgba(255,215,106,.45)
+}
+
+/* Der Schriftzug: statt Regenbogen läuft warmes Licht über Gold und Rot —
+   eine Leuchtreklame aus Glühbirnen, keine LED-Wand. */
+:root[data-skin="old-vegas"] .hero-title{
+  /* Nur das Bild tauschen, nicht die ganze background-Kurzform: die setzt
+     background-clip mit zurück, und dann steht der Verlauf als Balken hinter
+     der Schrift statt in ihr. */
+  background-image:linear-gradient(100deg,#ff3b52,#ffd76a 25%,#fff2c0 50%,#ffcf5a 75%,#ff3b52);
+  filter:drop-shadow(0 6px 0 rgba(0,0,0,.55)) drop-shadow(0 0 34px rgba(255,155,60,.55));
+}
+/* Über einem Foto braucht Fließtext etwas Halt im Rücken. */
+:root[data-skin="old-vegas"] .hero-sub,
+:root[data-skin="old-vegas"] .hero-tag{
+  text-shadow:0 2px 10px rgba(0,0,0,.85)
+}
+
+/* Die Glühbirnenkette am Kopf: das Farbband wird zu warmem Licht. */
+:root[data-skin="old-vegas"] .topbar{
+  background:linear-gradient(180deg,rgba(26,4,7,.96),rgba(26,4,7,.72));
+}
+:root[data-skin="old-vegas"] .marquee{
+  border-color:rgba(255,215,106,.3)
+}
+
+/* ─────────────────────── Auswahl im Konto ───────────────────────
+   Eine Kachel je Skin, mit einer kleinen Farbprobe. */
+.skin-wahl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.skin-kachel{
+  display:flex;align-items:center;gap:9px;cursor:pointer;text-align:left;
+  padding:9px 11px;border-radius:14px;border:2px solid var(--line);
+  background:rgba(255,255,255,.05);transition:border-color .15s,transform .15s
+}
+.skin-kachel:hover{transform:translateY(-2px);border-color:var(--cyan)}
+.skin-kachel.sel{border-color:var(--gold);background:rgba(255,209,46,.14)}
+.skin-probe{
+  width:26px;height:26px;flex:0 0 auto;border-radius:8px;
+  border:2px solid rgba(255,255,255,.25)
+}
+.skin-probe-default{background:linear-gradient(135deg,#ff2fd0,#8b3bff 45%,#00e5ff)}
+.skin-probe-old-vegas{background:linear-gradient(135deg,#ff3b52,#b60f26 45%,#ffcf5a)}
+.skin-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.skin-name{font-family:'Bungee',sans-serif;font-size:.76rem}
+.skin-was{font-size:.66rem;color:var(--muted);line-height:1.3}
