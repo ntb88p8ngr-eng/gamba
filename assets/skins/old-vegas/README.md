@@ -10,6 +10,8 @@ der Reihe nach durch, alle 45 Sekunden eines, weich überblendet.
 | `hintergrund1.webp` | 1 |
 | `hintergrund2.webp` | 2 |
 | `hintergrund3.webp` | 3 |
+| `hintergrund4.webp` | 4 |
+| `hintergrund5.webp` | 5 |
 
 Empfehlung: 1920×1080 oder größer, `.webp`. Wie hell das Bild ist, spielt
 kaum eine Rolle — darüber liegt ein Schleier aus `css/skins.css`, damit
