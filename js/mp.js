@@ -199,6 +199,16 @@
 
   /* ── Ansicht oeffnen und schliessen ───────────────────────────────── */
 
+  /* Ein Sprachwechsel ändert Texte, die hier beim Zeichnen entstehen (der
+     lange Party-Absatz etwa) — die Ansicht wird sonst erst beim nächsten
+     Serverstand neu gebaut und bliebe bis dahin in der alten Sprache. */
+  GK.on('sprache', function () {
+    gezeichnetV = '';
+    /* Sofort neu zeichnen statt auf die nächste Antwort zu warten: die
+       Langabfrage hängt bis zu einer halben Minute. */
+    if (MP.an && stage) zeichne();
+  });
+
   MP.open = function (root) {
     stage = root;
     MP.an = true;
@@ -391,7 +401,9 @@
     GK.sfx('click');
     var p = GK.player();
     if (!p) return;
-    var name = el('input', { type: 'text', class: 'mp-feld', value: p.name + 's Tisch', maxlength: '24' });
+    var name = el('input', { type: 'text', class: 'mp-feld', maxlength: '24',
+                             value: (GK.lang && GK.lang() === 'en')
+                               ? p.name + '\u2019s table' : p.name + 's Tisch' });
     var blind = el('select', { class: 'mp-feld' });
     [10, 20, 50, 100, 250].forEach(function (b) {
       blind.appendChild(el('option', { value: String(b), text: spiel === 'poker'
@@ -470,8 +482,10 @@
     var p = GK.player();
     if (!p) return;
 
+    /* Vorschlag für den Namen — auf Englisch klingt „Annas Party" falsch. */
     var name = el('input', { class: 'mp-feld', type: 'text', maxlength: '24',
-                             value: p.name + 's Party' });
+                             value: (GK.lang && GK.lang() === 'en')
+                               ? p.name + '\u2019s party' : p.name + 's Party' });
     var chips = el('select', { class: 'mp-feld' });
     [500, 1000, 2500, 5000, 10000].forEach(function (c) {
       chips.appendChild(el('option', { value: String(c), text: GK.fmt(c) + ' Chips',
@@ -692,24 +706,46 @@
       ]));
     }
 
-    wrap.appendChild(el('p', { class: 'mp-intro', html:
-      'Alle starten mit <b>' + GK.fmt(pa.startChips) + ' Chips</b> und spielen ' +
-      '<b>' + Math.round(pa.dauer / 60) + ' Minuten</b> lang die Einzelspiele. ' +
-      'Gewonnen hat, wer am Ende den größten Gewinn gemacht hat. ' +
-      (pa.eigeneChips
-        ? 'Das ist eine <b>Buy-in-Party</b>: jeder zahlt die ' + GK.fmt(pa.startChips) +
-          ' Chips beim Start vom eigenen Konto ein. Der Sieger bekommt seinen Stand ' +
-          '<b>plus die Gewinne aller anderen</b>; wer im Plus ist, aber nicht Erster, ' +
-          'bekommt genau seinen Einsatz zurück, und wer im Minus steht, behält den Rest. ' +
-          'Nachschub gibt es hier nicht. '
-        : 'Dein Konto bleibt unberührt. ' +
-          (pa.nachschub
-            ? 'Wer blank ist, bekommt <b>' + GK.fmt(pa.nachschub) + ' Chips</b> Nachschub — ' +
-              'der zählt aber nicht als Gewinn. '
-            : 'Nachschub gibt es keinen: wer blank ist, schaut zu. ')) +
-      (pa.alleFrei
-        ? 'Alle ausgewählten Spiele sind <b>offen</b>, auch noch nicht freigespielte.'
-        : 'Es gilt die <b>eigene Stufe</b> — wer ein Spiel noch nicht freigespielt hat, kann es nicht öffnen.') }));
+    /* Dieser Absatz verzweigt nach Chip-Art, Nachschub und Stufensperre und
+       trägt zwei Zahlen — als Ganzes im Wörterbuch wären das ein Dutzend
+       Fassungen. Deshalb steht er hier zweisprachig an der Quelle. */
+    var en = GK.lang && GK.lang() === 'en';
+    var chips = GK.fmt(pa.startChips), minuten = Math.round(pa.dauer / 60);
+    wrap.appendChild(el('p', { class: 'mp-intro', html: en
+      ? 'Everyone starts with <b>' + chips + ' chips</b> and plays the single-player ' +
+        'games for <b>' + minuten + ' minutes</b>. Whoever has made the biggest profit ' +
+        'at the end wins. ' +
+        (pa.eigeneChips
+          ? 'This is a <b>buy-in party</b>: everyone pays the ' + chips + ' chips from ' +
+            'their own account at the start. The winner gets their own standing ' +
+            '<b>plus the profits of everyone else</b>; whoever is up but not first gets ' +
+            'exactly their stake back, and whoever is down keeps the rest. There is no ' +
+            'top-up here. '
+          : 'Your account stays untouched. ' +
+            (pa.nachschub
+              ? 'Anyone who goes broke gets <b>' + GK.fmt(pa.nachschub) + ' chips</b> as a ' +
+                'top-up — but that does not count as profit. '
+              : 'There is no top-up: broke means watching. ')) +
+        (pa.alleFrei
+          ? 'All selected games are <b>unlocked</b>, even the ones not yet earned.'
+          : 'Your <b>own level</b> counts — a game you have not unlocked stays closed.')
+      : 'Alle starten mit <b>' + chips + ' Chips</b> und spielen ' +
+        '<b>' + minuten + ' Minuten</b> lang die Einzelspiele. ' +
+        'Gewonnen hat, wer am Ende den größten Gewinn gemacht hat. ' +
+        (pa.eigeneChips
+          ? 'Das ist eine <b>Buy-in-Party</b>: jeder zahlt die ' + chips +
+            ' Chips beim Start vom eigenen Konto ein. Der Sieger bekommt seinen Stand ' +
+            '<b>plus die Gewinne aller anderen</b>; wer im Plus ist, aber nicht Erster, ' +
+            'bekommt genau seinen Einsatz zurück, und wer im Minus steht, behält den Rest. ' +
+            'Nachschub gibt es hier nicht. '
+          : 'Dein Konto bleibt unberührt. ' +
+            (pa.nachschub
+              ? 'Wer blank ist, bekommt <b>' + GK.fmt(pa.nachschub) + ' Chips</b> Nachschub — ' +
+                'der zählt aber nicht als Gewinn. '
+              : 'Nachschub gibt es keinen: wer blank ist, schaut zu. ')) +
+        (pa.alleFrei
+          ? 'Alle ausgewählten Spiele sind <b>offen</b>, auch noch nicht freigespielte.'
+          : 'Es gilt die <b>eigene Stufe</b> — wer ein Spiel noch nicht freigespielt hat, kann es nicht öffnen.') }));
 
     wrap.appendChild(el('h2', { class: 'section-title' },
       [el('span', { text: '👥 DABEI (' + pa.spieler.length + '/' + pa.max + ')' })]));
@@ -1514,6 +1550,14 @@
       'Wer zuerst wählt, bekommt seine Seite — der zweite die andere.',
       'Wählst du nicht rechtzeitig, bekommst du die freie Seite zugeteilt.'
     ];
+    /* Auf Englisch stehen dieselben Regeln in js/i18n-regeln.js — als
+       ganze Liste, weil sie Auszeichnungen tragen und Satz für Satz im
+       Wörterbuch nachzuschlagen zu brüchig wäre. */
+    if (GK.lang && GK.lang() === 'en' && GK.regelnMpEn) {
+      watten = GK.regelnMpEn('watten', watten) || watten;
+      poker = GK.regelnMpEn('poker', poker) || poker;
+      flip = GK.regelnMpEn('flip', flip) || flip;
+    }
     var t = MP.tisch;
     var welche = !t ? poker.concat(watten, flip)
       : t.game === 'coinflip' ? flip

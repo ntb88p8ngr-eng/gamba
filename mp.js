@@ -484,16 +484,31 @@ function createMP(deps) {
   /**
    * Lobbys aufraeumen, in denen nichts in Gang kommt.
    *
-   * Ein Tisch, an dem seit drei Minuten niemand mehr dazugekommen ist und
-   * der immer noch keine Hand gespielt hat, steht nur im Weg — er belegt
-   * einen Platz in der Uebersicht und haelt die Chips seiner Wartenden fest.
+   * Aufgeraeumt wird nur, was wirklich verwaist ist: ein Tisch, an dem seit
+   * drei Minuten keine Hand mehr begonnen hat *und* an dem hoechstens noch
+   * ein Mensch sitzt. So ein Tisch belegt bloss einen Platz in der
+   * Uebersicht und haelt die Chips seines Wartenden fest.
+   *
+   * Wo mindestens zwei Leute sitzen, wird nie aufgeloest — dort wird
+   * gespielt, auch wenn gerade zwischen zwei Haenden Pause ist.
    * Dasselbe gilt fuer eine Party, die nie gestartet wird.
    */
   function leerlauf(jetzt) {
     tables.forEach(function (t) {
-      if (t.hand) return;                       // laeuft, oder lief schon
+      if (t.hand) return;                       // mitten in einer Hand
+      /* Zwischen zwei Haenden steht `hand` auf null. Frueher reichte dieser
+         eine Blick, und ein Tisch, an dem seit drei Minuten gespielt wurde,
+         flog genau in so einer Pause aus der Sammlung — mitten im Spiel.
+         Deshalb zwei Bedingungen mehr: solange mindestens zwei Menschen
+         sitzen, wird nie aufgeloest, und die Uhr laeuft erst ab der letzten
+         Hand (starteHand setzt stillSeit). */
+      var leute = 0;
+      t.seats.forEach(function (s) { if (s && !s.bot) leute++; });
+      if (leute > 1) return;
       if (jetzt - ruehrung(t) < LEER_MS) return;
-      aufloesen(t.id, 'Niemand hat gespielt — Tisch aufgelöst');
+      aufloesen(t.id, leute
+        ? 'Zu lange allein am Tisch — aufgelöst'
+        : 'Niemand hat gespielt — Tisch aufgelöst');
     });
     partys.forEach(function (pa) {
       if (pa.status !== 'lobby') return;
@@ -621,6 +636,7 @@ function createMP(deps) {
       }
       if (t.hand && t.hand.ende && jetzt >= t.hand.ende) {
         t.hand = null;
+        t.stillSeit = jetzt;            // auch das Ende einer Hand zaehlt
         starteWennMoeglich(t);
         etwas = true;
         return;
@@ -640,6 +656,10 @@ function createMP(deps) {
   }
 
   function starteHand(t) {
+    /* Jede Hand ist ein Lebenszeichen. Ohne das lief die Aufraeum-Uhr
+       waehrend des Spiels einfach weiter, und der Tisch loeste sich mitten
+       in einer Partie auf — siehe leerlauf(). */
+    t.stillSeit = now();
     if (t.game === 'coinflip') return starteFlip(t);
     if (t.game === 'watten') return starteWatten(t);
     return startePoker(t);
