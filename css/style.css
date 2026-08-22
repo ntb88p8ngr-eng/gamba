@@ -222,10 +222,8 @@ img{max-width:100%}
      und die passen nur mit knapperem Innenabstand ohne Schieben nebeneinander. */
   #view-game .bet-quick .chip-btn{flex:0 0 auto;padding:6px 4px;font-size:.63rem}
   #view-game .bet-quick .qb-extra{display:none}
-  /* „ALL IN 🔥" ist der breiteste Chip und sprengt die Zeile — in der Leiste
-     heißt er kurz „MAX", auf dem Desktop bleibt die lange Beschriftung. */
-  #view-game .bet-quick .qb-allin{font-size:0}
-  #view-game .bet-quick .qb-allin::after{content:"MAX";font-size:.63rem}
+  /* MIN und MAX sind schon kurz — hier braucht es keine Ersatzbeschriftung
+     mehr, nur die Farbe bleibt. */
   /* Im Spiel bleibt die Fußzeile draußen — am Handy war sie ein guter Teil
      der Scrollstrecke und im Spiel sowieso nicht gefragt. */
   body.spielt .footer{display:none}
@@ -778,6 +776,10 @@ input[type=range]{flex:1;accent-color:var(--pink)}
 .quote-feld:focus{outline:none;border-color:var(--cyan)}
 .quote-zeile.hoch .quote-feld{color:var(--lime)}
 .quote-zeile.tief .quote-feld{color:var(--red)}
+/* MAX setzt alles, was geht — das darf man sehen, ohne zu lesen. */
+.chip-btn.qb-allin{border-color:rgba(255,209,46,.55);color:var(--gold)}
+.chip-btn.qb-allin:hover{border-color:var(--gold);box-shadow:0 0 14px rgba(255,209,46,.4)}
+
 .luck-eingabe{display:flex;align-items:center;gap:6px;justify-content:center}
 .luck-eingabe .quote-feld{font-size:.82rem;flex:0 0 58px;width:58px}
 

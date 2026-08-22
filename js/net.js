@@ -107,6 +107,15 @@
     return api('api/partys', { method: 'POST', body: JSON.stringify(body) });
   };
 
+  /** Rohdaten der Statistik holen (nur Admin) — für die Ausfuhr als Datei. */
+  Net.statExport = function () {
+    if (!Net.online) return Promise.resolve(null);
+    var body = {};
+    if (Net.token) body.token = Net.token;
+    if (Net.session) body.session = Net.session;
+    return api('api/statexport', { method: 'POST', body: JSON.stringify(body) });
+  };
+
   Net.op = function (type, payload) {
     if (!Net.online) return Promise.resolve(null);
     var body = Object.assign({ type: type }, payload || {});

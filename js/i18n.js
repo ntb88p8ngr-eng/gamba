@@ -25,6 +25,13 @@
 
   GK.lang = function () { return sprache; };
 
+  /**
+   * Text nach Sprache wählen — für die wenigen Stellen, an denen der
+   * Bildschirm nicht mitreden kann: window.confirm und window.prompt
+   * bekommen ihre Zeichenkette, bevor irgendetwas im Baum steht.
+   */
+  GK.txt = function (de, en) { return sprache === 'en' && en ? en : de; };
+
   /* ── Wörterbuch ──────────────────────────────────────────────────────
      Schlüssel ist der deutsche Text, genau so wie er auf dem Schirm steht
      (Groß- und Kleinschreibung inbegriffen, Leerraum wird vorher gestutzt). */
@@ -82,7 +89,9 @@
 
     /* Einsatz-Widget und Spielrahmen */
     'DEIN EINSATZ': 'YOUR BET', 'EINSATZ': 'BET', 'Einsatz': 'Bet',
-    'ALL IN 🔥': 'ALL IN 🔥', 'MIN': 'MIN',
+    'MIN': 'MIN', 'MAX': 'MAX',
+    'Kleinster Einsatz': 'Smallest bet', 'Größter möglicher Einsatz': 'Largest possible bet',
+    '50 mehr': '50 more', '10 mehr': '10 more', '100 mehr': '100 more',
     'REGELN': 'RULES', 'So geht das': 'How it works',
     'Zurück': 'Back', '← ZURÜCK': '← BACK',
     'Nicht genug Chips! 😅': 'Not enough chips! 😅',
@@ -275,6 +284,13 @@
     '📊 Balken': '📊 Bars', '📈 Linie': '📈 Line',
     'OFFENE TISCHE & PARTYS': 'OPEN TABLES & PARTIES', 'AKTUALISIEREN': 'REFRESH',
     'PARTY-PROTOKOLL': 'PARTY LOG', 'SPIELE & EINSÄTZE': 'GAMES & BETS',
+    '🗑 STATISTIK LEEREN': '🗑 CLEAR STATISTICS', '🔄 AKTUALISIEREN': '🔄 REFRESH',
+    '🧹 WIPE PLANEN': '🧹 SCHEDULE WIPE', '🚪 ADMIN VERLASSEN': '🚪 LEAVE ADMIN',
+    '🗑 ALLE DATEN LÖSCHEN': '🗑 DELETE ALL DATA',
+    'Statistik zurückgesetzt 🗑': 'Statistics reset 🗑',
+    'Statistik als JSON gespeichert 📥': 'Statistics saved as JSON 📥',
+    'Ausfuhr nicht möglich': 'Export not possible',
+    'Ausfuhr fehlgeschlagen': 'Export failed',
     'Noch keine Party gespielt': 'No party played yet',
     'Sobald eine Party zu Ende gespielt ist, steht sie hier.':
       'As soon as a party is played out it shows up here.',
@@ -657,6 +673,7 @@
     [/^(\d+) Partys?$/, function (m, n) { return n + (n === '1' ? ' party' : ' parties'); }],
     [/^(.+) Chips · (\d+) min · (\d+) Spiele$/, '$1 chips · $2 min · $3 games'],
     [/^Party läuft: alle mit (.+)$/, 'Party running: everyone with $1'],
+    [/^(.+) Runden als CSV gespeichert 📄$/, '$1 rounds saved as CSV 📄'],
     /* Party-Protokoll: Kopfzeile und Auswahl */
     [/^(.+) Startchips$/, '$1 starting chips'],
     [/^Nachschub (.+)$/, 'Top-up $1'],

@@ -1346,9 +1346,13 @@
       qb('2×', function () { setVal(Number(input.value) * 2); }, 'Verdoppeln'),
       qb('+1', function () { setVal(Number(input.value) + 1); }, '1 mehr'),
       qb('+10', function () { setVal(Number(input.value) + 10); }, '', 'qb-extra'),
-      qb('+50', function () { setVal(Number(input.value) + 50); }),
+      /* +50 gehört am Handy zu den Chips, die wegfallen: dort ist die Reihe
+         voll, und MIN und MAX sind wichtiger als ein mittlerer Schritt. */
+      qb('+50', function () { setVal(Number(input.value) + 50); }, '50 mehr', 'qb-extra'),
       qb('+100', function () { setVal(Number(input.value) + 100); }, '', 'qb-extra'),
-      qb('ALL IN 🔥', function () { setVal(maxFn()); }, 'Alles setzen', 'qb-allin')
+      /* Die beiden Enden der Spanne, ganz rechts als Paar. */
+      qb('MIN', function () { setVal(min); }, 'Kleinster Einsatz'),
+      qb('MAX', function () { setVal(maxFn()); }, 'Größter möglicher Einsatz', 'qb-allin')
     ]);
 
     /* Steht eine engere Grenze im Weg, gehoert sie an die Beschriftung —

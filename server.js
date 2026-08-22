@@ -461,7 +461,7 @@ var mp = require('./mp.js')({
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, setWipe: 1, wipe: 1, resetPassword: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -633,6 +633,20 @@ function applyOp(op) {
          toten Eintrag mit. */
       if (wert === 50) delete db.settings.spielLuck[spiel];
       else db.settings.spielLuck[spiel] = wert;
+      break;
+    }
+
+    /* Statistik zuruecksetzen.
+       Was genau, sagt der Aufruf: Runden und Anmeldungen sind die Grundlage
+       der Kurven, das Party-Protokoll haengt nicht daran und wird nur auf
+       ausdrueckliche Ansage mit geleert. Die Konten bleiben unberuehrt —
+       dafuer gibt es den Wipe. */
+    case 'statReset': {
+      var wasWeg = [];
+      if (op.runden !== false) { db.runden = []; wasWeg.push('Runden'); }
+      if (op.logins !== false) { db.logins = []; wasWeg.push('Logins'); }
+      if (op.party) { db.partyLog = []; wasWeg.push('Party-Protokoll'); }
+      pushFeed('Statistik zurückgesetzt (' + (wasWeg.join(', ') || 'nichts') + ')', 'admin');
       break;
     }
 
@@ -834,6 +848,25 @@ function handleRequest(req, res) {
       statLogin(p.id);
       saveDB();
       sendJSON(res, 200, { session: newSession(p.id), playerId: p.id, state: publicState() });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Statistik ausfuehren ──
+     Die Rohdaten, aus denen die Kurven entstehen: jede Runde, jede
+     Anmeldung, dazu das Party-Protokoll und eine Namensliste, damit aus den
+     Kennungen wieder Namen werden. Der Browser baut daraus die Datei. */
+  if (url === '/api/statexport' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      if (!validToken(body.token)) return sendJSON(res, 403, { error: 'Nur der Admin darf das' });
+      var namen = {};
+      Object.keys(db.players).forEach(function (k) { namen[k] = db.players[k].name; });
+      sendJSON(res, 200, {
+        stand: Date.now(),
+        namen: namen,
+        runden: db.runden,
+        logins: db.logins,
+        partyLog: db.partyLog || []
+      });
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 

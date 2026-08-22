@@ -1698,6 +1698,94 @@
     var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
     statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
 
+    /* ── Ausfuhr und Zurücksetzen ──
+       Ausgeführt wird, was der Server an Rohdaten hat: jede Runde, jede
+       Anmeldung, das Party-Protokoll und eine Namensliste. Als JSON zum
+       Weiterverarbeiten, als CSV zum Aufmachen in einer Tabelle. Die Datei
+       baut der Browser selbst aus der Antwort — so hängt kein Download an
+       einer offenen Kennung in der Adresse. */
+    function datenSpeichern(name, text, typ) {
+      var blob = new Blob([text], { type: typ + ';charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = el('a', { href: url, download: name });
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    }
+
+    function stempel() {
+      var d = new Date(), z = function (n) { return ('0' + n).slice(-2); };
+      return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) +
+             '_' + z(d.getHours()) + z(d.getMinutes());
+    }
+
+    /** Ein CSV-Feld: Anführungszeichen verdoppeln, alles einpacken. */
+    function csvFeld(v) {
+      var t = String(v === undefined || v === null ? '' : v);
+      return '"' + t.replace(/"/g, '""') + '"';
+    }
+
+    function exportieren(alsCsv) {
+      if (!GK.net || !GK.net.statExport) return;
+      GK.sfx('click');
+      GK.net.statExport().then(function (d) {
+        if (!d) { GK.toast('Ausfuhr nicht möglich', 'bad', '📡'); return; }
+        var namen = d.namen || {};
+        if (!alsCsv) {
+          datenSpeichern('gambaking-statistik_' + stempel() + '.json',
+            JSON.stringify(d, null, 2), 'application/json');
+          GK.toast('Statistik als JSON gespeichert 📥', 'gold', '📥');
+          return;
+        }
+        /* Eine Zeile je Runde — das ist die Tabelle, mit der man rechnet. */
+        var zeilen = ['Zeit;Spieler;Spiel;Einsatz;Auszahlung;Netto'];
+        (d.runden || []).forEach(function (r) {
+          var sp = GK.gameById(r.g);
+          zeilen.push([
+            csvFeld(new Date(r.t).toISOString()),
+            csvFeld(namen[r.p] || r.p),
+            csvFeld(sp ? sp.name : r.g),
+            csvFeld(r.e), csvFeld(r.w), csvFeld(r.w - r.e)
+          ].join(';'));
+        });
+        /* BOM voran, sonst zeigt Excel Umlaute falsch an. */
+        datenSpeichern('gambaking-runden_' + stempel() + '.csv',
+          '\ufeff' + zeilen.join('\r\n'), 'text/csv');
+        GK.toast(GK.fmt((d.runden || []).length) + ' Runden als CSV gespeichert 📄', 'gold', '📄');
+      }).catch(function (e) {
+        GK.toast('Ausfuhr fehlgeschlagen' + (e && e.message ? ': ' + e.message : ''), 'bad', '📡');
+      });
+    }
+
+    var statJson = el('button', { class: 'btn btn-small', text: '📥 JSON' });
+    var statCsv = el('button', { class: 'btn btn-small', text: '📄 CSV' });
+    statJson.addEventListener('click', function () { exportieren(false); });
+    statCsv.addEventListener('click', function () { exportieren(true); });
+
+    /* Gefragt wird wie bei den anderen gefährlichen Knöpfen mit confirm:
+       ein eigenes Fenster würde das Admin-Panel schließen, und danach stünde
+       man ohne Statistik da, die man gerade prüfen wollte. */
+    var statLeeren = el('button', { class: 'btn btn-danger btn-small', text: '🗑 STATISTIK LEEREN' });
+    statLeeren.addEventListener('click', function () {
+      GK.sfx('click');
+      if (!window.confirm(GK.txt(
+            'Alle aufgezeichneten Runden und Anmeldungen löschen?\n\n' +
+            'Die Kurven fangen danach bei null an. Chips, Stufen und Konten bleiben unberührt.',
+            'Delete every recorded round and login?\n\n' +
+            'The charts start from zero afterwards. Chips, levels and accounts stay untouched.'))) return;
+      var mitParty = window.confirm(GK.txt(
+        'Auch das Party-Protokoll löschen?\n\nOK = mit löschen, Abbrechen = vergangene Partys behalten',
+        'Delete the party log as well?\n\nOK = delete it too, Cancel = keep past parties'));
+      GK.commit('statReset', { runden: true, logins: true, party: mitParty })
+        .then(function () {
+          statDaten = null;
+          statHolen();
+          if (mitParty) partyLogHolen();
+          GK.toast('Statistik zurückgesetzt 🗑', 'gold', '🗑');
+          GK.sfx('click');
+        });
+    });
+
     /* ── Nächster Wipe ──
        Datum wählen, Haken für die Stufen setzen, fertig. Um Mitternacht
        dieses Tages setzt der Server alle Konten zurück — er sieht dafür
@@ -1839,7 +1927,7 @@
             el('div', { style: 'height:8px' }),
             statTabelle,
             el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [statNeu]),
+            el('div', { class: 'modal-actions' }, [statNeu, statJson, statCsv, statLeeren]),
             el('p', { class: 'hint', text: 'Netto ist aus Sicht der Spieler: positiv heißt, das Spiel hat in diesem Zeitraum mehr ausgezahlt als eingenommen. Aufgezeichnet werden die letzten 31 Tage.' })
           ], true),
 
