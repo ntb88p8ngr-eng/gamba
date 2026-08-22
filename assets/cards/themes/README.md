@@ -37,25 +37,14 @@ Ein Deck taucht erst in der Auswahl auf, wenn es in `js/core.js` unter
 
 | Feld | Pflicht | Wofür |
 |---|---|---|
-| `id` | ja | Kennung, unter der sich die Auswahl das Deck merkt |
+| `id` | ja | Kennung — zugleich der Ordnername unter `themes/` |
 | `name` | ja | Was auf der Kachel steht |
 | `aspect` | ja | Seitenverhältnis, muss zum Bildmass passen |
-| `ordner` | — | Wo die Blätter liegen, falls nicht gleich der Kennung |
-| `rueck` | — | Name der Rückseite ohne Endung, falls nicht `back` |
 
-## Mehrere Rückseiten zu einem Blatt
+Die Kachel in der Auswahl zeigt die Rückseite. Sie muss deshalb wirklich
+`back.webp` heissen, klein geschrieben — auf einem Server ist `BACK.webp`
+eine andere Datei.
 
-`ordner` und `rueck` gibt es wegen **New Vegas**: dort liegt ein einziger
-Satz Vorderseiten, daneben aber acht Rückseiten — eine je Spielhalle. Statt
-acht Ordner mit denselben 52 Bildern anzulegen, teilen sich acht Einträge
-die Vorderseiten und unterscheiden sich nur in dem einen Bild, das man beim
-Spielen ohnehin am längsten ansieht:
-
-```js
-{ id: 'newVegas',       name: 'Lucky 38',    ordner: 'newVegas', rueck: 'BACK',   aspect: '260/364' },
-{ id: 'nv-ultra-luxe',  name: 'Ultra-Luxe',  ordner: 'newVegas', rueck: 'EXTRA1', aspect: '260/364' }
-```
-
-Im Ordner `newVegas` liegen ausserdem `JOKER1`/`JOKER2` und zwei Karten mit
-den Caravan-Regeln. Keines der Spiele im Haus braucht Joker, deshalb stehen
-sie in keinem Eintrag — sie liegen nur dabei.
+Karten, die kein Spiel im Haus braucht — Joker, Regelkarten, zusätzliche
+Rückseiten —, gehören nicht in den Ordner: geladen werden sie nie, im
+Verzeichnis stehen sie trotzdem.

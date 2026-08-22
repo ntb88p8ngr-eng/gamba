@@ -1402,38 +1402,19 @@
   */
   var SUIT_FILE = { '♥': 'H', '♦': 'D', '♣': 'C', '♠': 'S' };
 
-  /* Ein Eintrag darf zwei Dinge abweichen lassen:
-
-       ordner  — wo die Blätter liegen, falls nicht gleich der Kennung.
-       rueck   — wie die Rückseite heisst, falls nicht „back".
-
-     Beides gibt es wegen des New-Vegas-Blattes: dort liegt ein einziger
-     Satz Karten, aber acht Rückseiten daneben, eine je Spielhalle. Acht
-     Ordner mit denselben 52 Bildern wären dieselben zwanzig Megabyte acht
-     Mal — so teilen sich die Decks die Vorderseiten und unterscheiden sich
-     nur in dem einen Bild, das man beim Spielen ohnehin am längsten sieht. */
   GK.CARD_THEMES = [
     { id: 'juggler',    name: 'Juggler',    aspect: '260/364' },
     { id: 'excaliber',  name: 'Excaliber',  aspect: '260/364' },
     { id: 'eerie',      name: 'Eerie',      aspect: '260/364' },
     { id: 'prismnight', name: 'Prismnight', aspect: '260/364' },
-    { id: 'newVegas',        name: 'Lucky 38',        ordner: 'newVegas', rueck: 'BACK',   aspect: '260/364' },
-    { id: 'nv-ultra-luxe',   name: 'Ultra-Luxe',      ordner: 'newVegas', rueck: 'EXTRA1', aspect: '260/364' },
-    { id: 'nv-vault-21',     name: 'Vault 21',        ordner: 'newVegas', rueck: 'EXTRA2', aspect: '260/364' },
-    { id: 'nv-tops',         name: 'The Tops',        ordner: 'newVegas', rueck: 'EXTRA3', aspect: '260/364' },
-    { id: 'nv-wrangler',     name: 'Atomic Wrangler', ordner: 'newVegas', rueck: 'EXTRA4', aspect: '260/364' },
-    { id: 'nv-gomorrah',     name: 'Gomorrah',        ordner: 'newVegas', rueck: 'EXTRA5', aspect: '260/364' },
-    { id: 'nv-silver-rush',  name: 'Silver Rush',     ordner: 'newVegas', rueck: 'EXTRA6', aspect: '260/364' },
-    { id: 'nv-bison-steve',  name: 'Bison Steve',     ordner: 'newVegas', rueck: 'EXTRA7', aspect: '260/364' }
+    { id: 'newVegas',   name: 'New Vegas',  aspect: '260/364' },
+    { id: 'oldVegas',   name: 'Old Vegas',  aspect: '260/364' }
   ];
 
-  /** Ordner eines Themes — meist die Kennung selbst. */
+  /** Ordner eines Themes. */
   GK.cardThemeDir = function (t) {
-    return 'assets/cards/themes/' + ((t && t.ordner) || (t && t.id) || 'juggler') + '/';
+    return 'assets/cards/themes/' + ((t && t.id) || 'juggler') + '/';
   };
-
-  /** Dateiname der Rückseite eines Themes — meist schlicht „back". */
-  GK.cardThemeBack = function (t) { return (t && t.rueck) || 'back'; };
 
   /* Feste Blätter ausserhalb der Deck-Auswahl. Watten gehört ein deutsches
      Blatt, und das ist deutlich schmaler als ein französisches: 0.54 statt
@@ -1473,11 +1454,7 @@
   GK.cardEl = function (card, hidden, cls, deck) {
     var e = GK.el('div', { class: 'card ' + (cls || '') + (hidden ? ' back' : '') });
     var thema = GK.cardTheme();
-    /* Die Rückseite gehört immer zum gewählten Deck — auch bei einem festen
-       Blatt wie Watten hat das eigene, und deshalb steht sie hier getrennt
-       von den Vorderseiten. */
-    var file = hidden ? (deck ? 'back' : GK.cardThemeBack(thema))
-                      : (card.r + (SUIT_FILE[card.s] || 'S'));
+    var file = hidden ? 'back' : (card.r + (SUIT_FILE[card.s] || 'S'));
     /* deck umgeht die Deck-Auswahl. Watten braucht das: dort gehoert ein
        deutsches Blatt hin, und ein franzoesisches waere schlicht das falsche
        Spiel. Der Ordner liegt deshalb ausserhalb von themes/ und taucht in
@@ -1504,10 +1481,7 @@
         img.removeAttribute('data-deck');
         e.removeAttribute('data-deck');
         e.style.removeProperty('--card-ar');
-        /* Die Rückseite heisst im Ersatzdeck womöglich anders — beim
-           New-Vegas-Blatt „BACK" statt „back". */
-        var t2 = GK.cardTheme();
-        img.src = GK.cardThemeDir(t2) + (hidden ? GK.cardThemeBack(t2) : file) + '.webp';
+        img.src = GK.cardThemeDir(GK.cardTheme()) + file + '.webp';
       });
     }
     e.appendChild(img);
@@ -1667,12 +1641,7 @@
           class: 'cardtheme-thumb', type: 'button', title: t.name,
           onClick: function () { GK.sfx('chip'); GK.setCardTheme(t.id); }
         }, [
-          /* Die Kachel zeigt die Rückseite — bei den New-Vegas-Decks ist
-             sie das einzige, was sie unterscheidet. */
-          GK.el('img', {
-            src: GK.cardThemeDir(t) + GK.cardThemeBack(t) + '.webp',
-            alt: t.name, draggable: 'false'
-          }),
+          GK.el('img', { src: GK.cardThemeDir(t) + 'back.webp', alt: t.name, draggable: 'false' }),
           GK.el('span', { text: t.name })
         ]);
         thumbs[t.id] = thumb;
