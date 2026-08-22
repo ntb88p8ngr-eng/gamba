@@ -37,10 +37,14 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
-# Voreinstellungen — passen zur Vorlage von Old Vegas
-STARTS = [16, 96, 136, 280, 330, 398]
-STUECK = 6.0        # Sekunden je Einstellung
-BLENDE = 1.0        # Sekunden Überblendung dazwischen
+# Voreinstellungen — passen zur Vorlage von Old Vegas.
+# Lieber wenige lange Einstellungen als viele kurze: ein Hintergrund, der
+# alle paar Sekunden umspringt, zieht den Blick weg von dem, was auf der
+# Seite passiert. Die Startzeiten liegen deshalb in den längsten
+# ungeschnittenen Passagen der Vorlage (--schnitte zeigt sie).
+STARTS = [28, 116, 173, 190, 206, 236, 325.5, 380.5]
+STUECK = 15.0       # Sekunden je Einstellung
+BLENDE = 1.2        # Sekunden Überblendung dazwischen
 SCHWARZ = 0.8       # Auf- und Abblende an den Enden
 BREIT, HOCH = 1280, 560
 FPS = 24
@@ -101,25 +105,25 @@ def schnitte_zeigen(ff, quelle):
     return zeiten
 
 
-def graph(n, crop):
+def graph(n, crop, stueck, blende, breit, hoch):
     """Der Filtergraph: beschneiden, skalieren, überblenden, ab- und aufblenden."""
     # fps muss NACH setpts stehen. Andersherum meldet xfade „current rate of
     # 1/0 is invalid" — es besteht auf einer festen Bildrate, und setpts
     # macht die Angabe hinterher wieder zunichte.
     einzeln = ('crop=%s,scale=%d:%d:flags=lanczos,setpts=PTS-STARTPTS,'
-               'fps=%d,format=yuv420p' % (crop, BREIT, HOCH, FPS))
+               'fps=%d,format=yuv420p' % (crop, breit, hoch, FPS))
     teile = ['[%d:v]%s[v%d]' % (i, einzeln, i) for i in range(n)]
 
     vorher = 'v0'
     for i in range(1, n):
         # Die Blende sitzt immer am Ende des bisher Zusammengesetzten
-        versatz = i * (STUECK - BLENDE)
+        versatz = i * (stueck - blende)
         raus = 'x%d' % i
         teile.append('[%s][v%d]xfade=transition=fade:duration=%s:offset=%s[%s]'
-                     % (vorher, i, BLENDE, versatz, raus))
+                     % (vorher, i, blende, round(versatz, 3), raus))
         vorher = raus
 
-    gesamt = n * STUECK - (n - 1) * BLENDE
+    gesamt = n * stueck - (n - 1) * blende
     # Entrauschen gehört in denselben Graphen — ein -vf daneben lehnt ffmpeg
     # ab, sobald ein filter_complex denselben Strom speist. Altes Filmkorn
     # kostet sonst mehr Bits als das Motiv, und hinter dem Schleier auf der
@@ -136,10 +140,20 @@ def main():
     ap.add_argument('--skin', default='old-vegas', help='Für welchen Skin (Ordnername)')
     ap.add_argument('--start', type=float, nargs='+', default=STARTS,
                     help='Startzeiten der Einstellungen in Sekunden')
+    ap.add_argument('--stueck', type=float, default=STUECK,
+                    help='Sekunden je Einstellung (länger = ruhigerer Hintergrund)')
+    ap.add_argument('--blende', type=float, default=BLENDE,
+                    help='Sekunden Überblendung zwischen den Einstellungen')
+    ap.add_argument('--breite', type=int, default=BREIT, help='Bildbreite der Ausgabe')
+    ap.add_argument('--crf', type=int, default=30, help='Qualität H.264, größer = kleiner')
+    ap.add_argument('--crf-vp9', type=int, default=46, help='Qualität VP9, größer = kleiner')
     ap.add_argument('--crop', default='640:280:0:100',
                     help='Beschnitt b:h:x:y — schneidet Wasserzeichen weg')
-    ap.add_argument('--standbild-bei', type=float, default=8.0,
-                    help='Sekunde in der Schleife, aus der das Standbild kommt')
+    ap.add_argument('--standbild-quelle', type=float, default=None,
+                    help='Sekunde in der VORLAGE, aus der das Standbild kommt '
+                         '(ohne Angabe: Mitte der zweiten Einstellung)')
+    ap.add_argument('--standbild-breite', type=int, default=1280,
+                    help='Breite des Standbilds — darf grösser sein als der Film')
     ap.add_argument('--schnitte', action='store_true',
                     help='Nur die Schnitte der Vorlage auflisten')
     a = ap.parse_args()
@@ -157,26 +171,37 @@ def main():
     webm = os.path.join(ziel, 'hintergrundfilm.webm')
     webp = os.path.join(ziel, 'hintergrundfilm.webp')
 
-    fg, gesamt = graph(len(a.start), a.crop)
+    hoch = int(round(a.breite * HOCH / BREIT)) // 2 * 2
+    fg, gesamt = graph(len(a.start), a.crop, a.stueck, a.blende, a.breite, hoch)
     eingaben = []
     for s in a.start:
-        eingaben += ['-ss', str(s), '-t', str(STUECK), '-i', a.quelle]
+        eingaben += ['-ss', str(s), '-t', str(a.stueck), '-i', a.quelle]
 
     print('Schneide %d Einstellungen zu %.1f s Schleife …' % (len(a.start), gesamt))
     lauf([ff, '-hide_banner', '-loglevel', 'error', '-y'] + eingaben
          + ['-filter_complex', fg, '-map', '[out]', '-an',
-            '-c:v', 'libx264', '-preset', 'slow', '-crf', '30',
+            '-c:v', 'libx264', '-preset', 'slow', '-crf', str(a.crf),
             '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4])
 
     print('Zweite Fassung als VP9 …')
     lauf([ff, '-hide_banner', '-loglevel', 'error', '-y', '-i', mp4, '-an',
-          '-c:v', 'libvpx-vp9', '-crf', '46', '-b:v', '0', '-row-mt', '1',
+          '-c:v', 'libvpx-vp9', '-crf', str(a.crf_vp9), '-b:v', '0', '-row-mt', '1',
           '-deadline', 'good', '-cpu-used', '3', '-pix_fmt', 'yuv420p', webm])
 
+    # Das Standbild kommt aus der Vorlage, nicht aus der fertigen Schleife:
+    # es steht als Ersatz für alle da, die keine Bewegung wollen, und
+    # füllt dann den ganzen Schirm. Ein Einzelbild wiegt fast nichts,
+    # also darf es ruhig grösser sein als der Film.
     print('Standbild …')
     png = os.path.join(ziel, '_standbild.png')
+    quelle_zeit = a.standbild_quelle
+    if quelle_zeit is None:
+        # Mitte der zweiten Einstellung — die erste blendet noch auf
+        wo = 1 if len(a.start) > 1 else 0
+        quelle_zeit = a.start[wo] + a.stueck / 2.0
     lauf([ff, '-hide_banner', '-loglevel', 'error', '-y',
-          '-ss', str(a.standbild_bei), '-i', mp4, '-frames:v', '1', png])
+          '-ss', str(quelle_zeit), '-i', a.quelle, '-frames:v', '1',
+          '-vf', 'crop=%s,scale=%d:-2:flags=lanczos' % (a.crop, a.standbild_breite), png])
     try:
         from PIL import Image
         Image.open(png).convert('RGB').save(webp, 'WEBP', quality=82, method=6)

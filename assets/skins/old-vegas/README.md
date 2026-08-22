@@ -20,13 +20,22 @@ heller Text lesbar bleibt.
 
 ## Der Film
 
-`🎬 Film` ist ein bewegter Hintergrund: eine halbe Minute alte
-Leuchtreklame in Schleife, geschnitten aus `vegasmovie.mp4`. Er liegt in
-zwei Fassungen bereit — genommen wird die erste, die der Browser abspielen
-kann; WebM wiegt weniger, MP4 kann jeder. Daneben liegt
-`hintergrundfilm.webp`: dasselbe Motiv als Standbild. Es dient als
-Vorschau in der Auswahl, steht da, solange der Film lädt, und bleibt
-stehen, wenn er nicht laufen darf.
+`🎬 Film` ist ein bewegter Hintergrund: knapp zwei Minuten alte
+Leuchtreklame in Schleife, geschnitten aus `vegasmovie.mp4`. Acht
+Einstellungen zu je fünfzehn Sekunden — lang genug, dass der Hintergrund
+nicht dauernd umspringt und den Blick von der Seite wegzieht.
+
+Er liegt in zwei Fassungen bereit — genommen wird die erste, die der
+Browser abspielen kann; WebM wiegt weniger, MP4 kann jeder. Beide messen
+640×280, und das ist kein Sparen am falschen Ende: genau so gross ist der
+Ausschnitt aus der Vorlage. Grösser zu kodieren fügt kein Fleisch hinzu,
+es kostet nur das Dreifache an Bytes für dieselbe Unschärfe. Skaliert
+wird im Browser.
+
+Daneben liegt `hintergrundfilm.webp`: dasselbe Motiv als Standbild, und
+zwar in 1280 Pixeln Breite. Ein Einzelbild wiegt fast nichts, und es
+füllt für alle ohne Bewegung den ganzen Schirm. Es dient ausserdem als
+Vorschau in der Auswahl und steht da, solange der Film lädt.
 
 Geladen wird der Film erst, wenn ihn jemand auswählt — sonst zöge jeder
 Besuch ein paar Megabyte, die er nie zu sehen bekommt. Wer am Gerät
