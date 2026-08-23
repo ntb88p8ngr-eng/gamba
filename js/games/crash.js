@@ -280,6 +280,9 @@
 
         var win = Math.floor(stake * cashedAt);
         GK.payout(win, { stake: stake });
+        /* Für die Hall of Fame zählt nur, was man auch mitgenommen hat:
+           eine geplatzte Rakete ist kein Flug, sondern ein Krater. */
+        GK.rekord('crash', cashedAt);
         GK.logPlay('Raketen-Crash', stake, win);
         multEl.className = 'crash-mult cashed';
         multEl.textContent = cashedAt.toFixed(2) + '× ✅';
@@ -334,6 +337,7 @@
           running = false;
           cashedAt = raus;
           GK.payout(gut, { stake: stake });
+          GK.rekord('crash', raus);
           GK.logPlay('Raketen-Crash', stake, gut);
           GK.toast('Flug beendet bei ' + raus.toFixed(2) + '× — ' + GK.fmt(gut) + ' Chips gesichert',
                    'gold', '🚀');

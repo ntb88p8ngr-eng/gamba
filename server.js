@@ -296,10 +296,16 @@ function newPlayer(name, avatar, id) {
     biggestWin: 0,
     biggestWinGame: '',
     peak: START_BALANCE,
-    /* Wann dieser Spieler zum ersten Mal ueber der Million stand. 0 = nie.
-       Steht hier und nicht in der Ruhmeshalle, weil der Zeitpunkt sonst
-       verloren waere, sobald er wieder darunter faellt. */
+    /* Wann dieser Spieler zum ersten Mal ueber der Million bzw. der
+       hundertsten stand. 0 = nie. Steht hier und nicht in der Ruhmeshalle,
+       weil der Zeitpunkt sonst verloren waere, sobald er wieder darunter
+       faellt. */
     mioAt: 0,
+    mio100At: 0,
+    /* Bestleistungen, die kein Kontostand ist: der hoechste Ausstieg beim
+       Raketen-Crash und die weiteste Strecke im Flatterflug. Das Spiel
+       meldet sie, der Server behaelt nur den Rekord. */
+    rekorde: { crash: 0, flappy: 0 },
     luck: 50,
     xp: 0,
     claimedLevel: 1,
@@ -400,7 +406,8 @@ function alleZuruecksetzen(mitXp) {
     x.granted = 0; x.wagered = 0; x.returned = 0;
     x.plays = 0; x.wins = 0; x.losses = 0;
     x.biggestWin = 0; x.biggestWinGame = ''; x.peak = START_BALANCE;
-    x.mioAt = 0;
+    x.mioAt = 0; x.mio100At = 0;
+    x.rekorde = { crash: 0, flappy: 0 };
     x.lastBailout = 0;
     if (mitXp) { x.xp = 0; x.claimedLevel = 1; }
   });
@@ -756,6 +763,9 @@ function radioWaehlen(id, trackId) {
    nicht in einer Datei. */
 
 var MILLION = 1000000;
+/* Die zweite Marke der Ruhmeshalle. Wer hier ankommt, hat nicht mehr
+   gespielt, sondern das Casino leergeraeumt. */
+var MILLION100 = 100000000;
 var WEBRADIO_MAX = 40;
 /* Ein Stueck darf gross sein — der 80er-Mix wiegt allein hundert Megabyte. */
 var UPLOAD_MAX = 220 * 1024 * 1024;
@@ -1036,7 +1046,7 @@ function webTitelGrund(url) {
 
 var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1, packTrack: 1, packStation: 1, packMove: 1, loopRegel: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
-var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
+var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1 };
 
 function applyOp(op) {
   var type = op && op.type;
@@ -1057,7 +1067,7 @@ function applyOp(op) {
   }
 
   var p = op.id ? db.players[op.id] : null;
-  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1, resetPassword: 1 };
+  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1, resetPassword: 1 };
   if (needsPlayer[type] && !p) return { error: 'Spieler nicht gefunden', code: 404 };
 
   switch (type) {
@@ -1085,6 +1095,7 @@ function applyOp(op) {
            Wer vor dieser Zeile schon darueber lag, faellt aus der Wertung —
            das ist der Preis dafuer, nicht rueckwirkend raten zu wollen. */
         if (!p.mioAt && p.balance >= MILLION) p.mioAt = Date.now();
+        if (!p.mio100At && p.balance >= MILLION100) p.mio100At = Date.now();
         if (win - stake > p.biggestWin) {
           p.biggestWin = win - stake;
           p.biggestWinGame = clean(op.game, 24);
@@ -1093,6 +1104,29 @@ function applyOp(op) {
       } else {
         p.losses++;
       }
+      break;
+    }
+
+    /* Eine Bestleistung melden, die nicht in Chips zu messen ist: wie hoch
+       die Rakete kam, wie weit der Flatterflug reichte.
+       Der Server glaubt der Zahl nicht blind — er deckelt sie auf das, was
+       im Spiel ueberhaupt vorkommen kann, und behaelt nur den Rekord. Ein
+       spaeterer schlechterer Flug loescht den besseren also nicht. */
+    case 'rekord': {
+      /* Die Obergrenzen stehen in den Spielen: rollCrash deckelt den
+         Crashpunkt auf 500x, der Flatterflug endet nach ZIEL = 25 Roehren.
+         Wer mehr meldet, hat nicht gespielt, sondern getippt — und wird
+         abgewiesen statt gekappt: gekappt stuende der Unfug sonst als
+         Bestwert in der Ruhmeshalle. */
+      var welche = { crash: 500, flappy: 25 };
+      var art = clean(op.art, 12);
+      if (!welche[art]) return { error: 'Unbekannte Bestleistung', code: 400 };
+      /* Hundertstel, damit der Multiplikator 12,45x nicht auf 12 faellt. */
+      var wert = Math.round(Number(op.wert) * 100) / 100;
+      if (!(wert > 0)) break;
+      if (wert > welche[art]) return { error: 'So weit kommt hier niemand', code: 400 };
+      if (!p.rekorde || typeof p.rekorde !== 'object') p.rekorde = { crash: 0, flappy: 0 };
+      if (wert > (p.rekorde[art] || 0)) p.rekorde[art] = wert;
       break;
     }
 
@@ -1177,7 +1211,8 @@ function applyOp(op) {
       rp.granted = 0; rp.wagered = 0; rp.returned = 0;
       rp.plays = 0; rp.wins = 0; rp.losses = 0;
       rp.biggestWin = 0; rp.biggestWinGame = ''; rp.peak = START_BALANCE;
-      rp.mioAt = 0;
+      rp.mioAt = 0; rp.mio100At = 0;
+      rp.rekorde = { crash: 0, flappy: 0 };
       rp.xp = 0; rp.claimedLevel = 1;
       rp.lastBailout = 0;
       break;
@@ -1831,10 +1866,15 @@ function handleRequest(req, res) {
     return;
   }
 
-  /* ── Hall of Gamba ──
-     Sechs Auszeichnungen, aus dem gerechnet, was ohnehin mitgeschrieben
-     wird: der Spielerstand und die Rundenliste. Offen fuer jeden — es ist
-     eine Ruhmeshalle, kein Geheimnis.
+  /* ── Hall of Fame ──
+     Sechs Auszeichnungen. Offen fuer jeden — es ist eine Ruhmeshalle,
+     kein Geheimnis.
+
+     Was schon als Spalte im Leaderboard steht (Kontostand, bester
+     Einzelgewinn, gespielte Runden), steht hier bewusst nicht: eine
+     zweite Rangliste derselben Zahlen waere keine Auszeichnung. Hier
+     zaehlen Marken und Bestleistungen, die man einmal erreicht und dann
+     behaelt.
 
      Geschenkte Chips zaehlen beim Profit nicht mit (so rechnet auch das
      Leaderboard), sonst waere die groesste Auszeichnung ein Gefallen des
@@ -1875,32 +1915,36 @@ function handleRequest(req, res) {
       if (!verlierer || v < vw) { verlierer = p; vw = v; }
     });
 
-    var mio = null;
-    leute.forEach(function (p) {
-      if (!p.mioAt) return;
-      if (!mio || p.mioAt < mio.mioAt) mio = p;
-    });
+    /* Bei einer Marke gewinnt nicht der groesste Wert, sondern der
+       frueheste Zeitpunkt — es geht darum, wer zuerst da war. */
+    function zuerst(feld) {
+      var b = null;
+      leute.forEach(function (p) {
+        if (!p[feld]) return;
+        if (!b || p[feld] < b[feld]) b = p;
+      });
+      return b ? { spieler: wer(b), wert: b[feld], wann: b[feld] } : null;
+    }
+    function bestleistung(art) {
+      return beste(function (p) { return (p.rekorde && p.rekorde[art]) || 0; },
+                   function (v) { return v > 0; });
+    }
 
     var opfer = schlimmste ? db.players[schlimmste.p] : null;
 
     return sendJSON(res, 200, {
       jetzt: Date.now(),
       million: MILLION,
+      million100: MILLION100,
       trophaeen: [
-        { id: 'krone', beste: beste(function (p) { return p.peak || 0; },
-            function (v, p) { return v > START_BALANCE && (p.plays || 0) > 0; }) },
-        { id: 'sieg', beste: (function () {
-            var b = beste(function (p) { return p.biggestWin || 0; }, function (v) { return v > 0; });
-            if (b) b.spiel = (db.players[b.spieler.id] || {}).biggestWinGame || '';
-            return b;
-          })() },
+        { id: 'million', beste: zuerst('mioAt') },
+        { id: 'hundert', beste: zuerst('mio100At') },
+        { id: 'rakete', beste: bestleistung('crash') },
+        { id: 'flatter', beste: bestleistung('flappy') },
         { id: 'schlag', beste: schlimmste && opfer
             ? { spieler: wer(opfer), wert: schlimmste.weg, spiel: schlimmste.g || '', wann: schlimmste.t }
             : null },
-        { id: 'verlust', beste: verlierer ? { spieler: wer(verlierer), wert: Math.abs(vw) } : null },
-        { id: 'million', beste: mio ? { spieler: wer(mio), wert: mio.mioAt, wann: mio.mioAt } : null },
-        { id: 'ausdauer', beste: beste(function (p) { return p.plays || 0; },
-            function (v) { return v > 0; }) }
+        { id: 'verlust', beste: verlierer ? { spieler: wer(verlierer), wert: Math.abs(vw) } : null }
       ]
     });
   }

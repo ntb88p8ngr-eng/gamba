@@ -77,19 +77,20 @@
     'Noch keine Spieler. Leg los und hol dir die Krone!': 'No players yet. Get going and grab the crown!',
 
     /* Ruhmeshalle */
-    '🏛 HALL OF GAMBA': '🏛 HALL OF GAMBA',
-    'Die dickste Krone': 'The Fattest Crown',
-    'Höchster Stand, den jemand je hatte': 'Highest balance anyone ever held',
-    'Der große Wurf': 'The Big One',
-    'Größter Gewinn in einer einzigen Runde': 'Biggest win in a single round',
+    'Sechs Auszeichnungen, die man nicht kauft, sondern erreicht. Wer einmal drinsteht, bleibt drin — bis ihn jemand ablöst.':
+      'Six awards you do not buy — you earn them. Once you are in, you stay in until somebody takes your place.',
+    'Der Millionär': 'The Millionaire',
+    'Als Erster über eine Million': 'First one past a million',
+    'Der Hundertmillionär': 'The Hundred-Millionaire',
+    'Als Erster über 100.000.000': 'First one past 100,000,000',
+    'Der größte Raketenflug': 'The Highest Rocket',
+    'Höchster Ausstieg beim Raketen-Crash': 'Highest cash-out in Rocket Crash',
+    'Der längste Flatterflug': 'The Longest Flap',
+    'Weiteste Strecke im Flatterflug': 'Longest distance in Flappy Flight',
     'Der harte Schlag': 'The Hard Knock',
     'Größter Verlust in einer einzigen Runde': 'Biggest loss in a single round',
     'Der Großverlierer': 'The Grand Loser',
     'Tiefstes Minus über alles gerechnet': 'Deepest minus over everything',
-    'Der Millionär': 'The Millionaire',
-    'Als Erster über eine Million': 'First one past a million',
-    'Die Ausdauer': 'The Long Haul',
-    'Meiste gespielte Runden': 'Most rounds played',
     'Noch zu haben': 'Still up for grabs',
     'Die Ruhmeshalle wird gerade poliert.': 'The hall of fame is being polished.',
 
@@ -722,8 +723,10 @@
         .replace('Sender schickt kein icy-metaint', 'station sends no icy-metaint')
         .replace('nicht erreichbar', 'unreachable');
     }],
-    /* Zifferngruppen mit Punkt: „12.480 Runden" aus der Ruhmeshalle. */
-    [/^([\d.,]+) Runden$/, '$1 rounds'],
+    [/^(\d+) Runden$/, '$1 rounds'],
+    /* Die Strecke unter der Flatterflug-Trophäe — mit Punkt in der
+       Zifferngruppe, sobald jemand wirklich weit kommt. */
+    [/^([\d.,]+) Röhren$/, '$1 pipes'],
     /* Wo der Rekord aufgestellt wurde — steht nur unter einer Trophäe.
        Der Spielname muss durchs Wörterbuch, sonst bliebe „bei
        Drachenhöhle" zu „at Drachenhöhle" und nur das Wörtchen wäre

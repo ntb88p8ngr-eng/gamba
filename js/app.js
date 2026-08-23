@@ -413,20 +413,22 @@
     });
   }
 
-  /* ─────────────── HALL OF GAMBA ───────────────
-     Sechs Auszeichnungen, die nicht vom Kontostand abhängen, sondern von
-     dem, was jemand angerichtet hat. Das Leaderboard sagt, wer vorne
-     liegt; hier steht, wer eine Geschichte hat.
+  /* ─────────────── HALL OF FAME ───────────────
+     Sechs Auszeichnungen auf einer eigenen Seite. Was schon als Spalte im
+     Leaderboard steht — Kontostand, bester Einzelgewinn, gespielte Runden —
+     kommt hier bewusst nicht vor: eine zweite Rangliste derselben Zahlen
+     wäre keine Auszeichnung. Hier zählen Marken, die man einmal erreicht,
+     und Bestleistungen aus den Spielen selbst.
 
      Gerechnet wird auf dem Server — die Rundenliste liegt dort, und der
      härteste Einzelverlust steht in keiner Spalte, den muss man suchen. */
   var TROPHAEEN = {
-    krone:    { icon: '👑', name: 'Die dickste Krone',   was: 'Höchster Stand, den jemand je hatte',      art: 'chips' },
-    sieg:     { icon: '💥', name: 'Der große Wurf',      was: 'Größter Gewinn in einer einzigen Runde',   art: 'chips' },
-    schlag:   { icon: '💣', name: 'Der harte Schlag',    was: 'Größter Verlust in einer einzigen Runde',  art: 'chips' },
-    verlust:  { icon: '📉', name: 'Der Großverlierer',   was: 'Tiefstes Minus über alles gerechnet',      art: 'chips' },
-    million:  { icon: '💎', name: 'Der Millionär',       was: 'Als Erster über eine Million',             art: 'zeit' },
-    ausdauer: { icon: '🎲', name: 'Die Ausdauer',        was: 'Meiste gespielte Runden',                  art: 'runden' }
+    million: { icon: '💎', name: 'Der Millionär',        was: 'Als Erster über eine Million',            art: 'zeit' },
+    hundert: { icon: '🏦', name: 'Der Hundertmillionär', was: 'Als Erster über 100.000.000',             art: 'zeit' },
+    rakete:  { icon: '🚀', name: 'Der größte Raketenflug', was: 'Höchster Ausstieg beim Raketen-Crash',  art: 'mult' },
+    flatter: { icon: '🐦', name: 'Der längste Flatterflug', was: 'Weiteste Strecke im Flatterflug',      art: 'roehren' },
+    schlag:  { icon: '💣', name: 'Der harte Schlag',     was: 'Größter Verlust in einer einzigen Runde', art: 'chips' },
+    verlust: { icon: '📉', name: 'Der Großverlierer',    was: 'Tiefstes Minus über alles gerechnet',     art: 'chips' }
   };
 
   var hallDaten = null;
@@ -461,7 +463,8 @@
       /* Das Datum folgt der Sprache der Seite, nicht der des Browsers: sonst
          steht im deutschen Casino 8/23/2026. */
       if (def.art === 'zeit') wert = new Date(b.wert).toLocaleDateString(GK.lang() === 'en' ? 'en-GB' : 'de-DE');
-      else if (def.art === 'runden') wert = GK.fmt(b.wert) + ' Runden';
+      else if (def.art === 'mult') wert = GK.fmtX(b.wert);
+      else if (def.art === 'roehren') wert = GK.fmt(b.wert) + ' Röhren';
       else wert = GK.fmt(b.wert) + ' Chips';
 
       var spielName = '';
@@ -474,7 +477,9 @@
         el('span', { class: 'hall-name', text: b.spieler.name })
       ]));
       karte.appendChild(el('div', { class: 'hall-wert', text: wert }));
-      if (spielName) karte.appendChild(el('div', { class: 'hall-spiel', text: 'bei ' + spielName }));
+      /* Die Zeile steht auch leer da: sonst säßen Name und Wert auf den
+         Karten ohne Spielangabe eine Zeile höher als daneben. */
+      karte.appendChild(el('div', { class: 'hall-spiel', text: spielName ? 'bei ' + spielName : '' }));
       box.appendChild(karte);
     });
   }
@@ -508,12 +513,23 @@
     }, function () { hallLaeuft = false; });
   }
 
+  /**
+   * Die Ruhmeshalle aufschlagen.
+   *
+   * Erst zeichnen, dann nachfragen: der letzte Stand steht sofort da,
+   * statt dass die Seite eine Sekunde lang leer bleibt. Beim ersten Mal
+   * ist noch nichts da — dann steht dort, dass poliert wird.
+   */
+  function hallOeffnen() {
+    showView('view-hall');
+    renderHall();
+    hallHolen(true);
+  }
+
   function renderAll() {
     var me = GK.player();
     if ((me ? GK.levelOf(me.xp) : null) !== drawnLevel) renderGames();
     renderBoard();
-    renderHall();
-    hallHolen();
     renderFeed();
     renderWipe();
     renderMarquee();
@@ -3158,6 +3174,11 @@
        führte sonst zu einer ausgeblendeten Tafel. */
     var zumBoard = $('#btn-goto-board');
     if (zumBoard) zumBoard.style.display = d ? 'none' : '';
+    /* Dasselbe für die Ruhmeshalle: sie zählt Casino-Chips und
+       Bestleistungen aus dem Casino. In der Party gilt die Partykasse, und
+       ein Rekord von dort steht dort auch nicht drin. */
+    var zurHalle = $('#btn-hall');
+    if (zurHalle) zurHalle.style.display = d ? 'none' : '';
   }
 
   function boot() {
@@ -3243,6 +3264,12 @@
       GK.sfx('click');
       showView('view-lobby');
       setTimeout(function () { $('#board-anchor').scrollIntoView({ behavior: 'smooth' }); }, 80);
+    });
+    $('#btn-hall').addEventListener('click', function () { GK.sfx('click'); hallOeffnen(); });
+    $('#btn-hall-back').addEventListener('click', function () {
+      GK.sfx('click');
+      showView('view-lobby');
+      renderAll();
     });
     $('#btn-daily').addEventListener('click', function () { GK.sfx('click'); dailyBonus(); });
     $('#btn-new-player').addEventListener('click', function () { GK.sfx('click'); authModal({ mode: 'register', closable: true }); });

@@ -650,6 +650,25 @@
     GK.checkBroke();
   };
 
+  /**
+   * Eine Bestleistung melden, die sich nicht in Chips messen lässt: wie
+   * hoch die Rakete kam, wie weit der Flatterflug reichte. Für die Hall of
+   * Fame — das Leaderboard kennt nur Zahlen mit Währung.
+   *
+   * In der Party passiert nichts: dort spielt man mit Partychips um ein
+   * eigenes Rennen, und ein Rekord daraus stünde in der Ruhmeshalle des
+   * Casinos, wo er nicht hingehört.
+   */
+  GK.rekord = function (art, wert) {
+    var p = GK.player();
+    if (kasse || !p || !(wert > 0)) return;
+    if (!p.rekorde || typeof p.rekorde !== 'object') p.rekorde = {};
+    wert = Math.round(wert * 100) / 100;
+    if (wert <= (p.rekorde[art] || 0)) return;   // schlechter als der eigene Rekord
+    p.rekorde[art] = wert;
+    GK.commit('rekord', { id: p.id, art: art, wert: wert });
+  };
+
   /** Wer alles verloren hat, bekommt Mitleids-Chips — einmal pro Tag. */
   GK.bailoutLeft = function (p) {
     p = p || GK.player();

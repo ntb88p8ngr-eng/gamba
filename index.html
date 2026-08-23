@@ -104,6 +104,7 @@ try {
         <button class="btn btn-mega" id="btn-play-random"><span class="btn-ic" data-icon="dice"></span>ZUFALLSSPIEL</button>
         <button class="btn btn-mp" id="btn-multiplayer"><span class="btn-ic" data-icon="poker"></span>MULTIPLAYER</button>
         <button class="btn btn-ghost" id="btn-goto-board"><span class="btn-ic" data-icon="trophy"></span>LEADERBOARD</button>
+        <button class="btn btn-ghost" id="btn-hall"><span class="btn-ic">🏛</span>HALL OF FAME</button>
         <button class="btn btn-ghost" id="btn-daily"><span class="btn-ic" data-icon="gift"></span>TAGESBONUS</button>
       </div>
     </div>
@@ -129,13 +130,23 @@ try {
       </div>
     </div>
 
-    <!-- Die Ruhmeshalle: sechs Auszeichnungen, die sich aus dem ergeben,
-         was ohnehin mitgeschrieben wird. Gefüllt wird sie von js/app.js. -->
-    <h2 class="section-title" id="hall-anchor"><span>🏛 HALL OF GAMBA</span></h2>
-    <div class="hall" id="hall"></div>
-
     <h2 class="section-title"><span>📜 LETZTE AKTIONEN</span></h2>
     <div class="feed" id="feed"></div>
+  </section>
+
+  <!-- ══════════ HALL OF FAME ══════════
+       Eine eigene Seite: die Auszeichnungen sind keine zweite Rangliste,
+       sondern eine Sammlung — und eine Sammlung schaut man sich an, statt
+       an ihr vorbeizuscrollen. Gefüllt wird sie von js/app.js. -->
+  <section id="view-hall" class="view">
+    <div class="game-header">
+      <h2 class="game-title">🏛 Hall of Fame</h2>
+      <div class="game-actions">
+        <button class="btn btn-ghost btn-small" id="btn-hall-back">← LOBBY</button>
+      </div>
+    </div>
+    <p class="hall-intro">Sechs Auszeichnungen, die man nicht kauft, sondern erreicht. Wer einmal drinsteht, bleibt drin — bis ihn jemand ablöst.</p>
+    <div class="hall" id="hall"></div>
   </section>
 
   <!-- ══════════ MULTIPLAYER ══════════ -->

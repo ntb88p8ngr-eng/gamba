@@ -425,6 +425,10 @@
         ausgestiegen = mult;
         var win = Math.floor(stake * mult);
         GK.payout(win, { stake: stake });
+        /* Für die Hall of Fame zählt die Strecke, nicht der Ausgang: wer
+           weit kommt und dann gegen eine Röhre fliegt, ist trotzdem weit
+           gekommen. Deshalb steht die Meldung auch im Absturz. */
+        GK.rekord('flappy', geschafft);
         GK.logPlay('Flatterflug', stake, win);
         GK.setResult(resultBox,
           (amZiel ? '🏁 Am Ziel! ' : (auto ? '🤖 Automatisch ausgestiegen: ' : 'Ausgestiegen bei ')) +
@@ -443,6 +447,7 @@
         sperreBis = performance.now() + 900;
         for (var i = 0; i < 14; i++) feder(VOGEL_X, vogelY, 40);
         GK.payout(0, { stake: stake });
+        GK.rekord('flappy', geschafft);
         GK.logPlay('Flatterflug', stake, 0);
         GK.setResult(resultBox,
           woran + ' bei ' + geschafft + ' Röhren — ' + GK.fmt(stake) + ' Chips futsch', 'lose');
@@ -561,6 +566,7 @@
           var win = Math.floor(stake * mult);
           laeuft = false;
           GK.payout(win, { stake: stake });
+          GK.rekord('flappy', geschafft);
           GK.logPlay('Flatterflug', stake, win);
           GK.toast('Flug beendet bei ' + GK.fmtX(mult) + ' — ' + GK.fmt(win) + ' Chips gesichert',
                    'gold', '🐦');
