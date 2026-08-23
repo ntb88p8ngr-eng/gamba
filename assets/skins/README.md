@@ -8,13 +8,23 @@ Gerät, nicht zum Konto.
 |---|---|---|
 | GambaKing (Standard) | `default` | — |
 | Old Vegas | `old-vegas` | `assets/skins/old-vegas/` |
-| Vaporwave | `vaporwave` | — |
-| Strand | `strand` | — |
+| Vaporwave | `vaporwave` | `assets/skins/vaporwave/` |
+| Strand | `strand` | `assets/skins/strand/` |
 
-Old Vegas bringt eigene Bilder mit. Vaporwave und Strand kommen ohne aus:
-ihre Hintergründe entstehen vollständig aus Verläufen und den Ebenen, die
+Der Ordnername ist die **Kennung** des Skins, nicht sein Anzeigename —
+`strand`, nicht `beach`. Wer daneben liegt, bekommt keinen Fehler,
+sondern still den gemalten Hintergrund.
+
+Jeder Skin außer dem Standard bringt eigene Bilder mit. Fehlt eine Datei,
+greift der Hintergrund aus reinem CSS: Verläufe und die Ebenen, die
 `index.html` ohnehin mitbringt — Sonne, Gitter, Lichtflecken, Streifen.
-Das lädt nichts nach und lässt sich in einer Zeile nachjustieren.
+Beides ist gewollt, das eine ist der Ersatz für das andere.
+
+Liegt ein Foto dahinter, steht `data-bg-bild="an"` am Wurzelelement.
+Daran hängen in `css/skins.css` die Regeln, die den gemalten Hintergrund
+aus dem Weg räumen — zwei Sonnen im selben Himmel sind eine zu viel — und
+den Schleier verstärken, damit heller Text lesbar bleibt. Gesetzt wird
+das Attribut erst, wenn das Bild wirklich geladen ist.
 
 ---
 
@@ -49,7 +59,9 @@ der Reihe nach durch, alle 45 Sekunden eines, weich überblendet. Die Wahl
 merkt sich das Gerät je Skin.
 
 Bilder sind optional: ohne sie bleibt der Verlauf aus `css/skins.css`.
-Empfohlen: 1920×1080 oder größer, `.webp`. Wie hell das Bild ist, spielt
+Empfohlen: 1920×1080 oder größer, `.webp`. Ein Foto als PNG wiegt
+schnell drei Megabyte und lädt bei jedem Besuch mit; dieselbe Aufnahme
+als WebP mit Qualität 90 wiegt ein Zehntel davon und sieht gleich aus. Wie hell das Bild ist, spielt
 kaum eine Rolle — der Schleier darüber sorgt dafür, dass heller Text
 lesbar bleibt.
 

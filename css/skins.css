@@ -237,6 +237,41 @@
     radial-gradient(closest-side circle at 50% 62%, rgba(27,7,54,.5) 0%, rgba(27,7,54,.28) 60%, transparent 78%),
     linear-gradient(180deg,rgba(20,4,42,.34),rgba(20,4,42,.2) 55%,rgba(20,4,42,.42))
 }
+/* ── Mit Foto ──
+   Liegt ein Bild dahinter, bringt es seinen eigenen Sonnenuntergang mit.
+   Die gemalte Sonne, ihre Streifen und das Chromgitter müssen dann weg —
+   zwei Sonnen im selben Himmel sind eine zu viel. Übrig bleibt eine
+   dunkle Grundfläche, damit beim Überblenden nichts durchblitzt, und ein
+   kräftigerer Schleier: ein Foto vom Sonnenuntergang ist am Horizont so
+   hell, dass heller Text darauf verschwände. */
+:root[data-skin="vaporwave"][data-bg-bild="an"] .bg-fx{
+  background:linear-gradient(180deg,#1b0736,#12032a)
+}
+:root[data-skin="vaporwave"][data-bg-bild="an"] .bg-fx::after{display:none}
+:root[data-skin="vaporwave"][data-bg-bild="an"] .grid-floor{display:none}
+/* Die Lichtflecken bleiben, aber nur als Hauch — auf einem Foto wirken
+   sie sonst wie Fingerabdrücke auf der Linse. */
+:root[data-skin="vaporwave"][data-bg-bild="an"] .blob{opacity:.12}
+/* Der Schleier bleibt bewusst dünn: wer sich ein Bild aussucht, will es
+   auch sehen. Die Lesbarkeit trägt zum größeren Teil der Schatten hinter
+   der Schrift — der kostet nichts vom Bild, sondern nur ein paar Pixel
+   um die Buchstaben. Nach unten wird er dichter, weil dort die Kacheln
+   beginnen und ein Foto unter Fließtext mehr stört als unter einer
+   Überschrift. */
+:root[data-skin="vaporwave"][data-bg-bild="an"] .scanlines{
+  background:
+    repeating-linear-gradient(180deg,rgba(255,255,255,.03) 0 1px,transparent 1px 4px),
+    linear-gradient(180deg,rgba(20,4,42,.3),rgba(20,4,42,.34) 45%,rgba(18,3,42,.62)),
+    radial-gradient(130% 95% at 50% 40%, transparent 52%, rgba(0,0,0,.42) 100%)
+}
+/* Über einem Foto braucht Text etwas Halt im Rücken. */
+:root[data-skin="vaporwave"][data-bg-bild="an"] .hero-sub,
+:root[data-skin="vaporwave"][data-bg-bild="an"] .hero-tag,
+:root[data-skin="vaporwave"][data-bg-bild="an"] .section-title span,
+:root[data-skin="vaporwave"][data-bg-bild="an"] .marquee-track{
+  text-shadow:0 2px 12px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.7)
+}
+
 :root[data-skin="vaporwave"] .hero-title{
   background-image:linear-gradient(180deg,#fffb96 0%,#ff71ce 45%,#b967ff 70%,#01cdfe 100%);
   filter:drop-shadow(0 4px 0 rgba(1,205,254,.55)) drop-shadow(0 0 30px rgba(255,113,206,.6));
@@ -319,6 +354,37 @@
     linear-gradient(180deg,rgba(4,32,50,.32),rgba(4,32,50,.16) 48%,rgba(4,32,50,.46)),
     radial-gradient(120% 80% at 50% 45%, transparent 55%, rgba(3,26,40,.45) 100%)
 }
+/* ── Mit Foto ──
+   Wie beim Vaporwave: das Bild bringt Himmel, Meer und Sand selbst mit,
+   also müssen die gemalte Sonne und die Wellenkämme weg.
+
+   Der Schleier ist hier deutlich dichter als beim Vaporwave, und das hat
+   einen Grund: ein Strandfoto am Mittag ist weiß, der Sand fast
+   überstrahlt. Heller Text darauf verschwände spurlos. Nach unten wird er
+   noch dichter, weil dort die Kacheln beginnen. */
+:root[data-skin="strand"][data-bg-bild="an"] .bg-fx{
+  background:linear-gradient(180deg,#0a3e63,#062f47)
+}
+:root[data-skin="strand"][data-bg-bild="an"] .bg-fx::after{display:none}
+:root[data-skin="strand"][data-bg-bild="an"] .blob{opacity:.1}
+:root[data-skin="strand"][data-bg-bild="an"] .scanlines{
+  background:
+    linear-gradient(180deg,rgba(4,32,50,.72),rgba(4,32,50,.62) 40%,rgba(3,26,40,.84)),
+    radial-gradient(130% 95% at 50% 38%, transparent 40%, rgba(3,26,40,.55) 100%)
+}
+/* Die durchsichtigen Knöpfe leben von der dunklen Fläche hinter ihnen —
+   über weißem Sand hätten sie keine. Also bekommen sie hier eine eigene. */
+:root[data-skin="strand"][data-bg-bild="an"] .btn-ghost{
+  background:rgba(4,32,50,.55);
+  border-color:rgba(255,217,160,.45)
+}
+:root[data-skin="strand"][data-bg-bild="an"] .hero-sub,
+:root[data-skin="strand"][data-bg-bild="an"] .hero-tag,
+:root[data-skin="strand"][data-bg-bild="an"] .section-title span,
+:root[data-skin="strand"][data-bg-bild="an"] .marquee-track{
+  text-shadow:0 2px 12px rgba(3,26,40,.95),0 0 3px rgba(3,26,40,.8)
+}
+
 :root[data-skin="strand"] .hero-title{
   background-image:linear-gradient(180deg,#fff3c4 0%,#ffc247 45%,#ff8a5b 100%);
   filter:drop-shadow(0 4px 0 rgba(3,26,40,.5)) drop-shadow(0 0 28px rgba(255,194,71,.55));

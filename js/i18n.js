@@ -334,6 +334,14 @@
       'Without the tick the order runs exactly as listed.',
     'Der Sender braucht einen Namen': 'The station needs a name',
     'Sender angelegt': 'Station added', 'Sender geändert': 'Station saved',
+    /* Einen einzelnen Titel ändern — Name und Unterzeile. */
+    '✓ TITEL ÄNDERN': '✓ SAVE TRACK', 'Titel geändert': 'Track saved',
+    'Wie heißt das Stück?': 'What is the track called?',
+    'z. B. Dean Martin · Swing': 'e.g. Dean Martin · Swing',
+    'Eine Titelzeile in den Listen anklicken holt sie hierher.':
+      'Click a track row in the lists to load it here.',
+    'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen. Die Unterzeile ist das, was klein unter dem Namen steht — im Musikfenster, in der Titelanzeige und in dieser Liste.':
+      'The slider balances one track against the others — recordings are not all equally loud. 100 % means: exactly as the file sounds. The bin removes the entry, the file stays on disk. The subtitle is the small line under the name — in the music window, in the track display and in this list.',
     'Ein Offline-Sender spielt eigene Dateien vom Server. Stücke kommen über das Hochladen oben hinein oder über die Pfeile in der Liste. Eine Senderzeile anklicken holt sie zum Ändern herunter; der Regler daneben gilt für alles, was der Sender spielt.':
       'An offline station plays your own files from the server. Tracks get in via the upload above or via the arrows in the list. Click a station row to load it for editing; the slider beside it applies to everything the station plays.',
     'ausgeblendet': 'hidden',
@@ -363,8 +371,6 @@
     'Der Titel braucht einen Namen': 'The track needs a name',
     'Die Datei wandert nach assets/sfx/music/, die Spieldauer liest der Server selbst aus dem Dateikopf, und der Eintrag landet in sounds.json. MP3 wird dabei genau vermessen — bei anderen Formaten zählt für das Radio die Voreinstellung des Senders.':
       'The file goes to assets/sfx/music/, the server reads the playing time out of the file header itself, and the entry lands in sounds.json. MP3 is measured exactly — for other formats the station default applies in the radio.',
-    'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen.':
-      'The slider balances one track against the others — recordings are not all equally loud. 100% means: exactly as the file sounds. The bin removes the entry, the file stays on disk.',
     'Diese Sender laufen aus eigenen Dateien auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle.':
       'These stations run from your own files on the server — every listener hears the same track at the same point. NEXT skips the rest, PLAY starts the chosen track right away. Both apply to everyone.',
     /* Webradios */
