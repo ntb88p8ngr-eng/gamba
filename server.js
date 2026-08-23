@@ -927,9 +927,19 @@ function listeAufloesen(u) {
    dieselbe Verbindung aufgehen. Ein Stueck dauert Minuten, ein paar
    Sekunden alte Angabe stoert also niemanden. */
 
-var TITEL_FRISCH = 20000;      // so lange gilt eine geholte Angabe
+/* So lange gilt eine geholte Angabe. Bewusst kuerzer als der Takt, in dem
+   die Browser fragen (js/music.js, TITEL_TAKT): waere sie laenger, fiele
+   jede zweite Frage in ein noch gueltiges Fenster und bekaeme dieselbe
+   Antwort wie eben — die Anzeige zoege dann nicht im Takt nach, sondern
+   in dessen Vielfachem. */
+var TITEL_FRISCH = 6000;
 var TITEL_FRIST = 6000;        // so lange wird auf den Sender gewartet
-var titelCache = {};           // url -> { titel, zeit, laeuft }
+/* So lange wartet eine Anfrage auf eine gerade laufende Auffrischung,
+   bevor sie mit dem Alten antwortet. Kurz genug, dass die Seite nicht
+   haengt, lang genug, dass der uebliche Fall (Verbindung steht in unter
+   einer Sekunde) auch wirklich den neuen Titel bringt. */
+var TITEL_GEDULD = 2500;
+var titelCache = {};           // url -> { titel, zeit, laeuft, wartet }
 
 /* Unter welcher Kennung angefragt wird.
    Manche Aufbauten ruecken die Titel nur heraus, wenn der Anfragende nach
@@ -1058,22 +1068,80 @@ function icyTitel(url, merker) {
  * an einem fremden Sender, und wenn der bummelt, bummelt die ganze Seite
  * mit.
  */
-function webTitel(url) {
+function titelEintrag(url) {
   var e = titelCache[url];
-  var jetzt = Date.now();
-  if (!e) e = titelCache[url] = { titel: '', zeit: 0, laeuft: false, grund: '' };
-  if (!e.laeuft && jetzt - e.zeit > TITEL_FRISCH) {
-    e.laeuft = true;
-    icyTitel(url, e).then(function (t) {
-      e.titel = t || '';
-      e.zeit = Date.now();
-      e.laeuft = false;
+  if (!e) e = titelCache[url] = { titel: '', zeit: 0, laeuft: false, grund: '', wartet: null };
+  return e;
+}
+
+/**
+ * Auffrischen, falls faellig — und das Versprechen darauf zurueckgeben.
+ *
+ * Mehrere Zuhoerer fragen gleichzeitig; sie sollen sich an dieselbe
+ * laufende Abfrage haengen und nicht jeder eine eigene Verbindung zum
+ * Sender aufmachen. Deshalb liegt das Versprechen am Eintrag.
+ */
+function titelAuffrischen(url) {
+  var e = titelEintrag(url);
+  if (e.laeuft && e.wartet) return e.wartet;
+  if (Date.now() - e.zeit <= TITEL_FRISCH) return Promise.resolve(e.titel);
+  e.laeuft = true;
+  e.wartet = icyTitel(url, e).then(function (t) {
+    e.titel = t || '';
+    e.zeit = Date.now();
+    e.laeuft = false;
+    e.wartet = null;
+    return e.titel;
+  }, function () {
+    e.zeit = Date.now();
+    e.laeuft = false;
+    e.wartet = null;
+    return e.titel;
+  });
+  return e.wartet;
+}
+
+/**
+ * Der Titel fuer die Antwort — und dabei kurz auf eine faellige
+ * Auffrischung warten.
+ *
+ * Vorher wurde immer sofort mit dem Alten geantwortet und die Auffrischung
+ * lief daneben. Das kostete eine ganze Runde: der neue Titel kam erst bei
+ * der uebernaechsten Frage an, und zusammen mit dem Takt im Browser hing
+ * die Anzeige eine knappe Minute hinterher.
+ *
+ * Gewartet wird hoechstens TITEL_GEDULD. Bummelt der Sender laenger,
+ * geht die alte Angabe raus und die neue kommt bei der naechsten Frage —
+ * eine langsame Station darf die Seite nicht aufhalten.
+ */
+function webTitelBald(url) {
+  var e = titelEintrag(url);
+  var frisch = titelAuffrischen(url);
+  /* Hat der Sender beim letzten Mal keinen Titel geliefert und dafuer
+     einen Grund hinterlassen — nicht erreichbar, kein icy-metaint —, dann
+     bringt Warten nichts: er wird ihn auch in zweieinhalb Sekunden nicht
+     liefern. Sonst zahlte jede Anfrage an eine tote Station die volle
+     Geduld, und das bei jedem Takt aufs Neue. */
+  if (!e.titel && e.grund) return Promise.resolve('');
+  return new Promise(function (fertig) {
+    var durch = false;
+    var uhr = setTimeout(function () {
+      if (durch) return;
+      durch = true;
+      fertig(e.titel);
+    }, TITEL_GEDULD);
+    frisch.then(function (t) {
+      if (durch) return;
+      durch = true;
+      clearTimeout(uhr);
+      fertig(t);
     }, function () {
-      e.zeit = Date.now();
-      e.laeuft = false;
+      if (durch) return;
+      durch = true;
+      clearTimeout(uhr);
+      fertig(e.titel);
     });
-  }
-  return e.titel;
+  });
 }
 
 /** Warum kommt kein Titel? Fuer die Anzeige im Panel. */
@@ -2027,9 +2095,14 @@ function handleRequest(req, res) {
     var wr = null;
     (db.settings.webRadios || []).forEach(function (r) { if (r.id === rId) wr = r; });
     if (wr) {
-      return sendJSON(res, 200, {
-        sender: wr.id, name: wr.name, web: true,
-        titel: webTitel(wr.url), grund: webTitelGrund(wr.url), jetzt: Date.now()
+      /* Kurz auf eine faellige Auffrischung warten, statt sofort mit dem
+         Alten zu antworten — sonst kaeme jeder neue Titel erst eine
+         Runde spaeter an. */
+      return webTitelBald(wr.url).then(function (titel) {
+        sendJSON(res, 200, {
+          sender: wr.id, name: wr.name, web: true,
+          titel: titel, grund: webTitelGrund(wr.url), jetzt: Date.now()
+        });
       });
     }
     return sendJSON(res, 404, { error: 'Sender läuft nicht auf dem Server' });

@@ -995,14 +995,24 @@
      Loops ebenso wie ein Stück aus einer Datei. */
   Music.strom = { an: false, name: '', url: '', titel: '', _uhr: null, _versuche: 0 };
 
-  /* Wie oft nachgefragt wird, was gerade läuft. Der Server hält die
-     Angabe ohnehin zwanzig Sekunden fest, öfter zu fragen brächte nichts.
+  /* Wie oft nachgefragt wird, was gerade läuft.
+
+     Sieben Sekunden, nicht zwanzig: ein Titelwechsel soll ankommen,
+     solange das Stück noch läuft, und nicht erst zur übernächsten Nummer.
+     Teuer ist das nicht — der Server hält die Angabe fest und zapft den
+     Sender höchstens alle paar Sekunden einmal an, egal wie viele zuhören.
+
+     Der Takt muss länger sein als das Zeitfenster des Servers
+     (TITEL_FRISCH), sonst fällt jede zweite Frage in ein noch gültiges
+     Fenster und bekommt dieselbe Antwort wie eben. Mit acht Sekunden
+     gegen neun zog die Anzeige nicht alle acht, sondern alle sechzehn
+     Sekunden nach.
 
      Solange noch gar kein Titel da ist, wird schneller nachgehakt: beim
      Einschalten antwortet der Server zuerst mit nichts, weil er den
      Strom in dem Moment erst anzapft. Zwanzig Sekunden auf die erste
      Zeile zu warten sähe aus, als könnte der Sender es nicht. */
-  var TITEL_TAKT = 20000;
+  var TITEL_TAKT = 7000;
   var TITEL_ERSTE = 2500;
   var TITEL_VERSUCHE = 6;      // danach kann der Sender es offenbar nicht
 
@@ -1020,6 +1030,13 @@
   function titelHolen() {
     titelUhrAus();
     if (!Music.strom.an || !GK.net || !GK.net.radio) return;
+    /* Im verborgenen Tab sieht die Anzeige niemand — dann nur
+       weiterzählen und beim nächsten Mal fragen. Ohne das liefe der
+       schnellere Takt in jedem vergessenen Fenster mit. */
+    if (document.hidden) {
+      Music.strom._uhr = setTimeout(titelHolen, TITEL_TAKT);
+      return;
+    }
     var wer = Music.radio.sender;
     GK.net.radio(wer).then(function (d) {
       if (!Music.strom.an || Music.radio.sender !== wer) return;
@@ -1037,6 +1054,14 @@
       if (Music.strom.an) Music.strom._uhr = setTimeout(titelHolen, TITEL_TAKT);
     });
   }
+
+  /* Zurück im Blickfeld: sofort nachfragen statt den Rest des Taktes
+     abzuwarten. Wer ein Fenster wieder hervorholt, sieht sonst als Erstes
+     den Titel von vorhin. */
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden || !Music.strom.an) return;
+    titelHolen();
+  });
 
   function stromAn(sender) {
     var a = dateiElement();
