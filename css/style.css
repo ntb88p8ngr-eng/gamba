@@ -232,7 +232,10 @@ img{max-width:100%}
      LOBBY-Knopf ist so an jeder Stelle erreichbar, auch mitten im Lauf,
      wo das Spielfeld jede Wischgeste schluckt. */
   #view-game .game-header{
-    position:sticky;top:var(--kopf-hoehe,58px);z-index:46;
+    /* Unter der Kopfzeile *und* unter der Titelanzeige, falls die läuft —
+       sonst schöben sich die beiden übereinander. Ist sie aus, ist
+       --band-hoehe 0 und es bleibt beim alten Wert. */
+    position:sticky;top:calc(var(--kopf-hoehe,58px) + var(--band-hoehe,0px));z-index:46;
     margin:0 -10px 12px;padding:8px 10px;
     background:linear-gradient(180deg,rgba(18,0,43,.97),rgba(18,0,43,.86));
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
@@ -279,6 +282,70 @@ img{max-width:100%}
 .xp-strip{position:absolute;left:0;right:0;bottom:-2px;height:4px;background:rgba(0,0,0,.5);overflow:hidden}
 .xp-strip i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--cyan),var(--pink));
   box-shadow:0 0 14px var(--lime);transition:width .6s cubic-bezier(.2,1,.3,1)}
+
+/* ═══════════ TITELANZEIGE ═══════════
+   Ein schmales Band unter der Kopfzeile: welcher Sender läuft, was
+   gespielt wird, von wem.
+
+   Es steht im normalen Fluss und klebt zusätzlich (sticky) unter der
+   Kopfzeile — so schiebt es den Inhalt beim Einblenden sauber nach unten,
+   statt ihn zu verdecken, und bleibt beim Scrollen trotzdem stehen. Seine
+   Höhe steht in --band-hoehe, damit die Spielkopfzeile weiß, wie weit
+   unter ihr sie kleben muss.
+
+   Die Farben kommen aus den Variablen und färben sich damit von selbst
+   mit dem Anstrich; die einzelnen Skins legen in css/skins.css noch
+   eigene Züge darüber. */
+.jetzt-band{
+  position:sticky;top:var(--kopf-hoehe,58px);z-index:47;
+  display:flex;align-items:center;gap:10px;min-width:0;
+  padding:6px clamp(12px,3vw,26px);
+  background:linear-gradient(180deg,rgba(18,0,43,.94),rgba(18,0,43,.78));
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+  font-size:.82rem
+}
+.jetzt-band[hidden]{display:none}
+
+/* Vier Balken, die hüpfen — der billigste Weg zu sagen „hier läuft was".
+   Bei angehaltener Musik stehen sie still, siehe .ruht. */
+.jb-eq{display:flex;align-items:flex-end;gap:2px;height:14px;flex:0 0 auto}
+.jb-eq i{display:block;width:3px;border-radius:2px;background:var(--cyan);
+  box-shadow:0 0 8px var(--cyan);animation:jbhuepf .9s ease-in-out infinite}
+.jb-eq i:nth-child(1){height:6px;animation-delay:0s}
+.jb-eq i:nth-child(2){height:13px;animation-delay:.18s}
+.jb-eq i:nth-child(3){height:9px;animation-delay:.36s}
+.jb-eq i:nth-child(4){height:14px;animation-delay:.54s}
+@keyframes jbhuepf{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+.jetzt-band.ruht .jb-eq i{animation:none;transform:scaleY(.35)}
+
+.jb-sender{
+  flex:0 0 auto;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:'Bungee',sans-serif;font-size:.7rem;letter-spacing:.06em;
+  color:var(--gold);text-transform:uppercase
+}
+/* Der Trenner gehört zum Sender, nicht zum Titel: ohne Interpret oder
+   ohne Sendernamen soll kein einsamer Strich stehen bleiben. */
+.jb-sender::after{content:"·";margin-left:10px;color:var(--muted);font-family:'Outfit',sans-serif}
+
+.jb-mitte{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1 1 auto}
+.jb-titel{font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jb-wer{color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.jb-zeit{flex:0 0 auto;font-size:.72rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.jb-zu{
+  flex:0 0 auto;cursor:pointer;border:0;background:none;color:var(--muted);
+  font-size:.9rem;line-height:1;padding:4px 2px;border-radius:6px;transition:color .15s
+}
+.jb-zu:hover{color:var(--text)}
+
+/* Am Handy ist für den Interpreten daneben kein Platz — er rutscht unter
+   den Titel, und die Laufzeit fällt ganz weg. */
+@media(max-width:620px){
+  .jetzt-band{font-size:.78rem;gap:8px}
+  .jb-mitte{flex-direction:column;gap:0;align-items:flex-start}
+  .jb-sender{max-width:28vw}
+  .jb-zeit{display:none}
+}
 
 /* Sprachumschalter im Kopf: das Bild zeigt den Zustand, ein Klick wechselt. */
 .lang-schalter{

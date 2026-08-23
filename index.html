@@ -85,6 +85,22 @@ try {
   <div class="xp-strip" title="Fortschritt bis zum nächsten Level"><i id="xp-fill"></i></div>
 </header>
 
+<!-- ══════════ TITELANZEIGE ══════════
+     Bleibt unter der Kopfzeile kleben und zeigt dauerhaft, welcher Sender
+     läuft und was gerade gespielt wird. Ein- und ausgeschaltet wird sie im
+     Musikfenster; ausgeschaltet ist sie ganz weg und nimmt keinen Platz.
+     Das Aussehen richtet sich nach dem Anstrich (siehe css/skins.css). -->
+<div class="jetzt-band" id="jetzt-band" hidden>
+  <span class="jb-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+  <span class="jb-sender" id="jb-sender"></span>
+  <span class="jb-mitte">
+    <span class="jb-titel" id="jb-titel"></span>
+    <span class="jb-wer" id="jb-wer"></span>
+  </span>
+  <span class="jb-zeit" id="jb-zeit"></span>
+  <button class="jb-zu" id="jb-zu" title="Titelanzeige ausblenden" aria-label="Titelanzeige ausblenden">✕</button>
+</div>
+
 <main id="main">
 
   <!-- ══════════ LOBBY ══════════ -->

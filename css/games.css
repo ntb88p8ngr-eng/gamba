@@ -1266,6 +1266,12 @@
 .radio-name{font-family:'Bungee',sans-serif;font-size:.74rem}
 .radio-was{font-size:.64rem;color:var(--muted);line-height:1.3}
 .radio-wahl+.hint{margin:8px 0 10px}
+/* „Radio aus" und der Schalter für die Titelanzeige nebeneinander; am
+   Handy untereinander, sonst wird jeder von beiden zu schmal für seine
+   Beschriftung. */
+.radio-knoepfe{display:flex;flex-wrap:wrap;gap:8px}
+.radio-knoepfe[hidden]{display:none}
+.radio-knoepfe .btn{flex:1 1 auto}
 
 /* „Läuft gerade": eine Zeile mit Titel, Zeit und einem dünnen Balken.
    Bewusst schmal — es ist eine Auskunft, keine zweite Bedienung. */

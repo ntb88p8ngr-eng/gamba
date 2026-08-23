@@ -340,6 +340,44 @@
   background:linear-gradient(180deg,rgba(7,48,74,.96),rgba(7,48,74,.72))
 }
 
+/* ─────────────────────── Titelanzeige je Anstrich ───────────────────────
+   Das Band unter der Kopfzeile (css/style.css) färbt sich über die
+   Variablen ohnehin mit. Hier bekommt es je Anstrich noch einen eigenen
+   Zug — sonst wäre es überall dasselbe Band in anderer Farbe.
+
+   Der Untergrund muss jedes Mal neu gesetzt werden: in style.css steht
+   dort das Lila des Standardanstrichs als feste Farbe, keine Variable. */
+
+/* Old Vegas: eine Messingschiene über der Bühne, wie die Anzeige über
+   einem Klavier. Nicht leuchtend, sondern glänzend. */
+:root[data-skin="old-vegas"] .jetzt-band{
+  background:linear-gradient(180deg,rgba(44,7,13,.96),rgba(26,4,7,.82));
+  border-bottom:1px solid rgba(255,215,106,.4);
+  box-shadow:inset 0 1px 0 rgba(255,215,106,.22)
+}
+:root[data-skin="old-vegas"] .jb-sender{letter-spacing:.12em}
+:root[data-skin="old-vegas"] .jb-eq i{background:#ffcf5a;box-shadow:0 0 10px rgba(255,207,90,.8)}
+
+/* Vaporwave: Chromleiste, rosa Schrift, ein Hauch Schlagschatten nach
+   rechts — die Ästhetik lebt vom Versatz. */
+:root[data-skin="vaporwave"] .jetzt-band{
+  background:linear-gradient(180deg,rgba(43,10,84,.92),rgba(27,7,54,.8));
+  border-bottom:1px solid rgba(255,113,206,.45)
+}
+:root[data-skin="vaporwave"] .jb-sender{
+  color:#ff71ce;text-shadow:1px 0 0 rgba(1,205,254,.75)
+}
+:root[data-skin="vaporwave"] .jb-titel{text-shadow:1px 0 0 rgba(255,113,206,.5)}
+:root[data-skin="vaporwave"] .jb-eq i{background:#01cdfe;box-shadow:0 0 10px rgba(1,205,254,.85)}
+
+/* Strand: heller, weicher, ohne harte Kante — ein Handtuch, kein Blech. */
+:root[data-skin="strand"] .jetzt-band{
+  background:linear-gradient(180deg,rgba(7,48,74,.9),rgba(7,48,74,.66));
+  border-bottom:1px solid rgba(46,196,182,.4)
+}
+:root[data-skin="strand"] .jb-sender{color:#ffc247;letter-spacing:.04em}
+:root[data-skin="strand"] .jb-eq i{background:#2ec4b6;box-shadow:0 0 10px rgba(46,196,182,.7)}
+
 /* ─────────────────────── Auswahl im Konto ───────────────────────
    Eine Kachel je Skin, mit einer kleinen Farbprobe. */
 .skin-wahl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}

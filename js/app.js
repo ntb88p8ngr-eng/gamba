@@ -15,6 +15,11 @@
     var leiste = document.querySelector('.topbar');
     if (!leiste) return;
     document.documentElement.style.setProperty('--kopf-hoehe', Math.round(leiste.getBoundingClientRect().height) + 'px');
+    /* Die Titelanzeige klebt unter der Kopfzeile, die Spielkopfzeile unter
+       beiden. Ausgeblendet ist sie 0 hoch — dann bleibt alles wie vorher. */
+    var band = document.getElementById('jetzt-band');
+    var h = band && !band.hidden ? Math.round(band.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--band-hoehe', h + 'px');
   }
   window.addEventListener('resize', kopfHoeheMessen);
   window.addEventListener('orientationchange', kopfHoeheMessen);
@@ -864,6 +869,102 @@
     });
   }
 
+  /* ─────────────── TITELANZEIGE ───────────────
+     Das Band unter der Kopfzeile. Es zeigt dauerhaft, welcher Sender läuft
+     und was gerade gespielt wird — im Musikfenster war das nur zu sehen,
+     solange das Fenster offen stand.
+
+     Ob es überhaupt erscheint, entscheidet der Schalter im Musikfenster.
+     Die Entscheidung liegt im localStorage und nicht auf dem Server: sie
+     gehört zum Gerät, wie Lautstärke und Anstrich auch. */
+  var BAND_KEY = 'gambaking:titelband';
+  var bandAn = false;
+  try { bandAn = localStorage.getItem(BAND_KEY) === 'an'; } catch (e) {}
+
+  function bandZeigen(an) {
+    bandAn = !!an;
+    try { localStorage.setItem(BAND_KEY, bandAn ? 'an' : 'aus'); } catch (e) {}
+    bandMalen();
+  }
+
+  /**
+   * Interpret und Titel aus einer Zeile trennen.
+   *
+   * Webradios schicken über ICY meist „Interpret - Titel" in einem Stück.
+   * Getrennt wird nur am Bindestrich mit Leerzeichen drumherum: „AC/DC -
+   * Back in Black" geht so auf, „Mr. Blue-Sky" bleibt heil. Passt nichts,
+   * bleibt die Zeile ganz — lieber alles im Titel als falsch zerschnitten.
+   */
+  function titelTrennen(roh) {
+    var s = String(roh || '').trim();
+    var i = s.indexOf(' - ');
+    if (i > 0 && i < s.length - 3) {
+      return { wer: s.slice(0, i).trim(), titel: s.slice(i + 3).trim() };
+    }
+    return { wer: '', titel: s };
+  }
+
+  function bandUhrzeit(s) {
+    s = Math.max(0, Math.floor(s || 0));
+    return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+  }
+
+  function bandMalen() {
+    var band = $('#jetzt-band');
+    if (!band) return;
+    var M = GK.music;
+    var laeuft = !!(M && M.radio && M.radio.an && M.enabled);
+    /* Ohne laufendes Radio gibt es nichts anzuzeigen. Das Band bleibt dann
+       weg, auch wenn der Schalter an ist — ein leeres Band unter der
+       Kopfzeile wäre nur ein Streifen, der Platz kostet. */
+    var sichtbar = bandAn && laeuft;
+    if (band.hidden !== !sichtbar) {
+      band.hidden = !sichtbar;
+      kopfHoeheMessen();          // die Spielkopfzeile klebt darunter
+    }
+    if (!sichtbar) return;
+
+    var senderName = '', titel = '—', wer = '', zeit = '';
+    var sd = null;
+    (M.sender ? M.sender() : []).forEach(function (s) {
+      if (s.id === M.radio.sender) sd = s;
+    });
+
+    if (M.strom && M.strom.an) {
+      senderName = (sd && sd.icon ? sd.icon + ' ' : '') + (M.strom.name || sd && sd.name || 'Webradio');
+      var geteilt = titelTrennen(M.strom.titel);
+      titel = geteilt.titel || (M.strom.name || '—');
+      wer = geteilt.wer;
+      zeit = 'live';
+    } else {
+      var t = (M.tracks || [])[M.trackIdx] || {};
+      senderName = (sd && sd.icon ? sd.icon + ' ' : '📻 ') + (sd && sd.name ? sd.name : 'Radio');
+      titel = t.name || '—';
+      /* Bei den eigenen Stücken steht kein Interpret in der Datei — die
+         Stimmung ist das Nächstbeste und sagt mehr als ein leeres Feld. */
+      wer = t.mood || '';
+      if (M.sync && M.sync.an && M.sync.dauer) {
+        zeit = bandUhrzeit(Math.min(M.sync.offset(), M.sync.dauer)) + ' / ' + bandUhrzeit(M.sync.dauer);
+      }
+    }
+
+    band.classList.toggle('ruht', !M.enabled);
+    var setz = function (sel, wert) {
+      var n = $(sel);
+      if (n && n.textContent !== wert) n.textContent = wert;
+    };
+    setz('#jb-sender', senderName);
+    setz('#jb-titel', titel);
+    setz('#jb-wer', wer);
+    setz('#jb-zeit', zeit);
+  }
+
+  /* Der Takt hält nur die Laufzeit frisch; alles andere kommt über
+     'musik-liste', sobald sich wirklich etwas ändert. */
+  setInterval(bandMalen, 1000);
+  GK.on('musik-liste', bandMalen);
+  GK.on('skin', bandMalen);
+
   /* ─────────────── SOUND & MUSIK ─────────────── */
   function soundMenu() {
     GK.sfx('click');
@@ -928,6 +1029,16 @@
     radioAus.addEventListener('click', function () {
       M.radioAus(); GK.sfx('click'); sync();
     });
+    /* Daneben der Schalter für das Band unter der Kopfzeile. Er steht hier
+       und nicht bei den Reglern, weil er zum Radio gehört: ohne Radio hat
+       er nichts anzuzeigen. */
+    var bandKnopf = el('button', { class: 'btn btn-ghost btn-small', text: '' });
+    bandKnopf.addEventListener('click', function () {
+      bandZeigen(!bandAn);
+      GK.sfx('click');
+      sync();
+    });
+    var radioZeile = el('div', { class: 'radio-knoepfe' }, [radioAus, bandKnopf]);
     /* Der ganze Abschnitt hängt daran, ob es für den laufenden Anstrich
        überhaupt einen Sender gibt — ein leerer Kasten mit Überschrift wäre
        nur eine Frage ohne Antwort. */
@@ -1059,6 +1170,14 @@
       radioBauen();
       jetztMalen();
       radioAus.hidden = !M.radio.an || !(M.sender ? M.sender().length : 0);
+      bandKnopf.textContent = bandAn ? '🎙 TITEL AUSBLENDEN' : '🎙 TITEL EINBLENDEN';
+      bandKnopf.className = 'btn btn-small ' + (bandAn ? 'btn-lime' : 'btn-ghost');
+      /* Der Schalter verschwindet mit dem Radio: ohne Sender gäbe es
+         nichts einzublenden, und der Knopf stünde als Versprechen da,
+         das er nicht halten kann. */
+      bandKnopf.hidden = !(M.sender ? M.sender().length : 0);
+      radioZeile.hidden = radioAus.hidden && bandKnopf.hidden;
+      bandMalen();
       offBtn.textContent = M.enabled ? '🔇 MUSIK AUS' : '🎵 MUSIK AN';
       offBtn.className = 'btn btn-full ' + (M.enabled ? 'btn-danger' : 'btn-lime');
       musicVolLabel.textContent = M.volume;
@@ -1090,7 +1209,7 @@
         radioBox,
         jetztBox,
         radioHinweis,
-        radioAus,
+        radioZeile,
         radioLuft2,
         el('div', { class: 'bet-label', text: 'MUSIK-LAUTSTÄRKE' }),
         el('div', { class: 'range-row' }, [musicVol, el('div', { class: 'info-box', style: 'min-width:66px' }, [musicVolLabel, el('span', { text: 'Musik' })])]),
@@ -3238,6 +3357,14 @@
     });
     $('#btn-admin').addEventListener('click', adminEntry);
     $('#btn-music').addEventListener('click', soundMenu);
+    /* Das ✕ am Band ist derselbe Schalter wie im Musikfenster — wer die
+       Anzeige dort wegklickt, findet sie auch dort wieder. */
+    $('#jb-zu').addEventListener('click', function () {
+      GK.sfx('click');
+      bandZeigen(false);
+      GK.toast('Titelanzeige aus — im Musikfenster wieder einschaltbar', '', '🎙');
+    });
+    bandMalen();
 
     // Lobby-Aktionen
     $('#btn-play-random').addEventListener('click', function () {

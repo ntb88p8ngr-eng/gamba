@@ -303,6 +303,11 @@
     'Für diesen Anstrich ist kein Stück hinterlegt.':
       'No track is set up for this skin.',
     '📻 RADIO': '📻 RADIO', '⏹ RADIO AUS': '⏹ RADIO OFF',
+    /* Die Titelanzeige unter der Kopfzeile und ihr Schalter. */
+    '🎙 TITEL EINBLENDEN': '🎙 SHOW TRACK', '🎙 TITEL AUSBLENDEN': '🎙 HIDE TRACK',
+    'Titelanzeige ausblenden': 'Hide the track display',
+    'Titelanzeige aus — im Musikfenster wieder einschaltbar':
+      'Track display off — turn it back on in the music window',
     /* Radio: Gleichlauf und die Bedienung im Admin-Panel. */
     'SENDER': 'STATION', 'STÜCK': 'TRACK',
     '⏭ WEITER': '⏭ NEXT', '▶ AUFLEGEN': '▶ PLAY',
