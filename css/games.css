@@ -1341,6 +1341,84 @@
 .emoji-knopf:hover{background:rgba(255,255,255,.1);transform:translateY(-1px)}
 .emoji-knopf.sel{border-color:var(--gold);background:rgba(255,209,46,.18)}
 
+/* ═══════════ MUSIK & RADIO im Admin-Panel ═══════════
+   Ein Kasten, drei Abschnitte. Die Zwischenüberschriften trennen sie,
+   ohne dass jeder seinen eigenen Rahmen braucht — das wären drei Kästen
+   im Kasten. */
+.pack-kopf{
+  margin:18px 0 8px;padding-bottom:5px;
+  font-family:'Bungee',sans-serif;font-size:.74rem;color:var(--gold);
+  letter-spacing:.06em;border-bottom:2px solid var(--line)
+}
+.pack-kopf:first-child{margin-top:0}
+.pack-liste{display:flex;flex-direction:column;gap:6px}
+.pack-zeile{
+  display:flex;align-items:center;gap:9px;
+  padding:7px 10px;border-radius:12px;border:2px solid var(--line);
+  background:rgba(255,255,255,.05)
+}
+.pack-block{
+  border-radius:12px;border:2px solid var(--line);
+  background:rgba(255,255,255,.04);overflow:hidden
+}
+.pack-block .pack-zeile{border:0;background:transparent;border-radius:0}
+.pack-ic{font-size:1.05rem;flex:0 0 auto}
+.pack-nr{
+  font-family:'Bungee',sans-serif;font-size:.66rem;color:var(--muted);
+  width:18px;flex:0 0 auto;text-align:right
+}
+.pack-text{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.pack-text b{
+  font-family:'Bungee',sans-serif;font-size:.72rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.pack-text span{
+  font-size:.63rem;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+/* Der Lautstärkeregler bleibt schmal: er steht in jeder Zeile, und der
+   Name ist wichtiger als der letzte Prozentpunkt. */
+.pack-laut{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.pack-laut input[type=range]{width:96px}
+.pack-laut b{
+  font-size:.64rem;color:var(--gold);width:38px;text-align:right;
+  font-variant-numeric:tabular-nums
+}
+.pack-unter{
+  display:flex;flex-direction:column;gap:2px;
+  padding:2px 10px 9px;background:rgba(0,0,0,.22)
+}
+.pack-unter[hidden]{display:none}
+.pack-unterzeile{display:flex;align-items:center;gap:9px;padding:4px 0}
+.pack-unter .hint{margin:6px 0 0}
+.pack-fortschritt{
+  height:6px;border-radius:999px;overflow:hidden;margin-top:8px;
+  background:rgba(255,255,255,.1)
+}
+.pack-fortschritt[hidden]{display:none}
+.pack-fortschritt i{
+  display:block;height:100%;width:0;border-radius:999px;
+  background:var(--gold-grad);transition:width .2s linear
+}
+/* Die Marken unter einem Namen: eigene Elemente, damit jede für sich
+   übersetzt wird — als ein Text fände das Wörterbuch nichts wieder. */
+.pack-marken{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.pack-marken>span{
+  font-size:.63rem;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.pack-punkt{color:var(--line);font-style:normal;font-size:.63rem}
+/* Hoch und runter, schmal übereinander — sie stehen in jeder Zeile. */
+.pack-schieber{display:flex;flex-direction:column;gap:2px;flex:0 0 auto}
+.pack-pfeil{
+  padding:0;width:26px;height:15px;line-height:1;
+  font-size:.55rem;border-radius:6px;min-width:0
+}
+@media (max-width:640px){
+  .pack-laut input[type=range]{width:64px}
+  .pack-laut b{width:32px}
+}
+
 .mp-label{display:block;margin:10px 0 4px;font-size:.76rem;color:var(--gold);font-family:'Bungee',sans-serif}
 /* Zwei Felder nebeneinander — Min und Max gehören zusammen gelesen. */
 .mp-zwei{display:grid;grid-template-columns:1fr 1fr;gap:10px}

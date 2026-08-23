@@ -933,8 +933,12 @@
     var offBtn = el('button', { class: 'btn btn-danger btn-full', text: '🔇 MUSIK AUS' });
 
     function sync() {
+      /* Läuft ein Webradio, läuft kein Stück aus der Liste — auch wenn
+         trackIdx noch auf dem letzten steht. Ohne diese Ausnahme stand
+         dort ein Stück als „spielt gerade", das gar nicht zu hören war. */
+      var stromLaeuft = !!(M.strom && M.strom.an);
       trackRows.forEach(function (r) {
-        var on = Number(r.dataset.idx) === M.trackIdx && M.enabled;
+        var on = !stromLaeuft && Number(r.dataset.idx) === M.trackIdx && M.enabled;
         r.classList.toggle('playing', on);
         r.querySelector('.tr-play').textContent = on ? '⏸' : '▶';
       });
@@ -1928,6 +1932,253 @@
     var statNeu = el('button', { class: 'btn btn-small', text: '🔄 AKTUALISIEREN' });
     statNeu.addEventListener('click', function () { GK.sfx('click'); statHolen(); });
 
+    /* ── Musik & Radio ──────────────────────────────────────────────
+       Drei Dinge, die zusammengehören und deshalb in einem Kasten stehen:
+       die einzelnen Stücke, die Sender aus eigenen Dateien und die
+       Webradios. Alles, was hier bearbeitet wird, landet in
+       assets/sfx/sounds.json — das Panel ist der Weg dorthin, statt die
+       Datei von Hand zu pflegen. */
+
+    var packDaten = { musik: [], sender: [] };
+    var titelBox = el('div', { class: 'pack-liste' });
+    var senderBox = el('div', { class: 'pack-liste' });
+
+    function packHolen() {
+      if (!GK.net || !GK.net.pack) return;
+      GK.net.pack().then(function (d) {
+        if (!d || !d.musik) return;
+        packDaten = d;
+        packMalen();
+      }, function () {});
+    }
+
+    /** Ein Regler von 0 bis 150 Prozent, direkt an einem Stück. */
+    function lautstaerkeRegler(t) {
+      var wert = el('b', { text: Math.round((t.volume === undefined ? 1 : t.volume) * 100) + '%' });
+      var reg = el('input', {
+        type: 'range', min: '0', max: '150', step: '5',
+        value: String(Math.round((t.volume === undefined ? 1 : t.volume) * 100))
+      });
+      reg.addEventListener('input', function () {
+        wert.textContent = reg.value + '%';
+      });
+      /* Erst beim Loslassen speichern — sonst ginge bei jedem Pixel eine
+         Schreiboperation auf die Datei. */
+      reg.addEventListener('change', function () {
+        GK.sfx('chip');
+        GK.net.op('packTrack', { id: t.id, volume: Number(reg.value) / 100 })
+          .then(function (out) { if (out && out.pack) { packDaten = out.pack; } });
+      });
+      reg.addEventListener('click', function (e) { e.stopPropagation(); });
+      return el('div', { class: 'pack-laut' }, [reg, wert]);
+    }
+
+    function mmssKurz(s) {
+      s = Math.max(0, Math.round(s || 0));
+      return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+    }
+
+    /**
+     * Die kleine Zeile unter einem Namen.
+     *
+     * Jede Marke bekommt ihr eigenes Element. Aneinandergehängt als ein
+     * Text fände die Übersetzung nichts wieder — „nur Radio · Old Vegas ·
+     * 4:13" steht in keinem Wörterbuch, die drei Teile schon.
+     */
+    function markenZeile(teile) {
+      var kinder = [];
+      teile.forEach(function (m, i) {
+        if (i) kinder.push(el('i', { class: 'pack-punkt', text: '·' }));
+        kinder.push(el('span', { text: m }));
+      });
+      return el('span', { class: 'pack-marken' }, kinder);
+    }
+
+    /** Hoch und runter — für Sender wie für Stücke darin. */
+    function schieber(art, id, sender) {
+      var mach = function (richtung, zeichen) {
+        var k = el('button', { class: 'btn btn-small btn-ghost pack-pfeil', text: zeichen });
+        k.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          GK.sfx('click');
+          GK.net.op('packMove', { art: art, id: id, sender: sender || '', richtung: richtung })
+            .then(function (out) {
+              if (out && out.pack) { packDaten = out.pack; packMalen(); }
+              if (out && out.state && art === 'webradio') wrBauen();
+            });
+        });
+        return k;
+      };
+      return el('div', { class: 'pack-schieber' }, [mach(-1, '▲'), mach(1, '▼')]);
+    }
+
+    /** Zu welchen Sendern gehört ein Stück? */
+    function senderVon(id) {
+      var raus = [];
+      packDaten.sender.forEach(function (s) {
+        if (!s.tracks || s.tracks.indexOf(id) >= 0) raus.push(s.name);
+      });
+      return raus;
+    }
+
+    function titelZeile(t) {
+      var weg = el('button', { class: 'btn btn-small btn-danger', text: '🗑' });
+      weg.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (!window.confirm(GK.txt('Stück „' + t.name + '" aus der Liste nehmen? Die Datei bleibt liegen.',
+                                   'Remove track "' + t.name + '" from the list? The file stays on disk.'))) return;
+        GK.net.op('packTrack', { id: t.id, weg: true }).then(function (out) {
+          if (out && out.pack) { packDaten = out.pack; packMalen(); }
+        });
+      });
+      var wo = senderVon(t.id);
+      var marken = [];
+      if (t.nurRadio) marken.push('nur Radio');
+      if (t.skins && t.skins.length) {
+        t.skins.forEach(function (s) { marken.push(GK.skinInfo(s).name); });
+      }
+      wo.forEach(function (n) { marken.push(n); });
+      if (t.dauer) marken.push(mmssKurz(t.dauer));
+
+      return el('div', { class: 'pack-zeile' }, [
+        el('span', { class: 'pack-ic', text: '💿' }),
+        el('span', { class: 'pack-text' }, [
+          el('b', { text: t.name }),
+          markenZeile(marken.length ? marken : [t.file])
+        ]),
+        lautstaerkeRegler(t),
+        weg
+      ]);
+    }
+
+    function senderZeile(s) {
+      var stuecke = s.tracks
+        ? s.tracks.map(function (id) {
+            for (var i = 0; i < packDaten.musik.length; i++) {
+              if (packDaten.musik[i].id === id) return packDaten.musik[i];
+            }
+            return null;
+          }).filter(Boolean)
+        : packDaten.musik.slice();
+
+      var innen = el('div', { class: 'pack-unter' }, stuecke.length
+        ? stuecke.map(function (t, i) {
+            var unten = [
+              el('span', { class: 'pack-nr', text: String(i + 1) }),
+              el('span', { class: 'pack-text' }, [
+                el('b', { text: t.name }),
+                markenZeile(t.dauer ? [t.mood || '', mmssKurz(t.dauer)].filter(Boolean)
+                                    : [t.mood || ''])
+              ])
+            ];
+            /* Verschieben nur, wenn der Sender eine eigene Reihenfolge
+               führt. Nimmt er ohnehin alles, gibt es nichts zu ordnen. */
+            if (s.tracks) unten.push(schieber('track', t.id, s.id));
+            unten.push(lautstaerkeRegler(t));
+            return el('div', { class: 'pack-unterzeile' }, unten);
+          })
+        : [el('p', { class: 'hint', text: 'Noch kein Stück in diesem Sender.' })]);
+      innen.hidden = true;
+
+      var auf = el('button', { class: 'btn btn-small btn-ghost', text: '▾ TITEL' });
+      auf.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        innen.hidden = !innen.hidden;
+        auf.textContent = innen.hidden ? '▾ TITEL' : '▴ TITEL';
+        GK.sfx('click');
+      });
+
+      var wo = (s.skins && s.skins.length)
+        ? s.skins.map(function (id) { return GK.skinInfo(id).name; }).join(', ')
+        : 'überall';
+
+      return el('div', { class: 'pack-block' }, [
+        el('div', { class: 'pack-zeile' }, [
+          el('span', { class: 'pack-ic', text: '📼' }),
+          el('span', { class: 'pack-text' }, [
+            el('b', { text: s.name }),
+            markenZeile([stuecke.length + ' Titel', wo,
+                         s.mischen ? 'gemischt' : 'feste Reihenfolge'])
+          ]),
+          schieber('sender', s.id),
+          auf
+        ]),
+        innen
+      ]);
+    }
+
+    function packMalen() {
+      titelBox.innerHTML = '';
+      if (!packDaten.musik.length) {
+        titelBox.appendChild(el('p', { class: 'hint', text: 'Noch keine eigenen Stücke — die eingebauten Loops entstehen im Browser und stehen nicht hier.' }));
+      } else {
+        packDaten.musik.forEach(function (t) { titelBox.appendChild(titelZeile(t)); });
+      }
+      senderBox.innerHTML = '';
+      if (!packDaten.sender.length) {
+        senderBox.appendChild(el('p', { class: 'hint', text: 'Noch kein Offline-Sender angelegt.' }));
+      } else {
+        packDaten.sender.forEach(function (s) { senderBox.appendChild(senderZeile(s)); });
+      }
+      zielFuellen();
+    }
+
+    /* ── Hochladen ── */
+    var upDatei = el('input', { type: 'file', accept: 'audio/*', class: 'mp-feld' });
+    var upName = el('input', { class: 'mp-feld', type: 'text', maxlength: '60', placeholder: 'Wie soll es heißen?' });
+    var upZiel = el('select', { class: 'mp-feld' });
+    var upNurRadio = el('input', { type: 'checkbox' });
+    var upKnopf = el('button', { class: 'btn btn-small btn-lime', text: '⬆ HOCHLADEN' });
+    var upStand = el('div', { class: 'pack-fortschritt' }, [el('i')]);
+    upStand.hidden = true;
+
+    function zielFuellen() {
+      var vorher = upZiel.value;
+      upZiel.innerHTML = '';
+      upZiel.appendChild(el('option', { value: '', text: '— nur Hintergrundmusik —' }));
+      packDaten.sender.forEach(function (s) {
+        upZiel.appendChild(el('option', { value: s.id, text: s.name }));
+      });
+      if (vorher) upZiel.value = vorher;
+    }
+
+    upDatei.addEventListener('change', function () {
+      var f = upDatei.files && upDatei.files[0];
+      /* Den Dateinamen als Vorschlag nehmen, ohne Endung — meistens steht
+         der Titel ohnehin darin. */
+      if (f && !upName.value) upName.value = f.name.replace(/\.[a-z0-9]+$/i, '');
+    });
+
+    upKnopf.addEventListener('click', function () {
+      var f = upDatei.files && upDatei.files[0];
+      if (!f) { GK.toast('Erst eine Datei auswählen', 'bad', '⬆'); return; }
+      if (!upName.value.trim()) { GK.toast('Der Titel braucht einen Namen', 'bad', '⬆'); return; }
+      GK.sfx('click');
+      upKnopf.disabled = true;
+      upStand.hidden = false;
+      upStand.firstChild.style.width = '0%';
+      GK.net.upload(f, {
+        name: upName.value.trim(),
+        datei: f.name,
+        sender: upZiel.value,
+        nurRadio: upNurRadio.checked ? '1' : '0'
+      }, function (anteil) {
+        upStand.firstChild.style.width = (anteil * 100).toFixed(1) + '%';
+      }).then(function (out) {
+        upKnopf.disabled = false;
+        upStand.hidden = true;
+        if (out && out.pack) { packDaten = out.pack; packMalen(); }
+        GK.toast('Hochgeladen: ' + upName.value.trim()
+          + (out && out.dauer ? ' (' + mmssKurz(out.dauer) + ')' : ''), 'gold', '🎵');
+        upDatei.value = '';
+        upName.value = '';
+      }, function (e) {
+        upKnopf.disabled = false;
+        upStand.hidden = true;
+        GK.toast(e.message, 'bad', '⬆');
+      });
+    });
+
     /* ── Webradios ──
        Ein fremder Strom, der ohnehin schon läuft: keine Stückliste, keine
        Längen, nichts zu takten. Angelegt wird er hier und liegt danach
@@ -2021,6 +2272,7 @@
             el('b', { text: r.name }),
             el('span', { text: wo })
           ]),
+          schieber('webradio', r.id),
           weg
         ]);
         /* Anklicken holt den Eintrag ins Formular — Ändern ist häufiger
@@ -2357,7 +2609,49 @@
             el('p', { class: 'hint', text: 'Jede zu Ende gespielte Party landet hier mit ihren Einstellungen und dem Endstand — die letzten 120 Sitzungen.' })
           ], true),
 
-          feld('WEBRADIOS', [
+          /* Alles, was klingt, in einem Kasten: die Stücke selbst, die
+             Sender aus eigenen Dateien und die Webradios. Vorher standen
+             die an drei Stellen, und wer eine Lautstärke geraderücken
+             wollte, musste an die Datei. */
+          feld('MUSIK & RADIO', [
+            el('div', { class: 'pack-kopf', text: '⬆ NEUEN TITEL HOCHLADEN' }),
+            upDatei,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'mp-zwei' }, [
+              el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), upName]),
+              el('div', {}, [el('label', { class: 'mp-label', text: 'WOHIN?' }), upZiel])
+            ]),
+            el('label', { class: 'party-schalter' }, [
+              upNurRadio,
+              el('span', {}, [
+                el('b', { text: 'Nur im Radio' }),
+                el('span', { class: 'party-schalter-was',
+                             text: 'Ohne Haken steht der Titel auch einzeln in der Stückauswahl.' })
+              ])
+            ]),
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'modal-actions' }, [upKnopf]),
+            upStand,
+            el('p', { class: 'hint', text: 'Die Datei wandert nach assets/sfx/music/, die Spieldauer liest der Server selbst aus dem Dateikopf, und der Eintrag landet in sounds.json. MP3 wird dabei genau vermessen — bei anderen Formaten zählt für das Radio die Voreinstellung des Senders.' }),
+
+            el('div', { class: 'pack-kopf', text: '💿 EINZELNE TITEL' }),
+            titelBox,
+            el('p', { class: 'hint', text: 'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen.' }),
+
+            el('div', { class: 'pack-kopf', text: '📼 OFFLINE-RADIOS' }),
+            senderBox,
+            el('div', { style: 'height:8px' }),
+            radioStand,
+            el('div', { style: 'height:8px' }),
+            el('div', { class: 'mp-zwei' }, [
+              el('div', {}, [el('label', { class: 'mp-label', text: 'SENDER' }), radioSenderWahl]),
+              el('div', {}, [el('label', { class: 'mp-label', text: 'STÜCK' }), radioStueckWahl])
+            ]),
+            el('div', { style: 'height:10px' }),
+            el('div', { class: 'modal-actions' }, [radioSkip, radioAuflegen, radioNeu]),
+            el('p', { class: 'hint', text: 'Diese Sender laufen aus eigenen Dateien auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle.' }),
+
+            el('div', { class: 'pack-kopf', text: '📻 WEBRADIOS' }),
             wrListe,
             el('div', { style: 'height:10px' }),
             el('div', { class: 'mp-zwei' }, [
@@ -2372,18 +2666,6 @@
             el('div', { style: 'height:10px' }),
             el('div', { class: 'modal-actions' }, [wrSpeichern, wrNeu]),
             el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
-          ], true),
-
-          feld('RADIO', [
-            radioStand,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'mp-zwei' }, [
-              el('div', {}, [el('label', { class: 'mp-label', text: 'SENDER' }), radioSenderWahl]),
-              el('div', {}, [el('label', { class: 'mp-label', text: 'STÜCK' }), radioStueckWahl])
-            ]),
-            el('div', { style: 'height:10px' }),
-            el('div', { class: 'modal-actions' }, [radioSkip, radioAuflegen, radioNeu]),
-            el('p', { class: 'hint', text: 'Der Sender läuft auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle. Der eingebaute Mischsender steht nicht hier: seine Stücke entstehen live im Browser und laufen bei jedem für sich.' })
           ], true),
 
           feld('SPIELE & EINSÄTZE', [
@@ -2453,6 +2735,7 @@
     /* Der Sender läuft weiter, während das Panel offen steht — die Anzeige
        zieht im Takt nach und räumt sich weg, sobald das Fenster zu ist. */
     radioSenderHolen();
+    packHolen();
     radioUhr = setInterval(function () {
       if (!radioStand.isConnected) { clearInterval(radioUhr); radioUhr = null; return; }
       radioStandHolen();

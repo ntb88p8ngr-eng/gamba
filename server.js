@@ -12,6 +12,7 @@ var https = require('https');
 var fs = require('fs');
 var path = require('path');
 var crypto = require('crypto');
+var mp3Dauer = require('./mp3.js');
 
 var PORT = Number(process.env.PORT) || 3000;
 var HOST = process.env.HOST || '0.0.0.0';
@@ -495,16 +496,93 @@ var RADIO_DAUER = 210;            // Rueckfall, wenn ein Stueck keine Laenge nen
 var RADIO_MAX_SPRUNG = 12 * 3600e3;   // laenger her? Dann faengt der Sender neu an
 
 var sfxPack = null;
+var PACK_DATEI = path.join(ROOT, 'assets', 'sfx', 'sounds.json');
+var MUSIK_DIR = path.join(ROOT, 'assets', 'sfx', 'music');
 
 function packLesen() {
   try {
-    sfxPack = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'sfx', 'sounds.json'), 'utf8'));
+    sfxPack = JSON.parse(fs.readFileSync(PACK_DATEI, 'utf8'));
   } catch (e) {
     sfxPack = null;
     console.warn('Sound-Pack nicht lesbar — Radio bleibt aus:', e.message);
   }
 }
 packLesen();
+
+/**
+ * Das Sound-Pack zurueckschreiben.
+ *
+ * Damit wird sounds.json zur Datei, die auch das Panel bearbeitet — nicht
+ * mehr nur eine, die von Hand gepflegt wird. Geschrieben wird ueber eine
+ * Nebendatei und dann umbenannt: bricht es mittendrin ab, liegt immer noch
+ * die alte, vollstaendige Fassung da statt einer halben.
+ *
+ * Zu bedenken beim naechsten `git pull`: die Datei steht unter Versions-
+ * kontrolle, und was hier hineingeschrieben wurde, kann sich mit
+ * Aenderungen von aussen stossen.
+ */
+function packSchreiben() {
+  if (!sfxPack) return false;
+  try {
+    fs.mkdirSync(path.dirname(PACK_DATEI), { recursive: true });
+    var tmp = PACK_DATEI + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(sfxPack, null, 2) + '\n');
+    fs.renameSync(tmp, PACK_DATEI);
+    return true;
+  } catch (e) {
+    console.error('[gambaking] Sound-Pack nicht schreibbar:', e.message);
+    return false;
+  }
+}
+
+/** Der Musik-Block, immer als Liste — auch wenn das Pack fehlt. */
+function packMusik() {
+  if (!sfxPack) return [];
+  if (!Array.isArray(sfxPack.music)) sfxPack.music = [];
+  return sfxPack.music;
+}
+
+function packRadios() {
+  if (!sfxPack) return [];
+  if (!Array.isArray(sfxPack.radio)) sfxPack.radio = [];
+  return sfxPack.radio;
+}
+
+function musikEintrag(id) {
+  var liste = packMusik();
+  for (var i = 0; i < liste.length; i++) if (liste[i] && liste[i].id === id) return liste[i];
+  return null;
+}
+
+/**
+ * Was das Panel ueber Musik und Sender wissen muss.
+ *
+ * Nur der Admin bekommt das: hier stehen Dateipfade, und die gehen
+ * niemanden sonst etwas an.
+ */
+function packUebersicht() {
+  return {
+    musik: packMusik().filter(function (t) { return t && t.id && t.file; })
+      .map(function (t) {
+        return {
+          id: t.id, name: t.name || t.id, mood: t.mood || '', file: t.file,
+          dauer: Number(t.dauer) || 0,
+          volume: t.volume === undefined ? 1 : Number(t.volume),
+          skins: Array.isArray(t.skins) ? t.skins : [],
+          nurRadio: !!t.nurRadio
+        };
+      }),
+    sender: packRadios().filter(function (r) { return r && r.id; })
+      .map(function (r) {
+        return {
+          id: r.id, name: r.name || r.id, was: r.was || '',
+          tracks: Array.isArray(r.tracks) ? r.tracks.slice() : null,
+          mischen: r.mischen !== false,
+          skins: Array.isArray(r.skins) ? r.skins : []
+        };
+      })
+  };
+}
 
 /** Alle Stuecke aus dem Pack, als Verzeichnis id -> Eintrag. */
 function packStuecke() {
@@ -638,6 +716,8 @@ function radioWaehlen(id, trackId) {
    nicht in einer Datei. */
 
 var WEBRADIO_MAX = 40;
+/* Ein Stueck darf gross sein — der 80er-Mix wiegt allein hundert Megabyte. */
+var UPLOAD_MAX = 220 * 1024 * 1024;
 
 /**
  * Adresse eines Stroms pruefen.
@@ -887,7 +967,7 @@ function webTitel(url) {
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1, packTrack: 1, packStation: 1, packMove: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -1108,6 +1188,151 @@ function applyOp(op) {
     /* Radio: der Admin darf umschalten. Beides aendert nichts an der
        Datenbank — der Sender laeuft im Speicher —, deshalb geht die
        Antwort hier direkt raus und nicht durch saveDB(). */
+    /* Ein Stueck aus dem Pack aendern — Name, Unterzeile, Lautstaerke,
+       Anstriche, und ob es nur im Sender laeuft. `weg` wirft es hinaus.
+
+       Die Lautstaerke ist der Grund, warum es das gibt: aufgenommen wird
+       nicht alles gleich laut, und ein Stueck, das aus der Reihe
+       herausbruellt, laesst sich sonst nur in der Datei geradebiegen. */
+    case 'packTrack': {
+      var ptId = clean(op.id, 40).trim();
+      var pt = musikEintrag(ptId);
+      if (!pt) return { error: 'Stück nicht gefunden', code: 404 };
+
+      if (op.weg) {
+        sfxPack.music = packMusik().filter(function (t) { return t !== pt; });
+        /* Aus den Sendern auch heraus — ein Verweis ins Leere wuerde beim
+           Abspielen still uebersprungen und niemand wuesste, warum. */
+        packRadios().forEach(function (r) {
+          if (Array.isArray(r.tracks)) {
+            r.tracks = r.tracks.filter(function (x) { return x !== ptId; });
+          }
+        });
+        /* Die Datei bleibt liegen. Sie zu loeschen waere endgueltig, und
+           ein Eintrag ist schneller wieder angelegt als eine Aufnahme. */
+        if (!packSchreiben()) return { error: 'Sound-Pack nicht schreibbar', code: 500 };
+        packLesen();
+        pushFeed('Stück entfernt: ' + (pt.name || ptId), 'admin');
+        return { pack: packUebersicht(), state: publicState() };
+      }
+
+      if (op.name !== undefined) pt.name = clean(op.name, 60).trim() || pt.id;
+      if (op.mood !== undefined) pt.mood = clean(op.mood, 80).trim();
+      if (op.volume !== undefined) {
+        pt.volume = Math.round(clamp(Number(op.volume) || 0, 0, 2) * 100) / 100;
+      }
+      if (op.dauer !== undefined) pt.dauer = clamp(int(op.dauer), 0, 24 * 3600);
+      if (op.skins !== undefined) {
+        var ptSkins = skinListe(op.skins);
+        if (ptSkins.length) pt.skins = ptSkins; else delete pt.skins;
+      }
+      if (op.nurRadio !== undefined) {
+        if (op.nurRadio) pt.nurRadio = true; else delete pt.nurRadio;
+      }
+      if (!packSchreiben()) return { error: 'Sound-Pack nicht schreibbar', code: 500 };
+      packLesen();
+      return { pack: packUebersicht(), state: publicState() };
+    }
+
+    /* Ein Offline-Sender: Name, Unterzeile, Anstriche, Reihenfolge. Ohne
+       Kennung kommt ein neuer dazu, mit `weg` faellt er heraus. */
+    case 'packStation': {
+      var psId = clean(op.id, 40).trim();
+      var liste = packRadios();
+      var ps = null;
+      for (var pi = 0; pi < liste.length; pi++) if (liste[pi] && liste[pi].id === psId) ps = liste[pi];
+
+      if (op.weg) {
+        if (!ps) return { error: 'Sender nicht gefunden', code: 404 };
+        sfxPack.radio = liste.filter(function (r) { return r !== ps; });
+        delete radios[psId];
+        if (!packSchreiben()) return { error: 'Sound-Pack nicht schreibbar', code: 500 };
+        packLesen();
+        pushFeed('Sender entfernt: ' + (ps.name || psId), 'admin');
+        return { pack: packUebersicht(), state: publicState() };
+      }
+
+      if (!ps) {
+        var neuId = psId || ('sender-' + Date.now().toString(36));
+        ps = { id: neuId, name: neuId, tracks: [], mischen: true };
+        liste.push(ps);
+      }
+      if (op.name !== undefined) ps.name = clean(op.name, 60).trim() || ps.id;
+      if (op.was !== undefined) ps.was = clean(op.was, 90).trim();
+      if (op.mischen !== undefined) ps.mischen = !!op.mischen;
+      if (op.skins !== undefined) {
+        var psSkins = skinListe(op.skins);
+        if (psSkins.length) ps.skins = psSkins; else delete ps.skins;
+      }
+      if (Array.isArray(op.tracks)) {
+        /* Nur Kennungen, die es auch gibt — und jede nur einmal. */
+        var raus = [];
+        op.tracks.forEach(function (x) {
+          var tid = clean(x, 40).trim();
+          if (tid && musikEintrag(tid) && raus.indexOf(tid) < 0) raus.push(tid);
+        });
+        ps.tracks = raus;
+      }
+      /* Die laufende Sendung neu aufsetzen: die Reihenfolge hat sich
+         womoeglich geaendert, und die alte zeigt ins Nichts. */
+      delete radios[ps.id];
+      if (!packSchreiben()) return { error: 'Sound-Pack nicht schreibbar', code: 500 };
+      packLesen();
+      return { pack: packUebersicht(), state: publicState() };
+    }
+
+    /* Reihenfolge aendern — einen Platz hoch oder runter.
+       Ein Tausch mit dem Nachbarn statt einer ganzen neuen Liste: so
+       koennen zwei Leute gleichzeitig schieben, ohne dass einer die
+       Aenderung des anderen ueberschreibt. */
+    case 'packMove': {
+      var mvArt = clean(op.art, 20).trim();
+      var mvId = clean(op.id, 40).trim();
+      var mvRicht = int(op.richtung) < 0 ? -1 : 1;
+
+      var reihe = null, schreibtPack = true;
+      if (mvArt === 'sender') {
+        reihe = packRadios();
+      } else if (mvArt === 'webradio') {
+        reihe = db.settings.webRadios;
+        schreibtPack = false;
+      } else if (mvArt === 'track') {
+        var mvSender = packSender(clean(op.sender, 40).trim());
+        if (!mvSender || !Array.isArray(mvSender.tracks)) {
+          return { error: 'Sender führt keine eigene Reihenfolge', code: 400 };
+        }
+        reihe = mvSender.tracks;
+      } else {
+        return { error: 'Unbekannte Art', code: 400 };
+      }
+
+      /* Kennungen liegen bei Sendern im Eintrag, bei Stuecken direkt in
+         der Liste — deshalb der Umweg ueber eine Funktion. */
+      var kennungVon = mvArt === 'track'
+        ? function (x) { return x; }
+        : function (x) { return x && x.id; };
+      var wo = -1;
+      for (var mi = 0; mi < reihe.length; mi++) if (kennungVon(reihe[mi]) === mvId) wo = mi;
+      if (wo < 0) return { error: 'Nicht gefunden', code: 404 };
+
+      var hin = wo + mvRicht;
+      /* Am Rand passiert nichts — kein Fehler, das ist keiner. */
+      if (hin >= 0 && hin < reihe.length) {
+        var merk = reihe[wo];
+        reihe[wo] = reihe[hin];
+        reihe[hin] = merk;
+      }
+
+      if (schreibtPack) {
+        /* Beim Stueckwechsel muss die laufende Sendung neu aufgesetzt
+           werden, sonst spielt sie die alte Reihenfolge zu Ende. */
+        if (mvArt === 'track') delete radios[clean(op.sender, 40).trim()];
+        if (!packSchreiben()) return { error: 'Sound-Pack nicht schreibbar', code: 500 };
+        packLesen();
+      }
+      return { pack: packUebersicht(), state: publicState() };
+    }
+
     /* Webradio anlegen oder aendern. Dieselbe Operation fuer beides: mit
        Kennung wird der vorhandene Eintrag ueberschrieben, ohne kommt ein
        neuer dazu. */
@@ -1402,6 +1627,113 @@ function handleRequest(req, res) {
         logins: db.logins,
         partyLog: db.partyLog || []
       });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
+  }
+
+  /* ── Musik hochladen ──
+     Der Koerper ist die Datei selbst, alles Weitere steht in der Adresse.
+     Das spart einen Multipart-Zerleger, und weil direkt auf die Platte
+     geschrieben wird, liegt auch ein Stueck von hundert Megabyte nie
+     vollstaendig im Speicher.
+
+     Danach wird die Spieldauer aus dem Dateikopf gelesen (siehe mp3.js)
+     und der Eintrag ins Sound-Pack geschrieben — von Hand nachzutragen
+     waere genau die Arbeit, die das hier abnehmen soll. */
+  if (url.indexOf('/api/upload') === 0 && req.method === 'POST') {
+    var frage = {};
+    (url.split('?')[1] || '').split('&').forEach(function (teil) {
+      var st = teil.split('=');
+      if (!st[0]) return;
+      try { frage[st[0]] = decodeURIComponent((st[1] || '').replace(/\+/g, ' ')); } catch (e) {}
+    });
+    if (!validToken(frage.token)) return sendJSON(res, 403, { error: 'Nur der Admin darf das' });
+    if (!sfxPack) return sendJSON(res, 500, { error: 'Kein Sound-Pack vorhanden' });
+
+    var uName = clean(frage.name, 60).trim();
+    if (!uName) return sendJSON(res, 400, { error: 'Name fehlt' });
+    var uDatei = clean(frage.datei, 120).trim();
+    /* Der Dateiname kommt vom Browser und wird nicht uebernommen, nur
+       seine Endung: alles andere waere ein Weg, aus dem Ordner
+       herauszuschreiben. */
+    var endung = (/\.([a-z0-9]{1,5})$/i.exec(uDatei) || [, 'mp3'])[1].toLowerCase();
+    if (['mp3', 'ogg', 'm4a', 'wav', 'webm', 'opus', 'flac'].indexOf(endung) < 0) {
+      return sendJSON(res, 400, { error: 'Dateiart nicht unterstützt: .' + endung });
+    }
+    var uSender = clean(frage.sender, 40).trim();
+    var ordner = uSender && packSender(uSender) ? uSender : 'eigene';
+    var kennung = clean(frage.id, 40).trim().replace(/[^a-z0-9-]/gi, '').toLowerCase()
+      || ('t' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5));
+    if (musikEintrag(kennung)) return sendJSON(res, 400, { error: 'Kennung schon vergeben' });
+
+    var ziel = path.join(MUSIK_DIR, ordner, kennung + '.' + endung);
+    try { fs.mkdirSync(path.dirname(ziel), { recursive: true }); }
+    catch (e) { return sendJSON(res, 500, { error: 'Ordner nicht anlegbar' }); }
+
+    var strom = fs.createWriteStream(ziel);
+    var wieviel = 0, zuViel = false;
+    req.on('data', function (st) {
+      wieviel += st.length;
+      if (wieviel > UPLOAD_MAX && !zuViel) {
+        zuViel = true;
+        req.destroy();
+        strom.destroy();
+        try { fs.unlinkSync(ziel); } catch (e) {}
+        sendJSON(res, 413, { error: 'Datei zu groß (mehr als ' + Math.round(UPLOAD_MAX / 1048576) + ' MB)' });
+      }
+    });
+    req.pipe(strom);
+    strom.on('error', function () {
+      if (!zuViel) sendJSON(res, 500, { error: 'Schreiben fehlgeschlagen' });
+    });
+    strom.on('finish', function () {
+      if (zuViel) return;
+      if (!wieviel) {
+        try { fs.unlinkSync(ziel); } catch (e) {}
+        return sendJSON(res, 400, { error: 'Leere Datei' });
+      }
+      var dauer = 0;
+      try { dauer = endung === 'mp3' ? mp3Dauer(ziel) : 0; } catch (e) { dauer = 0; }
+
+      var eintrag = {
+        id: kennung,
+        name: uName,
+        mood: clean(frage.mood, 80).trim() || 'Selbst hochgeladen',
+        file: 'music/' + ordner + '/' + kennung + '.' + endung,
+        volume: 0.85,
+        skins: skinListe((frage.skins || '').split(',')),
+        nurRadio: frage.nurRadio === '1'
+      };
+      if (dauer) eintrag.dauer = dauer;
+      if (!eintrag.skins.length) delete eintrag.skins;
+      if (!eintrag.nurRadio) delete eintrag.nurRadio;
+      packMusik().push(eintrag);
+
+      /* Gehoert es zu einem Sender, gleich hinten anhaengen. */
+      if (uSender) {
+        var sd = packSender(uSender);
+        if (sd) {
+          if (!Array.isArray(sd.tracks)) sd.tracks = [];
+          sd.tracks.push(kennung);
+          delete radios[uSender];
+        }
+      }
+      if (!packSchreiben()) return sendJSON(res, 500, { error: 'Sound-Pack nicht schreibbar' });
+      packLesen();
+      pushFeed('Musik hochgeladen: ' + uName, 'admin');
+      sendJSON(res, 200, {
+        ok: true, id: kennung, dauer: dauer, bytes: wieviel,
+        pack: packUebersicht(), state: publicState()
+      });
+    });
+    return;
+  }
+
+  /* ── Musik und Sender fuer das Panel ──
+     Nur fuer den Admin: hier stehen Dateipfade. */
+  if (url === '/api/pack' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      if (!validToken(body.token)) return sendJSON(res, 403, { error: 'Nur der Admin darf das' });
+      sendJSON(res, 200, packUebersicht());
     }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 

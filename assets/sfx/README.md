@@ -29,6 +29,25 @@ aufrufen, dann `GK.sfx('click')`.
 
 ---
 
+## Zwei Wege in diese Datei
+
+Der eine ist ein Texteditor — alles unten Beschriebene gilt.
+
+Der andere ist das **Admin-Panel** unter *Musik & Radio*. Dort lassen sich
+Stücke hochladen, ihre Lautstärke gegeneinander ausrichten, Sender
+umsortieren und Einträge wieder hinauswerfen. Geschrieben wird dabei genau
+diese Datei.
+
+Das heißt auch: sie ändert sich im Betrieb. Wer sie unter Versionskontrolle
+hält, sollte vor einem `git pull` daran denken — sonst stossen sich die
+Änderungen aus dem Panel mit denen von aussen.
+
+Hochgeladene Dateien landen unter `music/<sender>/` beziehungsweise
+`music/eigene/`, benannt nach ihrer Kennung. Die Spieldauer liest der
+Server bei MP3 selbst aus dem Dateikopf (siehe `mp3.js`) — bei anderen
+Formaten bleibt `dauer` leer, und im Radio zählt dann die Voreinstellung
+des Senders.
+
 ## Aufbau von `sounds.json`
 
 ```json

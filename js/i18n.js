@@ -282,6 +282,34 @@
     /* Radio: Gleichlauf und die Bedienung im Admin-Panel. */
     'SENDER': 'STATION', 'STÜCK': 'TRACK',
     '⏭ WEITER': '⏭ NEXT', '▶ AUFLEGEN': '▶ PLAY',
+    /* Musik & Radio im Admin-Panel */
+    'MUSIK & RADIO': 'MUSIC & RADIO',
+    '⬆ NEUEN TITEL HOCHLADEN': '⬆ UPLOAD A NEW TRACK',
+    '💿 EINZELNE TITEL': '💿 INDIVIDUAL TRACKS',
+    '📼 OFFLINE-RADIOS': '📼 OFFLINE RADIOS',
+    '📻 WEBRADIOS': '📻 WEB RADIOS',
+    'WOHIN?': 'WHERE TO?',
+    '— nur Hintergrundmusik —': '— background music only —',
+    'Wie soll es heißen?': 'What should it be called?',
+    'Nur im Radio': 'Radio only',
+    'Ohne Haken steht der Titel auch einzeln in der Stückauswahl.':
+      'Without the tick the track also appears on its own in the track list.',
+    '⬆ HOCHLADEN': '⬆ UPLOAD',
+    '▾ TITEL': '▾ TRACKS', '▴ TITEL': '▴ TRACKS',
+    'nur Radio': 'radio only',
+    'gemischt': 'shuffled', 'feste Reihenfolge': 'fixed order',
+    'Noch kein Stück in diesem Sender.': 'No track in this station yet.',
+    'Noch keine eigenen Stücke — die eingebauten Loops entstehen im Browser und stehen nicht hier.':
+      'No tracks of your own yet — the built-in loops are generated in the browser and are not listed here.',
+    'Noch kein Offline-Sender angelegt.': 'No offline station set up yet.',
+    'Erst eine Datei auswählen': 'Pick a file first',
+    'Der Titel braucht einen Namen': 'The track needs a name',
+    'Die Datei wandert nach assets/sfx/music/, die Spieldauer liest der Server selbst aus dem Dateikopf, und der Eintrag landet in sounds.json. MP3 wird dabei genau vermessen — bei anderen Formaten zählt für das Radio die Voreinstellung des Senders.':
+      'The file goes to assets/sfx/music/, the server reads the playing time out of the file header itself, and the entry lands in sounds.json. MP3 is measured exactly — for other formats the station default applies in the radio.',
+    'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen.':
+      'The slider balances one track against the others — recordings are not all equally loud. 100% means: exactly as the file sounds. The bin removes the entry, the file stays on disk.',
+    'Diese Sender laufen aus eigenen Dateien auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle.':
+      'These stations run from your own files on the server — every listener hears the same track at the same point. NEXT skips the rest, PLAY starts the chosen track right away. Both apply to everyone.',
     /* Webradios */
     'WEBRADIOS': 'WEB RADIOS', 'Webradio': 'Web radio', 'live': 'live',
     'NAME': 'NAME', 'SYMBOL': 'ICON',
@@ -632,6 +660,14 @@
     [/^Einsatz (.+)$/, 'Bet $1'],
     [/^Gewinn (.+)$/, 'Win $1'],
     [/^Stück (\d+) von (\d+)$/, 'Track $1 of $2'],
+    /* Die Zeilen im Musik-Panel: „11 Titel · Old Vegas · gemischt" und
+       „Hochgeladen: Jolene (2:43)". Zusammengesetzt, also als Regel. */
+    [/^(\d+) Titel(  ·  .+)?$/, function (m, n, rest) {
+      return n + ' tracks' + (rest ? rest.replace('gemischt', 'shuffled')
+                                          .replace('feste Reihenfolge', 'fixed order')
+                                          .replace('überall', 'everywhere') : '');
+    }],
+    [/^Hochgeladen: (.+)$/, 'Uploaded: $1'],
     [/^(\d+) Runden$/, '$1 rounds'],
     [/^(\d+) Spiele$/, '$1 rounds'],
     [/^(\d+) Siege$/, '$1 wins'],

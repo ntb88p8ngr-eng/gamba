@@ -122,6 +122,52 @@
     return api('api/radio' + (sender ? '?sender=' + encodeURIComponent(sender) : ''));
   };
 
+  /** Musik und Sender aus dem Sound-Pack (nur Admin). */
+  Net.pack = function () {
+    if (!Net.online) return Promise.resolve(null);
+    var body = {};
+    if (Net.token) body.token = Net.token;
+    return api('api/pack', { method: 'POST', body: JSON.stringify(body) });
+  };
+
+  /**
+   * Eine Musikdatei hochladen (nur Admin).
+   *
+   * Über XMLHttpRequest statt fetch, allein wegen des Fortschritts: fetch
+   * meldet nicht, wie weit das Hochladen ist, und bei einem Stück von
+   * hundert Megabyte starrt man sonst auf einen Knopf, bei dem nichts
+   * passiert.
+   *
+   * Der Körper ist die Datei selbst, alles Weitere steht in der Adresse —
+   * so braucht der Server keinen Multipart-Zerleger.
+   */
+  Net.upload = function (datei, felder, fortschritt) {
+    if (!Net.online) return Promise.reject(new Error('Kein Server'));
+    var frage = Object.assign({}, felder || {});
+    if (Net.token) frage.token = Net.token;
+    var teile = Object.keys(frage).map(function (k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(frage[k]);
+    });
+    return new Promise(function (fertig, schiefgegangen) {
+      var x = new XMLHttpRequest();
+      x.open('POST', 'api/upload?' + teile.join('&'));
+      x.setRequestHeader('Content-Type', 'application/octet-stream');
+      if (fortschritt && x.upload) {
+        x.upload.addEventListener('progress', function (e) {
+          if (e.lengthComputable) fortschritt(e.loaded / e.total);
+        });
+      }
+      x.addEventListener('load', function () {
+        var antwort = {};
+        try { antwort = JSON.parse(x.responseText || '{}'); } catch (e) {}
+        if (x.status >= 200 && x.status < 300) fertig(antwort);
+        else schiefgegangen(new Error(antwort.error || ('HTTP ' + x.status)));
+      });
+      x.addEventListener('error', function () { schiefgegangen(new Error('Übertragung abgebrochen')); });
+      x.send(datei);
+    });
+  };
+
   /** Rohdaten der Statistik holen (nur Admin) — für die Ausfuhr als Datei. */
   Net.statExport = function () {
     if (!Net.online) return Promise.resolve(null);
