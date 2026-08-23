@@ -358,37 +358,29 @@
                                          selected: d[0] === 120 ? 'selected' : null }));
       });
 
-    /* Zwei Arten zu gewinnen. Der Einsatz kostet echte Chips und macht
-       den Topf; der Preis kostet niemanden etwas. */
+    /* Ausgezahlt wird nur, was eingezahlt wurde. Einen geschenkten Preis
+       gibt es bewusst nicht — er wäre eine Chip-Druckerei: Turnier
+       aufmachen, gewinnen, wiederholen. Ohne Einsatz geht es um die Ehre. */
     var buyIn = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '10',
-                              value: '0', placeholder: '0' });
-    var preis = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '100',
-                              value: '1000', placeholder: '0' });
-    var preisBlock = el('div', {}, [
-      el('label', { class: 'mp-label', text: 'Preis für den Sieger' }), preis,
-      el('p', { class: 'mp-hinweis', text:
-        'Geschenkte Chips — niemand zahlt etwas ein.' })
-    ]);
+                              value: '250', placeholder: '0' });
     var topfBlock = el('div', {}, [
       el('label', { class: 'mp-label', text: 'Einsatz je Teilnehmer' }), buyIn,
       el('p', { class: 'mp-hinweis', text:
-        'Wird beim Start vom Konto abgebucht. Der Sieger bekommt alles. ' +
-        'Wer vorzeitig geht, lässt seinen Einsatz im Topf.' })
+        'Wird beim Start vom Konto abgebucht. Der Sieger bekommt den ganzen Topf. ' +
+        'Wer vorzeitig geht, lässt seinen Einsatz darin.' })
     ]);
-    var mitEinsatz = el('input', { type: 'checkbox' });
+    var mitEinsatz = el('input', { type: 'checkbox', checked: 'checked' });
     var einsatzZeile = el('label', { class: 'party-schalter' }, [
       mitEinsatz,
       el('span', {}, [
         el('b', { text: 'Um echte Chips spielen' }),
         el('span', { class: 'party-schalter-was',
                      text: 'Jeder zahlt einen Einsatz ein, der Sieger nimmt den ganzen ' +
-                           'Topf mit. Ohne Haken gibt es einen geschenkten Preis.' })
+                           'Topf mit. Ohne Haken geht es nur um die Ehre — Chips gibt es ' +
+                           'dann keine zu gewinnen.' })
       ])
     ]);
-    function einsatzZeigen() {
-      topfBlock.hidden = !mitEinsatz.checked;
-      preisBlock.hidden = !!mitEinsatz.checked;
-    }
+    function einsatzZeigen() { topfBlock.hidden = !mitEinsatz.checked; }
     mitEinsatz.addEventListener('change', function () { GK.sfx('click'); einsatzZeigen(); });
     einsatzZeigen();
 
@@ -443,8 +435,7 @@
         zufall: zufall.checked,
         chips: parseInt(chips.value, 10),
         dauer: parseInt(dauer.value, 10),
-        buyIn: mitEinsatz.checked ? (parseInt(buyIn.value, 10) || 0) : 0,
-        preis: mitEinsatz.checked ? 0 : (parseInt(preis.value, 10) || 0)
+        buyIn: mitEinsatz.checked ? (parseInt(buyIn.value, 10) || 0) : 0
       }).then(function (b) {
         if (b && b.turnier) { MP.tisch = { id: b.turnier }; MP.seit = 0; anstossen(); }
       });
@@ -462,7 +453,7 @@
           el('div', {}, [el('label', { class: 'mp-label', text: 'Guthaben je Duell' }), chips]),
           el('div', {}, [el('label', { class: 'mp-label', text: 'Zeit je Runde' }), dauer])
         ]),
-        einsatzZeile, topfBlock, preisBlock,
+        einsatzZeile, topfBlock,
         el('label', { class: 'mp-label', text: 'Welche Spiele?' }),
         zufallZeile,
         el('div', { class: 'party-wahl-knoepfe' }, [alle, keine]),
@@ -504,7 +495,7 @@
         el('span', { class: 'mp-einkauf', text: GK.fmt(tu.chips) + ' Chips · ' +
                      Math.round(tu.dauer / 60 * 10) / 10 + ' min' }),
         el('span', { class: 'mp-einkauf', text: tu.buyIn > 0
-          ? 'Einsatz ' + GK.fmt(tu.buyIn) : 'Preis ' + GK.fmt(tu.preis) }),
+          ? 'Einsatz ' + GK.fmt(tu.buyIn) : 'nur um die Ehre' }),
         el('span', { class: 'mp-einkauf', text: tu.besetzt + '/' + tu.max }),
         knopf
       ])
@@ -579,7 +570,7 @@
       el('span', { class: 'party-marke ' + (tu.buyIn > 0 ? 'eigen' : 'gratis') },
         [el('span', { text: tu.buyIn > 0
           ? '🪙 Einsatz ' + GK.fmt(tu.buyIn) + ' · Topf ' + GK.fmt(tu.gewinn)
-          : '🎁 Preis ' + GK.fmt(tu.gewinn) })])
+          : '🏅 Nur um die Ehre' })])
     ]));
 
     if (tu.lage === 'lobby') {

@@ -456,11 +456,14 @@
 :root[data-skin="strand"] .topbar{
   background:linear-gradient(180deg,rgba(7,48,74,.96),rgba(7,48,74,.72))
 }
-/* Am Strand keine Laufschrift. Der Balken schnitt quer durch die
-   Aufnahme, und das Gerenne darin passt nicht zu einem Anstrich, dessen
-   ganzer Punkt Ruhe ist. Der Inhalt steckt ohnehin nur in der Marquee —
-   verloren geht damit nichts, was es nicht anderswo gäbe. */
-:root[data-skin="strand"] .marquee{display:none}
+/* Keine Laufschrift, sobald ein Bild dahintersteht. Der Balken schnitt
+   quer durch die Aufnahme, und das Gerenne darin nimmt ihr die Ruhe. Im
+   Standardanstrich bleibt sie — dort ist der Hintergrund gemalt, und das
+   Band gehört zum Neon dazu. Der Inhalt steckt ohnehin nur in der
+   Laufschrift; verloren geht nichts, was es nicht anderswo gäbe. */
+:root[data-skin="strand"] .marquee,
+:root[data-skin="vaporwave"] .marquee,
+:root[data-skin="old-vegas"] .marquee{display:none}
 
 /* ─────────────────────── Titelanzeige je Anstrich ───────────────────────
    Das Band unter der Kopfzeile (css/style.css) färbt sich über die

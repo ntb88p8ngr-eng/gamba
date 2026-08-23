@@ -306,8 +306,11 @@
       '👑 GAMBAKING — DAS FANTASY CASINO',
       '💸 KEIN ECHTGELD · NUR EHRE',
       /* Die Zahl kommt aus der Registry, nicht aus dem Text — sonst steht
-         hier nach dem nächsten neuen Spiel wieder eine veraltete. */
-      '🎰 ' + GK.games.length + ' SPIELE · 1 KRONE',
+         hier nach dem nächsten neuen Spiel wieder eine veraltete. Was der
+         Admin ausgeblendet hat, zaehlt nicht mit: es steht in der
+         Spielhalle nicht. */
+      '🎰 ' + GK.games.filter(function (g) { return !GK.gameAus(g.id); }).length +
+        ' SPIELE · 1 KRONE',
       '🔥 WER TRAUT SICH ALL IN?',
       '⭐ LEVEL STEIGEN · SPIELE FREISCHALTEN',
       '🃏 HAUS GEWINNT? NICHT HEUTE',
@@ -541,6 +544,10 @@
     renderBoard();
     renderFeed();
     renderWipe();
+    /* Muss mit: beim ersten Aufbau stehen die Spielregeln noch nicht fest
+       (die kommen mit dem Serverstand), und ein spaeter ausgeblendetes
+       Spiel darf oben nicht weitergezaehlt werden. */
+    renderGameCount();
     renderMarquee();
     renderLevel();
     GK.updateHUD();
@@ -1741,6 +1748,11 @@
           max: parseInt(max.value, 10) || 0
         });
         renderGames();
+        /* Die Zahl oben und die Laufschrift zaehlen dasselbe — sie muessen
+           mit, sonst verspricht die Hero-Zeile eine Kachel, die gerade
+           verschwunden ist. */
+        renderGameCount();
+        renderMarquee();
       }
       an.addEventListener('change', function () { GK.sfx('click'); speichern(); });
       min.addEventListener('change', speichern);
@@ -1770,6 +1782,8 @@
       GK.resetGameRules();
       syncRegeln();
       renderGames();
+      renderGameCount();
+      renderMarquee();
       GK.toast('Alle Spiele sind offen, ohne Einsatzgrenzen', 'gold', '🎮');
     });
 
@@ -3342,14 +3356,20 @@
   function renderGameCount() {
     var n = $('#game-count');
     if (!n) return;
+    /* Gezaehlt wird, was auch dasteht. Ein vom Admin ausgeblendetes Spiel
+       ist fuer den Besucher nicht da — es mitzuzaehlen hiesse, eine Kachel
+       zu versprechen, die er nirgends findet. */
+    function offen(liste) {
+      return liste.filter(function (g) { return !GK.gameAus(g.id || g); });
+    }
     /* In der Party zaehlt nur, was der Gastgeber freigegeben hat. */
     var d = GK.party && GK.party.an && GK.party.daten;
     if (d) {
-      var wieviele = (GK.party.spiele() || GK.games.map(function (g) { return g.id; })).length;
-      n.textContent = wieviele + ' SPIELE';
+      var erlaubt = GK.party.spiele() || GK.games.map(function (g) { return g.id; });
+      n.textContent = offen(erlaubt).length + ' SPIELE';
       return;
     }
-    n.textContent = GK.games.length + ' SPIELE';
+    n.textContent = offen(GK.games).length + ' SPIELE';
   }
 
   /**

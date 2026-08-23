@@ -1328,12 +1328,14 @@ function createMP(deps) {
       /* Startguthaben je Duell und Spielzeit je Runde. */
       chips: clamp(int(opts.chips) || 500, 100, 100000),
       dauer: clamp(int(opts.dauer) || 120, 30, 900),
-      /* Zwei Arten, den Sieg zu belohnen:
-         buyIn > 0: jeder zahlt beim Start vom Konto ein, der Sieger bekommt
-                    alles. Echte Chips, echter Einsatz.
-         buyIn = 0: niemand zahlt, der Sieger bekommt `preis` geschenkt. */
+      /* Ausgezahlt wird ausschliesslich, was vorher eingezahlt wurde: jeder
+         legt `buyIn` vom Konto hin, der Sieger nimmt den Topf.
+
+         Einen geschenkten Preis gibt es bewusst nicht. Er waere eine
+         Chip-Druckerei — Turnier aufmachen, gegen niemanden gewinnen,
+         wiederholen. Ohne Einsatz geht es hier um die Ehre, sonst um
+         nichts. */
       buyIn: clamp(int(opts.buyIn), 0, 10000000),
-      preis: clamp(int(opts.preis) === 0 ? 0 : (int(opts.preis) || 1000), 0, 10000000),
       topf: 0,
       spieler: [],
       baum: [],
@@ -1568,7 +1570,9 @@ function createMP(deps) {
     if (!s) { turnierErstatten(tu); return; }
     var p = leute[s.id];
     if (!p) { turnierErstatten(tu); return; }
-    var gewinn = tu.buyIn > 0 ? tu.topf : tu.preis;
+    /* Nur der Topf. Was nicht eingezahlt wurde, kann auch nicht
+       ausgezahlt werden. */
+    var gewinn = tu.buyIn > 0 ? tu.topf : 0;
     if (gewinn > 0) {
       p.balance += gewinn;
       p.returned = (p.returned || 0) + gewinn;
@@ -1597,7 +1601,6 @@ function createMP(deps) {
       if (op.chips !== undefined) tu.chips = clamp(int(op.chips), 100, 100000);
       if (op.dauer !== undefined) tu.dauer = clamp(int(op.dauer), 30, 900);
       if (op.buyIn !== undefined) tu.buyIn = clamp(int(op.buyIn), 0, 10000000);
-      if (op.preis !== undefined) tu.preis = clamp(int(op.preis), 0, 10000000);
       tu.stillSeit = now();
       bumpTurnier(tu);
       return { ok: true };
@@ -1759,14 +1762,13 @@ function createMP(deps) {
          seine volle Breite zeigen kann statt mitzuwachsen. */
       tiefe: tu.baum.length ? Math.round(Math.log(tu.baum[0].length * 2) / Math.LN2) : 0,
       buyIn: tu.buyIn,
-      preis: tu.preis,
       topf: tu.topf,
       /* Was am Ende ausgezahlt wurde beziehungsweise wird. Der Topf selbst
          steht nach der Auszahlung auf null — ohne diese Zahl sähe der
          Sieger nie, was er geholt hat. */
       gewinn: tu.sieger
         ? ((turnierSpieler(tu, tu.sieger) || {}).ausgezahlt || 0)
-        : (tu.buyIn > 0 ? tu.buyIn * tu.spieler.length : tu.preis),
+        : (tu.buyIn > 0 ? tu.buyIn * tu.spieler.length : 0),
       zufall: tu.zufall,
       spieleWahl: tu.spiele.slice(),
       chips: tu.chips,
@@ -2842,7 +2844,7 @@ function createMP(deps) {
     turniere.forEach(function (tu) {
       turnierListe.push({
         id: tu.id, name: tu.name, status: tu.status,
-        chips: tu.chips, dauer: tu.dauer, buyIn: tu.buyIn, preis: tu.preis,
+        chips: tu.chips, dauer: tu.dauer, buyIn: tu.buyIn,
         zufall: !!tu.zufall, spiele: tu.spiele.length, max: T_MAX,
         besetzt: tu.spieler.length,
         runde: tu.runde, rundenGesamt: tu.baum.length,
