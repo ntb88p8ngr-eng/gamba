@@ -193,6 +193,7 @@ function createMP(deps) {
   }
 
   function createTable(id, opts) {
+    if (opts.game === 'turnier') return createTurnier(id, opts);
     if (opts.game === 'party') return createParty(id, opts);
     var spiel = GAMES[opts.game] ? opts.game : 'poker';
     var g = GAMES[spiel];
@@ -247,6 +248,9 @@ function createMP(deps) {
   /* ── Platz nehmen und aufstehen ───────────────────────────────────── */
 
   function join(id, opts) {
+    if (opts.turnier || turniere.has(String(opts.table || ''))) {
+      return joinTurnier(id, { turnier: opts.turnier || opts.table });
+    }
     if (opts.party || partys.has(String(opts.table || ''))) {
       return joinParty(id, { party: opts.party || opts.table });
     }
@@ -484,6 +488,11 @@ function createMP(deps) {
       bump(null);
       return { ok: true, art: 'tisch', name: t.name };
     }
+    var tu = turniere.get(String(id || ''));
+    if (tu) {
+      turnierAufloesen(tu, grund || 'Vom Admin aufgelöst');
+      return { ok: true, art: 'turnier', name: tu.name };
+    }
     var pa = partys.get(String(id || ''));
     if (pa) {
       /* In einer Gratis-Party liegen keine Chips vom Konto — die Partykasse
@@ -539,6 +548,8 @@ function createMP(deps) {
 
   /** Aufstehen. Der Stapel geht zurueck aufs Konto. */
   function leave(id, grund) {
+    var ausTurnier = leaveTurnier(id);
+    if (ausTurnier) return ausTurnier;
     var raus = leaveParty(id);
     if (raus) return raus;
     var t = tableOf(id);
@@ -637,6 +648,7 @@ function createMP(deps) {
     var etwas = false;
 
     partyTick(jetzt);
+    turnierTick(jetzt);
     leerlauf(jetzt);
     grabsteinePflegen(jetzt);
 
@@ -1251,6 +1263,566 @@ function createMP(deps) {
     return { error: 'Unbekannte Party-Aktion', code: 400 };
   }
 
+
+  /* ═══════════════ TURNIER ═══════════════
+     K.-o.-System: alle treten paarweise gegeneinander an, immer im selben
+     Einzelspiel und mit demselben Startguthaben. Wer nach Ablauf der Uhr
+     mehr Chips hat, kommt eine Runde weiter. Steht es gleich, entscheidet
+     eine Münze — irgendwer muss weiter, und Verlängerung gäbe es hier
+     nicht sinnvoll.
+
+     Das Duell selbst laeuft ueber dieselbe Mechanik wie der Partymodus:
+     eigenes Guthaben, eigene Uhr, gespielt wird in den Einzelspielen, der
+     Browser meldet seinen Stand. Deshalb traegt die Sicht auf ein Turnier
+     dieselben Felder wie eine Party — der Browser braucht dafuer nichts
+     Neues zu lernen. Was hinzukommt, ist der Baum. */
+
+  var T_MAX = 16;               // mehr Namen passen nicht in den Baum
+  var T_MIN = 2;
+  var T_COUNTDOWN = 8000;       // Vorlauf vor jeder Runde
+  var T_PAUSE = 7000;           // Ergebnisanzeige zwischen zwei Runden
+  var T_SCHLUSSFRIST = 2500;    // so lange werden Schlussstaende noch angenommen
+
+  var turniere = new Map();
+
+  function turnierOf(id) {
+    var gefunden = null;
+    turniere.forEach(function (tu) {
+      if (tu.spieler.some(function (s) { return s.id === id; })) gefunden = tu;
+    });
+    return gefunden;
+  }
+
+  function turnierSpieler(tu, id) {
+    for (var i = 0; i < tu.spieler.length; i++) if (tu.spieler[i].id === id) return tu.spieler[i];
+    return null;
+  }
+
+  function bumpTurnier(tu, eilig) {
+    tu.v = ++seq;
+    if (eilig === false) { tu.schuldet = true; return; }
+    tu.schuldet = false;
+    weckAlle();
+  }
+
+  function createTurnier(id, opts) {
+    var p = deps.players()[id];
+    if (!p) return { error: 'Spieler nicht gefunden', code: 404 };
+    if (tableOf(id)) return { error: 'Du sitzt schon an einem Tisch', code: 409 };
+    if (partyOf(id)) return { error: 'Du bist schon in einer Party', code: 409 };
+    if (turnierOf(id)) return { error: 'Du bist schon in einem Turnier', code: 409 };
+    if (turniere.size >= 10) return { error: 'Gerade laufen zu viele Turniere', code: 429 };
+
+    var tu = {
+      id: newId('u'),
+      name: String(opts.name || (p.name + 's Turnier')).slice(0, 24),
+      host: id,
+      status: 'lobby',
+      /* Womit gespielt wird. Leer heisst: der Server wuerfelt je Duell aus
+         allem, was es gibt. Steht eine Liste da, wird sie der Reihe nach
+         abgearbeitet — Runde 1 das erste Spiel, Runde 2 das zweite. */
+      spiele: reinigeSpiele(opts.spiele),
+      /* Der Vorrat fuer den Zufall: alles, was es gibt. Kommt vom Browser. */
+      alle: reinigeSpiele(opts.alleSpiele),
+      zufall: !!opts.zufall,
+      /* Startguthaben je Duell und Spielzeit je Runde. */
+      chips: clamp(int(opts.chips) || 500, 100, 100000),
+      dauer: clamp(int(opts.dauer) || 120, 30, 900),
+      /* Zwei Arten, den Sieg zu belohnen:
+         buyIn > 0: jeder zahlt beim Start vom Konto ein, der Sieger bekommt
+                    alles. Echte Chips, echter Einsatz.
+         buyIn = 0: niemand zahlt, der Sieger bekommt `preis` geschenkt. */
+      buyIn: clamp(int(opts.buyIn), 0, 10000000),
+      preis: clamp(int(opts.preis) === 0 ? 0 : (int(opts.preis) || 1000), 0, 10000000),
+      topf: 0,
+      spieler: [],
+      baum: [],
+      runde: -1,
+      rundeStartAt: 0,
+      rundeEndeAt: 0,
+      weiterAb: 0,
+      sieger: null,
+      createdAt: now(),
+      stillSeit: now(),
+      hostWeg: 0,
+      v: seq + 1
+    };
+    turniere.set(tu.id, tu);
+    var ein = joinTurnier(id, { turnier: tu.id });
+    if (ein.error) { turniere.delete(tu.id); return ein; }
+    return { ok: true, turnier: tu.id };
+  }
+
+  function joinTurnier(id, opts) {
+    var tu = turniere.get(String(opts.turnier || ''));
+    if (!tu) return { error: 'Dieses Turnier gibt es nicht mehr', code: 404 };
+    if (turnierSpieler(tu, id)) return { ok: true, turnier: tu.id };
+    if (turnierOf(id)) return { error: 'Du bist schon in einem Turnier', code: 409 };
+    if (tableOf(id)) return { error: 'Du sitzt schon an einem Tisch', code: 409 };
+    if (partyOf(id)) return { error: 'Du bist schon in einer Party', code: 409 };
+    if (tu.status !== 'lobby') return { error: 'Das Turnier läuft schon', code: 409 };
+    if (tu.spieler.length >= T_MAX) return { error: 'Das Turnier ist voll', code: 409 };
+
+    var p = deps.players()[id];
+    if (!p) return { error: 'Spieler nicht gefunden', code: 404 };
+    tu.spieler.push({
+      id: id, name: p.name, avatar: p.avatar,
+      chips: 0, start: 0, runden: 0, besterWin: 0,
+      bezahlt: 0, ausgezahlt: 0, raus: false, at: now()
+    });
+    tu.stillSeit = now();
+    bumpTurnier(tu);
+    return { ok: true, turnier: tu.id };
+  }
+
+  /**
+   * Ein Turnier aufloesen und allen Bescheid geben.
+   *
+   * Bezahlte Einsaetze gehen zurueck — ein Turnier, das von aussen endet,
+   * darf niemandem Chips einbehalten. Nur wer schon als Sieger feststeht,
+   * hat seinen Anteil bereits bekommen.
+   */
+  function turnierAufloesen(tu, grund) {
+    turnierErstatten(tu);
+    turniere.delete(tu.id);
+    grabstein(tu.id, grund);
+    bump(null);
+  }
+
+  /** Alle offenen Einsaetze zurueckzahlen. */
+  function turnierErstatten(tu) {
+    var leute = deps.players();
+    var etwas = false;
+    tu.spieler.forEach(function (s) {
+      if (s.bezahlt <= 0) return;
+      var p = leute[s.id];
+      if (p) {
+        p.balance += s.bezahlt;
+        p.wagered = Math.max(0, (p.wagered || 0) - s.bezahlt);
+        etwas = true;
+      }
+      tu.topf = Math.max(0, tu.topf - s.bezahlt);
+      s.bezahlt = 0;
+    });
+    if (etwas) deps.save();
+  }
+
+  function leaveTurnier(id) {
+    var tu = turnierOf(id);
+    if (!tu) return null;
+    /* Wie bei der Party: der Gastgeber nimmt die wartende Lobby mit. */
+    if (tu.host === id && tu.status === 'lobby') {
+      turnierAufloesen(tu, 'Der Gastgeber hat das Turnier verlassen');
+      return { ok: true };
+    }
+    var mich = turnierSpieler(tu, id);
+    if (mich && mich.bezahlt > 0) {
+      /* Wer mitten im Turnier geht, verliert seinen Einsatz an den Topf —
+         sonst koennte man kurz vor der Niederlage aussteigen und den
+         Einsatz retten. */
+      mich.bezahlt = 0;
+    }
+    /* Wer laeuft, gilt als geschlagen: sein Gegner kommt weiter. */
+    turnierAufgeben(tu, id);
+    tu.spieler = tu.spieler.filter(function (s) { return s.id !== id; });
+    if (!tu.spieler.length) {
+      turnierAufloesen(tu, 'Niemand mehr da');
+      return { ok: true };
+    }
+    if (tu.host === id) tu.host = tu.spieler[0].id;
+    tu.stillSeit = now();
+    bumpTurnier(tu);
+    return { ok: true };
+  }
+
+  /** Wer geht, verliert seine laufende Paarung kampflos. */
+  function turnierAufgeben(tu, id) {
+    if (tu.runde < 0 || !tu.baum[tu.runde]) return;
+    tu.baum[tu.runde].forEach(function (m) {
+      if (m.sieger) return;
+      if (m.a === id && m.b) m.sieger = m.b;
+      else if (m.b === id && m.a) m.sieger = m.a;
+      if (m.sieger) m.grund = 'aufgegeben';
+    });
+  }
+
+  /* ── Der Baum ──────────────────────────────────────────────────────
+     Gemischt wird nur einmal, vor der ersten Runde. Danach steht die
+     Reihenfolge fest: Sieger aus Paarung 1 gegen Sieger aus Paarung 2 und
+     so weiter — genau das, was ein Turnierbaum zeigen soll.
+
+     Ist die Teilnehmerzahl keine Zweierpotenz, bekommen die ersten
+     Paarungen ein Freilos. Der Freilos-Spieler steht in `a`, `b` bleibt
+     leer und der Sieger steht sofort fest. */
+  function baumBauen(tu) {
+    var ids = tu.spieler.map(function (s) { return s.id; });
+    for (var i = ids.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+    }
+    /* Auf die naechste Zweierpotenz mit Freilosen auffuellen. */
+    var gr = 1;
+    while (gr < ids.length) gr *= 2;
+    var frei = gr - ids.length;
+    var runde = [];
+    var k = 0;
+    while (k < ids.length) {
+      /* Die Freilose zuerst vergeben: so spielt in Runde eins, wer muss,
+         und der Baum bleibt oben schmal statt unten. */
+      if (frei > 0) { runde.push(neuePaarung(ids[k], null)); k++; frei--; }
+      else { runde.push(neuePaarung(ids[k], ids[k + 1] || null)); k += 2; }
+    }
+    tu.baum = [runde];
+    tu.runde = 0;
+  }
+
+  function neuePaarung(a, b) {
+    return { a: a || null, b: b || null, sieger: b ? null : (a || null),
+             spiel: '', standA: 0, standB: 0, muenze: '', grund: b ? '' : 'Freilos' };
+  }
+
+  /** Welches Spiel wird in dieser Runde gespielt? */
+  function spielFuer(tu, rundeNr) {
+    /* Welche Spiele es ueberhaupt gibt, weiss nur der Browser — die
+       Registry liegt dort. Beim Anlegen schickt er sie mit, damit „zufall
+       aus allem" hier ueberhaupt eine Auswahl hat. */
+    var topf = tu.spiele.length ? tu.spiele : tu.alle;
+    if (!topf.length) return '';
+    if (tu.zufall || !tu.spiele.length) {
+      return topf[Math.floor(Math.random() * topf.length)];
+    }
+    return tu.spiele[rundeNr % tu.spiele.length];
+  }
+
+  /** Die naechste Runde vorbereiten und die Uhr stellen. */
+  function rundeAnwerfen(tu) {
+    var runde = tu.baum[tu.runde];
+    var spiel = spielFuer(tu, tu.runde);
+    var jemandSpielt = false;
+    runde.forEach(function (m) {
+      if (m.sieger) return;                 // Freilos steht schon fest
+      m.spiel = spiel;
+      m.standA = tu.chips;
+      m.standB = tu.chips;
+      jemandSpielt = true;
+    });
+    tu.spieler.forEach(function (s) {
+      s.chips = tu.chips; s.start = tu.chips; s.runden = 0; s.besterWin = 0;
+    });
+    if (!jemandSpielt) {
+      /* Eine Runde, in der nur Freilose stehen, wird nicht gespielt. */
+      rundeAuswerten(tu);
+      return;
+    }
+    tu.status = 'countdown';
+    tu.rundeStartAt = now() + T_COUNTDOWN;
+    tu.rundeEndeAt = tu.rundeStartAt + tu.dauer * 1000;
+    bumpTurnier(tu);
+  }
+
+  /** Alle Paarungen der laufenden Runde entscheiden. */
+  function rundeAuswerten(tu) {
+    var runde = tu.baum[tu.runde];
+    runde.forEach(function (m) {
+      if (m.sieger) return;
+      if (!m.b) { m.sieger = m.a; m.grund = 'Freilos'; return; }
+      if (m.standA > m.standB) { m.sieger = m.a; m.grund = 'mehr Chips'; }
+      else if (m.standB > m.standA) { m.sieger = m.b; m.grund = 'mehr Chips'; }
+      else {
+        /* Gleichstand: die Münze entscheidet. Sie wird hier geworfen und
+           nicht im Browser — sonst wuerfe jeder seine eigene. */
+        m.muenze = Math.random() < 0.5 ? 'a' : 'b';
+        m.sieger = m.muenze === 'a' ? m.a : m.b;
+        m.grund = 'Münzwurf';
+      }
+    });
+    /* Wer nicht weiterkommt, ist raus. */
+    var weiter = runde.map(function (m) { return m.sieger; }).filter(Boolean);
+    tu.spieler.forEach(function (s) {
+      if (weiter.indexOf(s.id) < 0) s.raus = true;
+    });
+
+    if (weiter.length <= 1) {
+      tu.sieger = weiter[0] || null;
+      turnierAuszahlen(tu);
+      tu.status = 'ende';
+      tu.weiterAb = 0;
+      bumpTurnier(tu);
+      return;
+    }
+    /* Naechste Runde aufbauen und kurz das Ergebnis stehen lassen. */
+    var naechste = [];
+    for (var i = 0; i < weiter.length; i += 2) {
+      naechste.push(neuePaarung(weiter[i], weiter[i + 1] || null));
+    }
+    tu.baum.push(naechste);
+    tu.status = 'pause';
+    tu.weiterAb = now() + T_PAUSE;
+    bumpTurnier(tu);
+  }
+
+  /** Den Sieger belohnen. */
+  function turnierAuszahlen(tu) {
+    var leute = deps.players();
+    var s = tu.sieger ? turnierSpieler(tu, tu.sieger) : null;
+    if (!s) { turnierErstatten(tu); return; }
+    var p = leute[s.id];
+    if (!p) { turnierErstatten(tu); return; }
+    var gewinn = tu.buyIn > 0 ? tu.topf : tu.preis;
+    if (gewinn > 0) {
+      p.balance += gewinn;
+      p.returned = (p.returned || 0) + gewinn;
+      p.peak = Math.max(p.peak || 0, p.balance);
+      s.ausgezahlt = gewinn;
+      /* Der Einsatz ist mit dem Topf zurueckgekommen. */
+      tu.spieler.forEach(function (x) { x.bezahlt = 0; });
+      tu.topf = 0;
+      deps.save();
+    }
+    deps.feed('🏆 ' + s.name + ' gewinnt das Turnier „' + tu.name + '"' +
+              (gewinn > 0 ? ' (+' + gewinn + ')' : ''), 'win');
+  }
+
+  function turnierAction(tu, id, op) {
+    var mich = turnierSpieler(tu, id);
+    if (!mich) return { error: 'Du bist nicht in diesem Turnier', code: 409 };
+
+    if (op.action === 'turnierset') {
+      if (tu.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      if (tu.status !== 'lobby') return { error: 'Das Turnier läuft schon', code: 409 };
+      if (op.name !== undefined) tu.name = String(op.name || tu.name).slice(0, 24);
+      if (op.spiele !== undefined) tu.spiele = reinigeSpiele(op.spiele);
+      if (op.alleSpiele !== undefined) tu.alle = reinigeSpiele(op.alleSpiele);
+      if (op.zufall !== undefined) tu.zufall = !!op.zufall;
+      if (op.chips !== undefined) tu.chips = clamp(int(op.chips), 100, 100000);
+      if (op.dauer !== undefined) tu.dauer = clamp(int(op.dauer), 30, 900);
+      if (op.buyIn !== undefined) tu.buyIn = clamp(int(op.buyIn), 0, 10000000);
+      if (op.preis !== undefined) tu.preis = clamp(int(op.preis), 0, 10000000);
+      tu.stillSeit = now();
+      bumpTurnier(tu);
+      return { ok: true };
+    }
+
+    if (op.action === 'turnierstart') {
+      if (tu.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      if (tu.status !== 'lobby') return { error: 'Das Turnier läuft schon', code: 409 };
+      if (tu.spieler.length < T_MIN) return { error: 'Dafür braucht es mindestens zwei', code: 400 };
+      if (!tu.zufall && !tu.spiele.length) {
+        return { error: 'Wähle Spiele aus oder stelle auf Zufall', code: 400 };
+      }
+      /* Buy-in: erst pruefen, dann abbuchen — beides in einem Rutsch. */
+      if (tu.buyIn > 0) {
+        var leute = deps.players();
+        var fehlt = null;
+        tu.spieler.forEach(function (s) {
+          var p = leute[s.id];
+          if (!p || p.balance < tu.buyIn) fehlt = fehlt || s.name;
+        });
+        if (fehlt) return { error: fehlt + ' hat keine ' + tu.buyIn + ' Chips für den Einsatz', code: 400 };
+        tu.topf = 0;
+        tu.spieler.forEach(function (s) {
+          var p = leute[s.id];
+          p.balance -= tu.buyIn;
+          p.wagered = (p.wagered || 0) + tu.buyIn;
+          s.bezahlt = tu.buyIn;
+          tu.topf += tu.buyIn;
+        });
+        deps.save();
+      }
+      tu.spieler.forEach(function (s) { s.raus = false; s.ausgezahlt = 0; });
+      tu.sieger = null;
+      baumBauen(tu);
+      rundeAnwerfen(tu);
+      return { ok: true };
+    }
+
+    if (op.action === 'turnierneu') {
+      if (tu.host !== id) return { error: 'Das darf nur der Gastgeber', code: 403 };
+      turnierErstatten(tu);
+      tu.status = 'lobby';
+      tu.baum = []; tu.runde = -1; tu.sieger = null;
+      tu.rundeStartAt = 0; tu.rundeEndeAt = 0; tu.weiterAb = 0;
+      tu.spieler.forEach(function (s) {
+        s.raus = false; s.chips = 0; s.start = 0; s.runden = 0;
+        s.besterWin = 0; s.ausgezahlt = 0;
+      });
+      bumpTurnier(tu);
+      return { ok: true };
+    }
+
+    /* Der Browser meldet seinen Stand — dieselbe Aktion wie in der Party,
+       damit die Spielseite nichts Neues lernen muss. */
+    if (op.action === 'partystand' || op.action === 'turnierstand') {
+      var offen = tu.status === 'laeuft' ||
+                  (tu.status === 'pause' && now() < (tu.weiterAb || 0));
+      if (!offen) return { ok: true };
+      var m = laufendePaarung(tu, id);
+      if (!m) return { ok: true };
+      var hoechst = tu.chips * 1000;
+      var stand = clamp(int(op.chips), 0, hoechst);
+      if (m.a === id) m.standA = stand; else m.standB = stand;
+      mich.chips = stand;
+      mich.runden = clamp(int(op.runden), 0, 1000000);
+      mich.at = now();
+      if (int(op.besterWin) > mich.besterWin) {
+        mich.besterWin = clamp(int(op.besterWin), 0, hoechst);
+      }
+      bumpTurnier(tu, false);
+      return { ok: true };
+    }
+
+    return { error: 'Unbekannte Turnier-Aktion', code: 400 };
+  }
+
+  /** Die Paarung, in der jemand gerade steht — oder null. */
+  function laufendePaarung(tu, id) {
+    if (tu.runde < 0 || !tu.baum[tu.runde]) return null;
+    var raus = null;
+    tu.baum[tu.runde].forEach(function (m) {
+      if (m.sieger) return;
+      if (m.a === id || m.b === id) raus = m;
+    });
+    return raus;
+  }
+
+  function turnierTick(jetzt) {
+    turniere.forEach(function (tu) {
+      if (tu.schuldet) bumpTurnier(tu);
+
+      if (tu.status === 'countdown' && jetzt >= tu.rundeStartAt) {
+        tu.status = 'laeuft';
+        bumpTurnier(tu);
+      } else if (tu.status === 'laeuft' && jetzt >= tu.rundeEndeAt + T_SCHLUSSFRIST) {
+        rundeAuswerten(tu);
+      } else if (tu.status === 'pause' && jetzt >= tu.weiterAb) {
+        tu.runde++;
+        rundeAnwerfen(tu);
+      }
+
+      /* Gastgeber weg, solange noch niemand gespielt hat: aufloesen. */
+      if (tu.status === 'lobby' && !isOnline(tu.host)) {
+        if (!tu.hostWeg) tu.hostWeg = jetzt;
+        else if (jetzt - tu.hostWeg > P_HOST_FRIST) {
+          turnierAufloesen(tu, 'Der Gastgeber ist nicht mehr da');
+          return;
+        }
+      } else if (tu.hostWeg) {
+        tu.hostWeg = 0;
+      }
+
+      /* Ein Turnier, in dem seit einer Viertelstunde niemand mehr war,
+         raeumt sich selbst weg. */
+      var letzte = 0;
+      tu.spieler.forEach(function (s) {
+        var o = online.get(s.id);
+        if (o && o.at > letzte) letzte = o.at;
+      });
+      if (letzte && jetzt - letzte > 15 * 60000) {
+        turnierAufloesen(tu, 'Niemand mehr da');
+      }
+    });
+  }
+
+  /**
+   * Die Sicht auf ein Turnier.
+   *
+   * Sie traegt bewusst dieselben Felder wie eine Party (`startChips`,
+   * `dauer`, `spiele`, `status`, `startAt`, `endeAt`), damit der
+   * Spielbetrieb im Browser unveraendert damit umgehen kann. `status` ist
+   * dabei die Sicht des Fragenden: „laeuft" heisst „dein Duell laeuft",
+   * nicht „irgendwo wird gespielt" — wer ein Freilos hat oder schon
+   * ausgeschieden ist, soll nicht in die Einzelspiele geschickt werden.
+   */
+  function sichtTurnier(tu, viewer) {
+    var mich = turnierSpieler(tu, viewer);
+    var meine = laufendePaarung(tu, viewer);
+    var spieleDran = !!meine && (tu.status === 'laeuft' || tu.status === 'countdown');
+
+    function wer(id) {
+      var s = id && turnierSpieler(tu, id);
+      return s ? { id: s.id, name: s.name, avatar: s.avatar, raus: !!s.raus } : null;
+    }
+
+    return {
+      art: 'turnier',
+      id: tu.id,
+      v: tu.v,
+      name: tu.name,
+      host: tu.host,
+      ichBinHost: tu.host === viewer,
+      /* Der Zustand des Turniers als Ganzes — fuer den Baum und die Lobby. */
+      lage: tu.status,
+      runde: tu.runde,
+      rundenGesamt: tu.baum.length,
+      /* Wie viele Runden es insgesamt werden. Steht schon vor der ersten
+         fest — aus der Zahl der Paarungen —, damit der Baum von Anfang an
+         seine volle Breite zeigen kann statt mitzuwachsen. */
+      tiefe: tu.baum.length ? Math.round(Math.log(tu.baum[0].length * 2) / Math.LN2) : 0,
+      buyIn: tu.buyIn,
+      preis: tu.preis,
+      topf: tu.topf,
+      /* Was am Ende ausgezahlt wurde beziehungsweise wird. Der Topf selbst
+         steht nach der Auszahlung auf null — ohne diese Zahl sähe der
+         Sieger nie, was er geholt hat. */
+      gewinn: tu.sieger
+        ? ((turnierSpieler(tu, tu.sieger) || {}).ausgezahlt || 0)
+        : (tu.buyIn > 0 ? tu.buyIn * tu.spieler.length : tu.preis),
+      zufall: tu.zufall,
+      spieleWahl: tu.spiele.slice(),
+      chips: tu.chips,
+      sieger: wer(tu.sieger),
+      weiterAb: tu.weiterAb,
+      baum: tu.baum.map(function (runde) {
+        return runde.map(function (m) {
+          return {
+            a: wer(m.a), b: wer(m.b),
+            sieger: m.sieger || '',
+            spiel: m.spiel || '',
+            standA: m.standA, standB: m.standB,
+            muenze: m.muenze || '', grund: m.grund || ''
+          };
+        });
+      }),
+      /* `start`, `gewinn` und `ich` traegt die Tafel im Spielbetrieb — sie
+         ist dieselbe wie in der Party und rechnet damit. Ohne die Felder
+         stuenden dort NaN. Gezeigt werden nur die beiden aus dem eigenen
+         Duell: eine Rangliste aller waere hier keine Aussage, es spielen
+         ja Paare gegeneinander. */
+      spieler: tu.spieler.filter(function (s) {
+        return !meine || s.id === meine.a || s.id === meine.b;
+      }).map(function (s) {
+        return {
+          id: s.id, name: s.name, avatar: s.avatar, raus: !!s.raus,
+          chips: s.chips, start: tu.chips, nachschub: 0,
+          gewinn: (s.chips || 0) - tu.chips,
+          ich: s.id === viewer,
+          runden: s.runden, ausgezahlt: s.ausgezahlt
+        };
+      }).sort(function (a, b) { return b.gewinn - a.gewinn; }),
+      /* Fuer den Baum und die Wartelobby braucht es dagegen alle. */
+      alleSpieler: tu.spieler.map(function (s) {
+        return { id: s.id, name: s.name, avatar: s.avatar, raus: !!s.raus,
+                 chips: s.chips, ausgezahlt: s.ausgezahlt };
+      }),
+
+      /* ── Der party-kompatible Teil: das eigene Duell ── */
+      status: spieleDran ? (tu.status === 'laeuft' ? 'laeuft' : 'countdown') : 'lobby',
+      startChips: tu.chips,
+      nachschub: 0,
+      eigeneChips: false,
+      alleFrei: true,
+      spiele: meine && meine.spiel ? [meine.spiel] : [],
+      startAt: tu.rundeStartAt,
+      endeAt: tu.rundeEndeAt,
+      dauer: tu.dauer,
+      meldungen: [],
+      gegner: meine ? wer(meine.a === viewer ? meine.b : meine.a) : null,
+      meinStand: meine ? (meine.a === viewer ? meine.standA : meine.standB) : 0,
+      gegnerStand: meine ? (meine.a === viewer ? meine.standB : meine.standA) : 0,
+      binRaus: !!(mich && mich.raus)
+    };
+  }
+
   /** Countdown und Spielzeit weiterdrehen — laeuft im selben Sekundentakt. */
   function partyTick(jetzt) {
     partys.forEach(function (pa) {
@@ -1347,6 +1919,8 @@ function createMP(deps) {
   }
 
   function action(id, op) {
+    var tu = turnierOf(id);
+    if (tu) return turnierAction(tu, id, op);
     var pa = partyOf(id);
     if (pa) return partyAction(pa, id, op);
     var t = tableOf(id);
@@ -2264,15 +2838,33 @@ function createMP(deps) {
     });
     partyListe.sort(function (a, b) { return b.besetzt - a.besetzt || a.name.localeCompare(b.name); });
 
+    var turnierListe = [];
+    turniere.forEach(function (tu) {
+      turnierListe.push({
+        id: tu.id, name: tu.name, status: tu.status,
+        chips: tu.chips, dauer: tu.dauer, buyIn: tu.buyIn, preis: tu.preis,
+        zufall: !!tu.zufall, spiele: tu.spiele.length, max: T_MAX,
+        besetzt: tu.spieler.length,
+        runde: tu.runde, rundenGesamt: tu.baum.length,
+        spieler: tu.spieler.map(function (s) {
+          return { name: s.name, avatar: s.avatar, raus: !!s.raus, online: isOnline(s.id) };
+        })
+      });
+    });
+    turnierListe.sort(function (a, b) { return b.besetzt - a.besetzt || a.name.localeCompare(b.name); });
+
     var meiner = tableOf(viewer);
     var meineParty = partyOf(viewer);
+    var meinTurnier = turnierOf(viewer);
     return {
       spiele: Object.keys(proSpiel).map(function (g) { return proSpiel[g]; }),
       tische: liste,
       partys: partyListe,
+      turniere: turnierListe,
       online: wach,
       meinTisch: meiner ? meiner.id : null,
       meineParty: meineParty ? meineParty.id : null,
+      meinTurnier: meinTurnier ? meinTurnier.id : null,
       v: seq
     };
   }
@@ -2366,6 +2958,8 @@ function createMP(deps) {
     action: action,
     tableOf: tableOf,
     view: function (id, viewer) {
+      var tu = turniere.get(String(id || ''));
+      if (tu) return sichtTurnier(tu, viewer);
       var pa = partys.get(String(id || ''));
       if (pa) return sichtParty(pa, viewer);
       var t = tables.get(String(id || ''));

@@ -3387,7 +3387,12 @@
     var sub = $('.hero-sub'), card = $('#level-card');
     var d = GK.party && GK.party.an && GK.party.daten;
     if (sub) {
-      sub.innerHTML = d
+      var turnier = d && d.art === 'turnier';
+      sub.innerHTML = turnier
+        ? 'Duell läuft: beide mit <b>' + GK.fmt(d.startChips) + ' Chips</b>' +
+          (d.gegner ? ' gegen <b>' + d.gegner.name + '</b>' : '') + '. ' +
+          'Wer am Ende mehr hat, kommt eine Runde weiter.'
+        : d
         ? 'Party läuft: alle mit <b>' + GK.fmt(d.startChips) + ' Chips</b>. ' +
           'Wer am Ende den <b>größten Gewinn</b> hat, gewinnt. Die Rangliste steht oben links.'
         : 'Jeder startet mit <b>500 Chips</b>. Wer am Ende die dickste Krone trägt, ' +

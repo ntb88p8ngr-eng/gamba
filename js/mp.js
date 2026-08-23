@@ -25,6 +25,9 @@
 
   var stage = null;
   var abbruch = null;   // laufende Langabfrage abbrechen
+  /* Der zuletzt gesehene Turnierzustand — damit das Ende genau einmal
+     gefeiert wird und nicht bei jeder Antwort aufs Neue. */
+  var letzteLage = '';
   /* Einmal gebaut und wiederverwendet: cardThemePicker haengt sich bei jedem
      Aufruf neu an das cardtheme-Ereignis, und zeichne() laeuft bei jeder
      Serverantwort — das waeren nach einer Runde hunderte Zuhoerer, die alle
@@ -165,7 +168,27 @@
          anderes: sie laeuft weiter, waehrend man in den Einzelspielen sitzt.
          Deshalb bekommt sie ihren Stand immer, auch wenn diese Ansicht gar
          nicht sichtbar ist. */
-      if (b.tisch && b.tisch.art === 'party' && GK.party) GK.party.stand(b.tisch);
+      if (b.tisch && (b.tisch.art === 'party' || b.tisch.art === 'turnier') && GK.party) {
+        GK.party.stand(b.tisch);
+      }
+      /* Ist das Turnier durch, gehoert der Sieger auf den Bildschirm. Wer
+         gerade in der Spielhalle steht, saehe sonst gar nichts — der Baum
+         liegt auf der Mehrspieler-Seite. Einmal, nicht bei jeder Antwort. */
+      if (b.tisch && b.tisch.art === 'turnier') {
+        if (b.tisch.lage === 'ende' && letzteLage !== 'ende') {
+          var wer = b.tisch.sieger;
+          GK.toast(wer ? wer.name + ' gewinnt das Turnier!' : 'Turnier vorbei',
+                   'gold', '🏆');
+          GK.sfx('jackpot');
+          if (!MP.an) {
+            var mpKnopf = document.getElementById('btn-multiplayer');
+            if (mpKnopf) mpKnopf.click();
+          }
+        }
+        letzteLage = b.tisch.lage;
+      } else {
+        letzteLage = '';
+      }
       /* Ob der Tisch noch steht, sagt allein der Server ueber 404 — siehe
          unten. Eine Antwort ohne Tisch heisst hier nur "nichts Neues"; wer
          daraus auf "aufgeloest" schliesst, wirft einen Spieler bei jeder
@@ -302,6 +325,353 @@
   function zug(action, amount) {
     GK.sfx(action === 'fold' ? 'card' : 'chip');
     tue('action', { action: action, amount: amount });
+  }
+
+
+  /* ── Turniermodus ─────────────────────────────────────────────────
+     K.-o.: alle treten paarweise an, immer im selben Einzelspiel, immer
+     mit demselben Startguthaben und derselben Uhr. Wer mehr Chips hat,
+     kommt weiter; bei Gleichstand entscheidet eine Münze auf dem Server.
+
+     Das Duell selbst ist von einer Party nicht zu unterscheiden — der
+     Server schickt dieselben Felder, und der Spielbetrieb in js/party.js
+     kommt damit unverändert zurecht. Neu ist hier nur der Baum. */
+
+  function neuesTurnier() {
+    GK.sfx('click');
+    var p = GK.player();
+    if (!p) return;
+
+    var name = el('input', { class: 'mp-feld', type: 'text', maxlength: '24',
+                             value: (GK.lang && GK.lang() === 'en')
+                               ? p.name + '’s cup' : p.name + 's Turnier' });
+
+    var chips = el('select', { class: 'mp-feld' });
+    [250, 500, 1000, 2500, 5000].forEach(function (c) {
+      chips.appendChild(el('option', { value: String(c), text: GK.fmt(c) + ' Chips',
+                                       selected: c === 500 ? 'selected' : null }));
+    });
+    var dauer = el('select', { class: 'mp-feld' });
+    [[60, '1 Minute'], [120, '2 Minuten'], [180, '3 Minuten'], [300, '5 Minuten']]
+      .forEach(function (d) {
+        dauer.appendChild(el('option', { value: String(d[0]), text: d[1],
+                                         selected: d[0] === 120 ? 'selected' : null }));
+      });
+
+    /* Zwei Arten zu gewinnen. Der Einsatz kostet echte Chips und macht
+       den Topf; der Preis kostet niemanden etwas. */
+    var buyIn = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '10',
+                              value: '0', placeholder: '0' });
+    var preis = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '100',
+                              value: '1000', placeholder: '0' });
+    var preisBlock = el('div', {}, [
+      el('label', { class: 'mp-label', text: 'Preis für den Sieger' }), preis,
+      el('p', { class: 'mp-hinweis', text:
+        'Geschenkte Chips — niemand zahlt etwas ein.' })
+    ]);
+    var topfBlock = el('div', {}, [
+      el('label', { class: 'mp-label', text: 'Einsatz je Teilnehmer' }), buyIn,
+      el('p', { class: 'mp-hinweis', text:
+        'Wird beim Start vom Konto abgebucht. Der Sieger bekommt alles. ' +
+        'Wer vorzeitig geht, lässt seinen Einsatz im Topf.' })
+    ]);
+    var mitEinsatz = el('input', { type: 'checkbox' });
+    var einsatzZeile = el('label', { class: 'party-schalter' }, [
+      mitEinsatz,
+      el('span', {}, [
+        el('b', { text: 'Um echte Chips spielen' }),
+        el('span', { class: 'party-schalter-was',
+                     text: 'Jeder zahlt einen Einsatz ein, der Sieger nimmt den ganzen ' +
+                           'Topf mit. Ohne Haken gibt es einen geschenkten Preis.' })
+      ])
+    ]);
+    function einsatzZeigen() {
+      topfBlock.hidden = !mitEinsatz.checked;
+      preisBlock.hidden = !!mitEinsatz.checked;
+    }
+    mitEinsatz.addEventListener('change', function () { GK.sfx('click'); einsatzZeigen(); });
+    einsatzZeigen();
+
+    /* Spielauswahl. Angehakt wird die Reihenfolge: Runde eins das erste
+       Spiel, Runde zwei das zweite. Mit „Zufall" würfelt der Server
+       stattdessen je Runde aus. */
+    var kaesten = {};
+    var gitter = el('div', { class: 'party-wahl' }, GK.games.map(function (g) {
+      var box = el('input', { type: 'checkbox' });
+      kaesten[g.id] = box;
+      return el('label', { class: 'party-wahl-kachel' }, [
+        box,
+        el('span', { class: 'party-wahl-ic', html: GK.iconHTML(g.icon) }),
+        el('span', { class: 'party-wahl-name', text: g.name })
+      ]);
+    }));
+    var zufall = el('input', { type: 'checkbox', checked: 'checked' });
+    var zufallZeile = el('label', { class: 'party-schalter' }, [
+      zufall,
+      el('span', {}, [
+        el('b', { text: 'Spiel je Runde auswürfeln' }),
+        el('span', { class: 'party-schalter-was',
+                     text: 'Ohne Haken wird die Auswahl der Reihe nach abgearbeitet. ' +
+                           'Ist nichts angehakt, kommt alles in Frage.' })
+      ])
+    ]);
+    function zufallZeigen() { gitter.classList.toggle('gedimmt', false); }
+    zufall.addEventListener('change', function () { GK.sfx('click'); zufallZeigen(); });
+
+    var alle = el('button', { class: 'btn btn-small', text: '☑ ALLE' });
+    var keine = el('button', { class: 'btn btn-small', text: '☐ KEINE' });
+    alle.addEventListener('click', function () {
+      Object.keys(kaesten).forEach(function (k) { kaesten[k].checked = true; });
+    });
+    keine.addEventListener('click', function () {
+      Object.keys(kaesten).forEach(function (k) { kaesten[k].checked = false; });
+    });
+
+    var ok = el('button', { class: 'btn btn-gold btn-full', text: '🏆 TURNIER AUFMACHEN' });
+    ok.addEventListener('click', function () {
+      var gewaehlt = Object.keys(kaesten).filter(function (k) { return kaesten[k].checked; });
+      if (!gewaehlt.length && !zufall.checked) {
+        GK.toast('Wähle Spiele aus oder stelle auf Zufall', 'bad', '🎮');
+        GK.sfx('error');
+        return;
+      }
+      GK.closeModal();
+      tue('create', {
+        game: 'turnier', name: name.value,
+        spiele: gewaehlt,
+        alleSpiele: GK.games.map(function (g) { return g.id; }),
+        zufall: zufall.checked,
+        chips: parseInt(chips.value, 10),
+        dauer: parseInt(dauer.value, 10),
+        buyIn: mitEinsatz.checked ? (parseInt(buyIn.value, 10) || 0) : 0,
+        preis: mitEinsatz.checked ? 0 : (parseInt(preis.value, 10) || 0)
+      }).then(function (b) {
+        if (b && b.turnier) { MP.tisch = { id: b.turnier }; MP.seit = 0; anstossen(); }
+      });
+    });
+
+    GK.modal({
+      emoji: '🏆',
+      title: 'Neues Turnier',
+      text: 'Alle treten paarweise gegeneinander an — immer im selben Spiel, mit ' +
+            'demselben Guthaben und derselben Uhr. Wer mehr Chips hat, kommt eine ' +
+            'Runde weiter. Bei Gleichstand entscheidet die Münze.',
+      nodes: [
+        el('label', { class: 'mp-label', text: 'Name' }), name,
+        el('div', { class: 'mp-zwei' }, [
+          el('div', {}, [el('label', { class: 'mp-label', text: 'Guthaben je Duell' }), chips]),
+          el('div', {}, [el('label', { class: 'mp-label', text: 'Zeit je Runde' }), dauer])
+        ]),
+        einsatzZeile, topfBlock, preisBlock,
+        el('label', { class: 'mp-label', text: 'Welche Spiele?' }),
+        zufallZeile,
+        el('div', { class: 'party-wahl-knoepfe' }, [alle, keine]),
+        gitter,
+        ok
+      ]
+    });
+  }
+
+  /** Eine Turnierkarte in der Übersicht. */
+  function turnierKarte(tu) {
+    var laeuft = tu.status !== 'lobby';
+    var voll = tu.besetzt >= tu.max;
+    var knopf = el('button', {
+      class: 'btn btn-small ' + (laeuft || voll ? '' : 'btn-gold'),
+      text: laeuft ? 'LÄUFT' : (voll ? 'VOLL' : 'MITMACHEN')
+    });
+    knopf.disabled = laeuft || voll;
+    knopf.addEventListener('click', function () {
+      GK.sfx('click');
+      tue('join', { turnier: tu.id }).then(function (b) {
+        if (b && b.turnier) { MP.tisch = { id: b.turnier }; MP.seit = 0; anstossen(); }
+      });
+    });
+    return el('div', { class: 'mp-tisch' + (laeuft ? ' laeuft' : '') }, [
+      el('div', { class: 'mp-tisch-kopf' }, [
+        el('span', { class: 'mp-tisch-name', text: tu.name }),
+        el('span', { class: 'mp-tisch-spiel', text: '🏆 Turnier' })
+      ]),
+      el('div', { class: 'mp-leute' }, tu.spieler.map(function (s) {
+        return el('span', { class: 'mp-wer' + (s.online ? '' : ' fort') + (s.raus ? ' raus' : '') }, [
+          el('span', { class: 'mp-wer-av', text: s.avatar || '👤' }),
+          el('span', { text: s.name })
+        ]);
+      })),
+      el('div', { class: 'mp-tisch-fuss' }, [
+        el('span', { class: 'mp-zustand', text: laeuft
+          ? '● Runde ' + (tu.runde + 1) : '○ wartet' }),
+        el('span', { class: 'mp-einkauf', text: GK.fmt(tu.chips) + ' Chips · ' +
+                     Math.round(tu.dauer / 60 * 10) / 10 + ' min' }),
+        el('span', { class: 'mp-einkauf', text: tu.buyIn > 0
+          ? 'Einsatz ' + GK.fmt(tu.buyIn) : 'Preis ' + GK.fmt(tu.preis) }),
+        el('span', { class: 'mp-einkauf', text: tu.besetzt + '/' + tu.max }),
+        knopf
+      ])
+    ]);
+  }
+
+  /* ── Der Baum ────────────────────────────────────────────────────
+     Eine Spalte je Runde, darin die Paarungen. Wer schon feststeht, wird
+     hervorgehoben; wer verloren hat, blasst ab. */
+  function baumZeichnen(tu) {
+    var spalten = [];
+    for (var r = 0; r < Math.max(tu.tiefe || 0, tu.baum.length); r++) {
+      var runde = tu.baum[r] || [];
+      var kopf = r === (tu.tiefe - 1) ? 'Finale'
+               : r === (tu.tiefe - 2) ? 'Halbfinale'
+               : 'Runde ' + (r + 1);
+      var paare = [];
+      /* Auch die noch leeren Runden bekommen Platzhalter — der Baum soll
+         von Anfang an zeigen, wie weit der Weg ist. */
+      var wieviele = runde.length || Math.pow(2, (tu.tiefe - 1) - r);
+      for (var i = 0; i < wieviele; i++) {
+        paare.push(paarungZeichnen(runde[i], r === tu.runde && tu.lage !== 'ende'));
+      }
+      spalten.push(el('div', { class: 'tu-spalte' + (r === tu.runde ? ' jetzt' : '') }, [
+        el('div', { class: 'tu-runde-kopf', text: kopf })
+      ].concat(paare)));
+    }
+    return el('div', { class: 'tu-baum' }, spalten);
+  }
+
+  function seiteZeichnen(wer, punkte, gewonnen, verloren, zeigen) {
+    return el('div', { class: 'tu-seite' + (gewonnen ? ' sieg' : '') + (verloren ? ' raus' : '') }, [
+      el('span', { class: 'tu-av', text: wer ? (wer.avatar || '👤') : '' }),
+      el('span', { class: 'tu-name', text: wer ? wer.name : '—' }),
+      el('span', { class: 'tu-punkte', text: wer && zeigen ? GK.fmt(punkte) : '' })
+    ]);
+  }
+
+  function paarungZeichnen(m, aktiv) {
+    if (!m) {
+      return el('div', { class: 'tu-paar leer' }, [
+        seiteZeichnen(null, 0, false, false, false),
+        seiteZeichnen(null, 0, false, false, false)
+      ]);
+    }
+    var aSieg = !!m.sieger && m.a && m.sieger === m.a.id;
+    var bSieg = !!m.sieger && m.b && m.sieger === m.b.id;
+    var zeigen = aktiv || !!m.sieger;
+    var kinder = [
+      seiteZeichnen(m.a, m.standA, aSieg, !!m.sieger && !aSieg, zeigen && !!m.b),
+      seiteZeichnen(m.b, m.standB, bSieg, !!m.sieger && !bSieg, zeigen && !!m.b)
+    ];
+    var fuss = [];
+    if (m.spiel) {
+      var g = GK.gameById && GK.gameById(m.spiel);
+      fuss.push(g ? g.name : m.spiel);
+    }
+    if (m.grund) fuss.push(m.grund);
+    if (fuss.length) {
+      kinder.push(el('div', { class: 'tu-paar-fuss', text: fuss.join(' · ') }));
+    }
+    return el('div', { class: 'tu-paar' + (aktiv && !m.sieger ? ' aktiv' : '') +
+                              (m.muenze ? ' muenze' : '') }, kinder);
+  }
+
+  /** Die Turnieransicht — Wartelobby, Baum und der Weg in die Spielhalle. */
+  function zeichneTurnier() {
+    var tu = MP.tisch;
+    var wrap = el('div', { class: 'party-lobby turnier' });
+
+    wrap.appendChild(el('div', { class: 'party-marke-zeile' }, [
+      el('span', { class: 'party-marke ' + (tu.buyIn > 0 ? 'eigen' : 'gratis') },
+        [el('span', { text: tu.buyIn > 0
+          ? '🪙 Einsatz ' + GK.fmt(tu.buyIn) + ' · Topf ' + GK.fmt(tu.gewinn)
+          : '🎁 Preis ' + GK.fmt(tu.gewinn) })])
+    ]));
+
+    if (tu.lage === 'lobby') {
+      wrap.appendChild(el('p', { class: 'mp-intro', text:
+        'Sobald der Gastgeber startet, wird ausgelost. Danach spielt ihr paarweise ' +
+        'dasselbe Spiel — wer nach Ablauf der Uhr mehr Chips hat, kommt weiter.' }));
+      wrap.appendChild(el('div', { class: 'party-liste' }, (tu.alleSpieler || []).map(function (s) {
+        return el('div', { class: 'party-zeile' }, [
+          el('span', { class: 'party-av', text: s.avatar || '👤' }),
+          el('span', { class: 'party-nm', text: s.name }),
+          el('span', { class: 'party-wert', text: s.id === tu.host ? '👑 Gastgeber' : '' })
+        ]);
+      })));
+      var wieviel = (tu.alleSpieler || []).length;
+      wrap.appendChild(el('p', { class: 'mp-hinweis', text:
+        wieviel < 2 ? 'Es fehlt noch mindestens ein Gegner.'
+                    : wieviel + ' Teilnehmer · ' + GK.fmt(tu.chips) + ' Chips je Duell · ' +
+                      Math.round(tu.dauer / 60 * 10) / 10 + ' min je Runde · ' +
+                      (tu.zufall ? 'Spiel wird ausgewürfelt'
+                                 : tu.spieleWahl.length + ' Spiele in fester Reihenfolge') }));
+      if (tu.ichBinHost) {
+        var los = el('button', { class: 'btn btn-gold btn-full', text: '🏁 TURNIER STARTEN' });
+        los.disabled = wieviel < 2;
+        los.addEventListener('click', function () {
+          GK.sfx('click');
+          tue('action', { action: 'turnierstart' });
+        });
+        wrap.appendChild(los);
+      } else {
+        wrap.appendChild(el('p', { class: 'mp-warte', text: 'Warte auf den Gastgeber…' }));
+      }
+    } else {
+      /* Läuft: oben der Stand des eigenen Duells, darunter der Baum. */
+      if (tu.status === 'countdown') {
+        var rest = Math.max(0, Math.ceil((tu.startAt - Date.now()) / 1000));
+        wrap.appendChild(el('div', { class: 'party-countdown' }, [
+          el('div', { class: 'party-count-zahl', id: 'party-count', text: String(rest) }),
+          el('div', { class: 'party-count-text', text: tu.gegner
+            ? 'Gleich gegen ' + tu.gegner.name + ' — ab in die Spielhalle!'
+            : 'Gleich geht es los!' })
+        ]));
+      }
+      if (tu.status === 'laeuft') {
+        wrap.appendChild(el('div', { class: 'tu-duell' }, [
+          el('div', { class: 'tu-duell-kopf', text: tu.gegner
+            ? 'Dein Duell gegen ' + tu.gegner.name : 'Dein Duell' }),
+          el('div', { class: 'tu-duell-stand' }, [
+            el('span', { class: 'tu-duell-ich', text: GK.fmt(tu.meinStand) }),
+            el('span', { class: 'tu-duell-vs', text: 'vs' }),
+            el('span', { class: 'tu-duell-du', text: GK.fmt(tu.gegnerStand) })
+          ])
+        ]));
+        var hin = el('button', { class: 'btn btn-gold btn-full', text: '🎰 ZUR SPIELHALLE' });
+        hin.addEventListener('click', function () {
+          GK.sfx('click');
+          var b = document.getElementById('btn-mp-back');
+          if (b) b.click();
+        });
+        wrap.appendChild(hin);
+      }
+      if (tu.lage === 'pause') {
+        wrap.appendChild(el('p', { class: 'mp-warte', text: 'Runde vorbei — gleich geht es weiter.' }));
+      }
+      if (tu.binRaus && tu.lage !== 'ende') {
+        wrap.appendChild(el('p', { class: 'mp-warte', text:
+          'Für dich ist Schluss — schau zu, wie es ausgeht.' }));
+      }
+      if (tu.lage === 'ende') {
+        wrap.appendChild(el('div', { class: 'tu-sieger' }, [
+          el('div', { class: 'tu-sieger-av', text: tu.sieger ? (tu.sieger.avatar || '👤') : '🏆' }),
+          el('div', { class: 'tu-sieger-name', text: tu.sieger ? tu.sieger.name : 'Niemand' }),
+          el('div', { class: 'tu-sieger-was', text: tu.gewinn > 0
+            ? 'gewinnt ' + GK.fmt(tu.gewinn) + ' Chips' : 'gewinnt das Turnier' })
+        ]));
+      }
+      wrap.appendChild(baumZeichnen(tu));
+    }
+
+    var raus = el('button', { class: 'btn btn-ghost btn-full', text: '🚪 TURNIER VERLASSEN' });
+    raus.addEventListener('click', function () {
+      if (!window.confirm(GK.txt(
+        tu.buyIn > 0 && tu.lage !== 'lobby'
+          ? 'Wirklich raus? Dein Einsatz bleibt im Topf.'
+          : 'Turnier wirklich verlassen?',
+        tu.buyIn > 0 && tu.lage !== 'lobby'
+          ? 'Really leave? Your stake stays in the pot.'
+          : 'Really leave the tournament?'))) return;
+      GK.sfx('click');
+      verlassen();
+    });
+    wrap.appendChild(raus);
+    return wrap;
   }
 
   /* ── Uebersicht ───────────────────────────────────────────────────── */
@@ -953,6 +1323,32 @@
       wrap.appendChild(el('div', { class: 'mp-tische' }, l.partys.map(partyKarte)));
     }
 
+    /* Das Turnier steht direkt daneben: es ist derselbe Gedanke — alle
+       spielen dieselben Einzelspiele — nur auf K.-o. statt auf Zeit. */
+    var turnierNeu = el('button', { class: 'btn btn-gold btn-small', text: '+ TURNIER' });
+    turnierNeu.addEventListener('click', neuesTurnier);
+    wrap.appendChild(el('div', { class: 'mp-spiel party-werbung turnier-werbung' }, [
+      el('div', { class: 'mp-spiel-ic', text: '🏆' }),
+      el('div', { class: 'mp-spiel-text' }, [
+        el('h3', { text: 'Turniermodus' }),
+        el('p', { text: 'K.-o. im Turnierbaum: immer zwei gegeneinander, dasselbe Spiel, ' +
+                        'dieselbe Uhr. Wer mehr Chips hat, kommt weiter — bei Gleichstand ' +
+                        'die Münze. Der Sieger nimmt den Topf.' }),
+        el('div', { class: 'mp-zahlen' }, [
+          el('span', { html: '<b>' + ((l.turniere || []).length) + '</b> ' +
+                             ((l.turniere || []).length === 1 ? 'Turnier' : 'Turniere') }),
+          el('span', { class: 'mp-namen', text: (l.turniere || []).length
+            ? (l.turniere || []).map(function (x) { return x.name; }).join(', ')
+            : 'gerade keine' })
+        ])
+      ]),
+      turnierNeu
+    ]));
+
+    if ((l.turniere || []).length) {
+      wrap.appendChild(el('div', { class: 'mp-tische' }, l.turniere.map(turnierKarte)));
+    }
+
     var spiele = el('div', { class: 'mp-spiele' }, l.spiele.map(function (g) {
       var neu = el('button', { class: 'btn btn-gold btn-small', text: '+ TISCH' });
       neu.addEventListener('click', function () { neuerTisch(g.id); });
@@ -1508,7 +1904,8 @@
     neueKarten = 0;
     stage.innerHTML = '';
     stage.appendChild(
-      MP.tisch && MP.tisch.art === 'party' ? zeichneParty()
+      MP.tisch && MP.tisch.art === 'turnier' ? zeichneTurnier()
+        : MP.tisch && MP.tisch.art === 'party' ? zeichneParty()
         : (MP.tisch && MP.tisch.seats ? zeichneTisch() : zeichneLobby()));
 
     if (ersterAufbau) ersterAufbau = false;

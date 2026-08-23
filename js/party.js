@@ -103,6 +103,13 @@
    * Rangliste oben links. Ein eigener Nachbau waere neunzehn Spiele
    * doppelt — und jede spaetere Aenderung zweimal.
    */
+  /* Ein Turnierduell laeuft ueber dieselbe Mechanik wie eine Party — der
+     Server schickt dieselben Felder. Die Zeremonie drumherum passt aber
+     nicht: eine Runde endet hier alle paar Minuten, und dann jedes Mal
+     „Party vorbei" samt Rangliste einzublenden waere falsch. Den Ausgang
+     zeigt der Turnierbaum. */
+  function istTurnier(d) { return !!(d && d.art === 'turnier'); }
+
   function starten(d) {
     if (Party.an) return;
     Party.an = true;
@@ -110,7 +117,12 @@
     document.body.classList.add('party-an');
     GK.emit('party-start', d);
     GK.sfx('jackpot');
-    GK.toast('Party läuft! ' + GK.fmt(d.startChips) + ' Chips für alle', 'gold', '🎉');
+    if (istTurnier(d)) {
+      GK.toast('Duell läuft! ' + GK.fmt(d.startChips) + ' Chips — mehr als der Gegner!',
+               'gold', '🏆');
+    } else {
+      GK.toast('Party läuft! ' + GK.fmt(d.startChips) + ' Chips für alle', 'gold', '🎉');
+    }
     melden();
   }
 
@@ -163,6 +175,13 @@
     /* Buy-in: der Server rechnet erst ein paar Sekunden nach dem Abpfiff ab —
        vorher stünden im Ergebnis noch die Zwischenstände. Also warten wir auf
        die abgerechnete Ansicht und holen dann auch den Kontostand nach. */
+    if (istTurnier(d)) {
+      /* Beim Turnier sagt der Baum, wie es ausging — und die naechste Runde
+         kommt gleich. Ein Fenster dazwischen stuende nur im Weg. */
+      GK.toast('Runde vorbei — dein Stand: ' + GK.fmt((d.startChips || 0) + gewinn),
+               '', '🏁');
+      return;
+    }
     if (d && d.eigeneChips) {
       wartetErgebnis = { gewinn: gewinn, ersatz: d };
       kontoNachziehen(3400);
@@ -268,7 +287,9 @@
 
     tafel = el('aside', { class: 'party-tafel', id: 'party-tafel' }, [
       el('div', { class: 'party-tafel-kopf' }, [
-        el('span', { class: 'party-tafel-titel',
+        /* Im Turnier steht dort „DUELL": es sitzen nur zwei am Brett, und
+           „Party" waere das falsche Wort fuer einen K.-o.-Kampf. */
+        el('span', { class: 'party-tafel-titel', id: 'party-tafel-titel',
                      html: GK.iconHTML('partychip', 'party-ic') + '<span>PARTY</span>' }),
         el('span', { class: 'party-uhr', id: 'party-uhr', text: '' }),
         raus
@@ -358,6 +379,12 @@
 
   function tafelZeichnen(d) {
     tafelAufbauen();
+    var titel = document.getElementById('party-tafel-titel');
+    var wort = titel && titel.querySelector('span:last-child');
+    if (wort) {
+      var soll = istTurnier(d) ? 'DUELL' : 'PARTY';
+      if (wort.textContent !== soll) wort.textContent = soll;
+    }
     var rang = document.getElementById('party-rang');
     if (!rang) return;
     rang.innerHTML = '';

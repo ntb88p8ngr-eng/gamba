@@ -1915,6 +1915,66 @@ body.party-an::before{
 }
 .marke-frei{color:var(--lime);border-color:rgba(124,255,59,.5);background:rgba(124,255,59,.12)}
 .marke-eigen{color:var(--gold);border-color:rgba(255,209,46,.55);background:rgba(255,209,46,.14)}
+/* ── Turnier ──
+   Der Baum steht in Spalten, eine je Runde, und scrollt waagerecht, wenn
+   er nicht mehr passt — untereinander waere er kein Baum mehr. */
+.turnier-werbung{border-color:var(--cyan);background:rgba(0,229,255,.08)}
+.turnier-werbung .mp-spiel-ic{font-size:2.6rem;display:grid;place-items:center}
+
+.tu-baum{
+  display:flex;gap:14px;align-items:stretch;overflow-x:auto;padding:4px 2px 10px;
+  margin-top:14px
+}
+.tu-spalte{
+  display:flex;flex-direction:column;justify-content:space-around;gap:10px;
+  min-width:170px;flex:1 1 170px
+}
+.tu-spalte.jetzt .tu-runde-kopf{color:var(--gold)}
+.tu-runde-kopf{
+  font-family:'Bungee',sans-serif;font-size:.66rem;letter-spacing:.08em;
+  text-align:center;color:var(--muted);text-transform:uppercase
+}
+.tu-paar{
+  display:flex;flex-direction:column;gap:2px;padding:6px;border-radius:12px;
+  background:rgba(10,0,26,.5);border:2px solid var(--line)
+}
+.tu-paar.leer{opacity:.3;border-style:dashed}
+.tu-paar.aktiv{border-color:var(--gold);box-shadow:0 0 16px rgba(255,209,46,.35)}
+/* Ein Münzwurf ist kein normaler Sieg — das soll man sehen. */
+.tu-paar.muenze{border-color:var(--cyan)}
+.tu-seite{
+  display:flex;align-items:center;gap:6px;min-width:0;
+  padding:4px 6px;border-radius:8px;background:rgba(255,255,255,.04)
+}
+.tu-seite.sieg{background:rgba(124,255,59,.16)}
+.tu-seite.raus{opacity:.45}
+.tu-av{font-size:1rem;flex:0 0 auto}
+.tu-name{font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
+.tu-punkte{font-family:'Bungee',sans-serif;font-size:.68rem;color:var(--gold);flex:0 0 auto}
+.tu-paar-fuss{font-size:.62rem;color:var(--muted);text-align:center;padding-top:2px}
+
+/* Der Stand des eigenen Duells, waehrend es laeuft. */
+.tu-duell{
+  text-align:center;padding:12px;border-radius:var(--radius);
+  background:rgba(255,209,46,.1);border:2px solid var(--gold);margin-bottom:10px
+}
+.tu-duell-kopf{font-size:.8rem;color:var(--muted);margin-bottom:4px}
+.tu-duell-stand{display:flex;align-items:center;justify-content:center;gap:14px}
+.tu-duell-ich,.tu-duell-du{font-family:'Bungee',sans-serif;font-size:1.4rem}
+.tu-duell-ich{color:var(--lime)}
+.tu-duell-du{color:var(--red)}
+.tu-duell-vs{font-size:.7rem;color:var(--muted)}
+
+.tu-sieger{text-align:center;padding:16px;animation:rowin .5s both}
+.tu-sieger-av{font-size:3rem;line-height:1}
+.tu-sieger-name{font-family:'Bungee',sans-serif;font-size:1.5rem;color:var(--gold)}
+.tu-sieger-was{font-size:.86rem;color:var(--muted)}
+
+@media(max-width:620px){
+  .tu-spalte{min-width:140px;flex:0 0 140px}
+  .tu-name{font-size:.7rem}
+}
+
 .party-marke-zeile{display:flex;justify-content:center;margin-bottom:12px}
 .party-marke-zeile .chip-marke{font-size:.72rem;padding:6px 14px}
 
