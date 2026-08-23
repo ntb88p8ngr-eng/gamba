@@ -137,6 +137,28 @@ function createMP(deps) {
     waiters.push(w);
   }
 
+  /* ── Grabsteine ────────────────────────────────────────────────────
+     Wenn eine Runde verschwindet, muessen es die anderen erfahren. Ein
+     stilles Loeschen reicht dafuer nicht: die Uebersichts-Langabfrage
+     antwortet dann mit `tisch: null`, und das heisst dort „nichts Neues"
+     — die Browser blieben in einer Lobby stehen, die es nicht mehr gibt.
+
+     Deshalb bleibt fuer kurze Zeit ein Eintrag stehen, der sagt, dass es
+     vorbei ist und warum. Die Browser sehen ihn, raeumen ihre Ansicht auf
+     und zeigen den Grund an. Danach faellt er von selbst weg. */
+  var grabsteine = new Map();   // id -> { id, grund, at }
+  var GRAB_MS = 90000;
+
+  function grabstein(id, grund) {
+    grabsteine.set(String(id), { id: String(id), grund: grund || 'Aufgelöst', at: now() });
+  }
+
+  function grabsteinePflegen(jetzt) {
+    grabsteine.forEach(function (g, id) {
+      if (jetzt - g.at > GRAB_MS) grabsteine.delete(id);
+    });
+  }
+
   /* ── Anwesenheit ──────────────────────────────────────────────────── */
 
   function touch(id) {
@@ -340,7 +362,7 @@ function createMP(deps) {
     t.seats[platz] = null;
     log(t, s.name + ' geht wieder');
     if (t.hand) weiter(t);
-    if (besetzt(t) === 0) tables.delete(t.id);
+    if (besetzt(t) === 0) { tables.delete(t.id); grabstein(t.id, 'Niemand mehr am Tisch'); }
     bump(t);
     return { ok: true };
   }
@@ -457,6 +479,7 @@ function createMP(deps) {
         if (sitz && !sitz.bot) leave(sitz.id, grund || 'Tisch aufgelöst');
       });
       tables.delete(t.id);
+      grabstein(t.id, grund || 'Vom Admin aufgelöst');
       deps.save();
       bump(null);
       return { ok: true, art: 'tisch', name: t.name };
@@ -467,10 +490,7 @@ function createMP(deps) {
          gehoert der Party. Es reicht, sie wegzunehmen; die Browser merken es
          an der 404 und raeumen ihre Kasse selbst ab. Bei einer Buy-in-Party
          steht dagegen echtes Guthaben drin: das wird vorher abgerechnet. */
-      partyAbrechnen(pa);
-      partyProtokoll(pa);
-      partys.delete(pa.id);
-      bump(null);
+      partyAufloesen(pa, grund || 'Vom Admin aufgelöst');
       return { ok: true, art: 'party', name: pa.name };
     }
     return { error: 'Diesen Tisch gibt es nicht mehr', code: 404 };
@@ -591,8 +611,10 @@ function createMP(deps) {
     zugPruefen(t);
     /* Ein Tisch, an dem nur noch Bots sitzen, spielt gegen sich selbst —
        der wird abgeraeumt. */
-    if (!t.seats.some(function (x) { return x && !x.bot; })) tables.delete(t.id);
-    else starteWennMoeglich(t);
+    if (!t.seats.some(function (x) { return x && !x.bot; })) {
+      tables.delete(t.id);
+      grabstein(t.id, 'Niemand mehr am Tisch');
+    } else starteWennMoeglich(t);
     bump(t);
     return { ok: true };
   }
@@ -616,6 +638,7 @@ function createMP(deps) {
 
     partyTick(jetzt);
     leerlauf(jetzt);
+    grabsteinePflegen(jetzt);
 
     tables.forEach(function (t) {
       // wer lange nicht mehr da war, wird vom Tisch genommen
@@ -808,6 +831,12 @@ function createMP(deps) {
   /* Nach dem Abpfiff bleibt der Kasse kurz Zeit, ihren Schlussstand zu
      melden — erst danach wird eine Buy-in-Party ausgezahlt. */
   var P_SCHLUSSFRIST = 2500;
+  /* So lange darf der Gastgeber einer wartenden Lobby weg sein, bevor sie
+     sich aufloest. Kurz genug, dass niemand lange vor einer verwaisten
+     Runde sitzt, lang genug, dass ein Neuladen der Seite sie nicht
+     zerreisst — ein Browser meldet sich danach in ein paar Sekunden
+     wieder. */
+  var P_HOST_FRIST = 25000;
 
   function partyOf(id) {
     var gefunden = null;
@@ -1028,20 +1057,44 @@ function createMP(deps) {
     return summe;
   }
 
+  /**
+   * Eine Party aufloesen und allen Bescheid geben.
+   *
+   * Bei Buy-in bekommt jeder zurueck, was in seiner Kasse liegt — eine
+   * Party, die von aussen beendet wird, darf niemandem Chips einbehalten.
+   */
+  function partyAufloesen(pa, grund) {
+    partyAbrechnen(pa);
+    partyProtokoll(pa);
+    partys.delete(pa.id);
+    grabstein(pa.id, grund);
+    bump(null);
+  }
+
   function leaveParty(id) {
     var pa = partyOf(id);
     if (!pa) return null;
+    /* Der Gastgeber nimmt die Lobby mit. Wer eine Runde aufmacht, haelt sie
+       zusammen; geht er, warten die anderen sonst vor einem Tisch, den
+       niemand mehr starten darf. Erst wenn gespielt wird, gilt das nicht
+       mehr — dann laeuft die Party weiter und der Naechste uebernimmt, denn
+       ein Abbruch mitten im Rennen naehme allen ihre Runde. */
+    if (pa.host === id && pa.status === 'lobby') {
+      partyAufloesen(pa, 'Der Gastgeber hat die Party verlassen');
+      return { ok: true };
+    }
     /* Wer vorzeitig geht, nimmt bei einer Buy-in-Party mit, was gerade in
        seiner Kasse liegt — verfallen wuerde echtes Kontoguthaben. */
     partyAbrechnen(pa, id);
     pa.spieler = pa.spieler.filter(function (s) { return s.id !== id; });
     if (!pa.spieler.length) {
       partys.delete(pa.id);
+      grabstein(pa.id, 'Niemand mehr da');
       bump(null);
       return { ok: true };
     }
-    /* Geht der Gastgeber, uebernimmt der Naechste — sonst haengt eine Party
-       ohne jemanden, der sie starten darf. */
+    /* Geht der Gastgeber waehrend des Rennens, uebernimmt der Naechste —
+       sonst haengt eine Party ohne jemanden, der sie beenden darf. */
     if (pa.host === id) pa.host = pa.spieler[0].id;
     pa.stillSeit = now();
     bumpParty(pa);
@@ -1217,6 +1270,21 @@ function createMP(deps) {
         if (pa.eigeneChips && partyAbrechnen(pa)) bumpParty(pa);
         partyProtokoll(pa);
       }
+      /* Der Gastgeber muss nicht kuendigen, um weg zu sein — es reicht,
+         den Tab zuzumachen. Wartet die Lobby noch, wird sie aufgeloest,
+         sobald er eine Weile nicht mehr da war. Erkannt wird das an
+         derselben Anwesenheit, an der auch Tische ihre Spieler
+         herausnehmen; die Frist ist etwas kuerzer, weil in einer Lobby
+         niemand spielt, sondern alle warten. */
+      if (pa.status === 'lobby' && !isOnline(pa.host)) {
+        if (!pa.hostWeg) pa.hostWeg = jetzt;
+        else if (jetzt - pa.hostWeg > P_HOST_FRIST) {
+          partyAufloesen(pa, 'Der Gastgeber ist nicht mehr da');
+          return;
+        }
+      } else if (pa.hostWeg) {
+        pa.hostWeg = 0;
+      }
       /* Eine Party, in der seit einer Viertelstunde niemand mehr war,
          raeumt sich selbst weg. */
       var letzte = 0;
@@ -1225,10 +1293,7 @@ function createMP(deps) {
         if (o && o.at > letzte) letzte = o.at;
       });
       if (letzte && jetzt - letzte > 15 * 60000) {
-        partyAbrechnen(pa);
-        partyProtokoll(pa);
-        partys.delete(pa.id);
-        bump(null);
+        partyAufloesen(pa, 'Niemand mehr da');
       }
     });
   }
@@ -2304,8 +2369,12 @@ function createMP(deps) {
       var pa = partys.get(String(id || ''));
       if (pa) return sichtParty(pa, viewer);
       var t = tables.get(String(id || ''));
-      if (!t) return null;
-      return sichtTisch(t, viewer);
+      if (t) return sichtTisch(t, viewer);
+      /* Kein Tisch, keine Party — aber vielleicht ein Grabstein. Der sagt
+         dem Browser, dass er die Ansicht schliessen darf. */
+      var g = grabsteine.get(String(id || ''));
+      if (g) return { art: 'weg', id: g.id, v: seq, grund: g.grund };
+      return null;
     }
   };
 }

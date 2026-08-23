@@ -500,6 +500,26 @@
   };
 
   /** Party ganz verlassen (auch aus dem Spielbetrieb heraus). */
+  /**
+   * Die Party ist von aussen weggefallen — hier nur noch aufräumen.
+   *
+   * Anders als `verlassen` wird dabei nichts an den Server gemeldet: die
+   * Party gibt es dort nicht mehr, und abgerechnet hat er beim Auflösen
+   * selbst. Auch keine eigene Meldung — den Grund sagt schon der, der das
+   * Wegfallen bemerkt hat.
+   */
+  Party.aufraeumen = function () {
+    if (!Party.id) return;
+    var kauf = !!(Party.daten && Party.daten.eigeneChips);
+    beenden(null);
+    Party.daten = null;
+    Party.id = null;
+    if (GK.mp) { GK.mp.tisch = null; GK.mp.seit = 0; }
+    /* Bei Buy-in hat der Server gerade zurückgezahlt — den neuen Stand
+       holen, sonst steht in der Kopfzeile weiter die alte Zahl. */
+    if (kauf) kontoNachziehen(900);
+  };
+
   Party.verlassen = function () {
     if (!Party.id) return;
     var kauf = !!(Party.daten && Party.daten.eigeneChips);

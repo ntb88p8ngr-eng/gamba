@@ -147,6 +147,19 @@
     ruf(wo, daten).then(function (b) {
       if (!MP.an && !(GK.party && GK.party.id)) return;
       if (b.lobby) { MP.lobby = b.lobby; MP.seit = b.lobby.v; }
+      /* Der Server sagt mit einem eigenen Eintrag Bescheid, wenn eine Runde
+         verschwunden ist — samt Grund. Ohne den bliebe der Browser in einer
+         Lobby stehen, die es nicht mehr gibt: eine Antwort ganz ohne Tisch
+         heisst über diesen Kanal nur „nichts Neues". */
+      if (b.tisch && b.tisch.art === 'weg') {
+        var warParty = !!(GK.party && GK.party.id);
+        MP.tisch = null; MP.seit = 0;
+        if (warParty && GK.party.aufraeumen) GK.party.aufraeumen();
+        GK.toast(b.tisch.grund || 'Die Runde wurde aufgelöst', 'bad', '🚪');
+        if (MP.an && stage) { gezeichnetV = ''; zeichne(); }
+        schleife();
+        return;
+      }
       if (b.tisch) { MP.tisch = b.tisch; MP.seit = Math.max(MP.seit, b.v || b.tisch.v || 0); }
       /* Eine Party kommt ueber denselben Kanal wie ein Tisch, ist aber etwas
          anderes: sie laeuft weiter, waehrend man in den Einzelspielen sitzt.
