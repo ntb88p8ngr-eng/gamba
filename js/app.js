@@ -419,7 +419,7 @@
   }
 
   /* ─────────────── HALL OF FAME ───────────────
-     Sechs Auszeichnungen auf einer eigenen Seite. Was schon als Spalte im
+     Acht Auszeichnungen auf einer eigenen Seite. Was schon als Spalte im
      Leaderboard steht — Kontostand, bester Einzelgewinn, gespielte Runden —
      kommt hier bewusst nicht vor: eine zweite Rangliste derselben Zahlen
      wäre keine Auszeichnung. Hier zählen Marken, die man einmal erreicht,
@@ -432,6 +432,8 @@
     hundert: { icon: '🏦', name: 'Der Hundertmillionär', was: 'Als Erster über 100.000.000',             art: 'zeit' },
     rakete:  { icon: '🚀', name: 'Der größte Raketenflug', was: 'Höchster Ausstieg beim Raketen-Crash',  art: 'mult' },
     flatter: { icon: '🐦', name: 'Der längste Flatterflug', was: 'Weiteste Strecke im Flatterflug',      art: 'roehren' },
+    pinguin: { icon: '🐧', name: 'Der weiteste Pinguin-Lauf', was: 'Meiste Schollen am Stück',            art: 'schollen' },
+    sprung:  { icon: '☁️', name: 'Der höchste Sprung',      was: 'Höchste Stufe im Endlos-Sprung',       art: 'stufen' },
     schlag:  { icon: '💣', name: 'Der harte Schlag',     was: 'Größter Verlust in einer einzigen Runde', art: 'chips' },
     verlust: { icon: '📉', name: 'Der Großverlierer',    was: 'Tiefstes Minus über alles gerechnet',     art: 'chips' }
   };
@@ -470,6 +472,8 @@
       if (def.art === 'zeit') wert = new Date(b.wert).toLocaleDateString(GK.lang() === 'en' ? 'en-GB' : 'de-DE');
       else if (def.art === 'mult') wert = GK.fmtX(b.wert);
       else if (def.art === 'roehren') wert = GK.fmt(b.wert) + ' Röhren';
+      else if (def.art === 'schollen') wert = GK.fmt(b.wert) + ' Schollen';
+      else if (def.art === 'stufen') wert = GK.fmt(b.wert) + ' Stufen';
       else wert = GK.fmt(b.wert) + ' Chips';
 
       var spielName = '';

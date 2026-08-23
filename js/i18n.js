@@ -77,8 +77,8 @@
     'Noch keine Spieler. Leg los und hol dir die Krone!': 'No players yet. Get going and grab the crown!',
 
     /* Ruhmeshalle */
-    'Sechs Auszeichnungen, die man nicht kauft, sondern erreicht. Wer einmal drinsteht, bleibt drin — bis ihn jemand ablöst.':
-      'Six awards you do not buy — you earn them. Once you are in, you stay in until somebody takes your place.',
+    'Acht Auszeichnungen, die man nicht kauft, sondern erreicht. Wer einmal drinsteht, bleibt drin — bis ihn jemand ablöst.':
+      'Eight awards you do not buy — you earn them. Once you are in, you stay in until somebody takes your place.',
     'Der Millionär': 'The Millionaire',
     'Als Erster über eine Million': 'First one past a million',
     'Der Hundertmillionär': 'The Hundred-Millionaire',
@@ -87,6 +87,10 @@
     'Höchster Ausstieg beim Raketen-Crash': 'Highest cash-out in Rocket Crash',
     'Der längste Flatterflug': 'The Longest Flap',
     'Weiteste Strecke im Flatterflug': 'Longest distance in Flappy Flight',
+    'Der weiteste Pinguin-Lauf': 'The Longest Penguin Run',
+    'Meiste Schollen am Stück': 'Most ice floes in one go',
+    'Der höchste Sprung': 'The Highest Jump',
+    'Höchste Stufe im Endlos-Sprung': 'Highest level in Endless Jump',
     'Der harte Schlag': 'The Hard Knock',
     'Größter Verlust in einer einzigen Runde': 'Biggest loss in a single round',
     'Der Großverlierer': 'The Grand Loser',
@@ -732,6 +736,8 @@
     /* Die Strecke unter der Flatterflug-Trophäe — mit Punkt in der
        Zifferngruppe, sobald jemand wirklich weit kommt. */
     [/^([\d.,]+) Röhren$/, '$1 pipes'],
+    [/^([\d.,]+) Schollen$/, '$1 floes'],
+    [/^([\d.,]+) Stufen$/, '$1 levels'],
     /* Wo der Rekord aufgestellt wurde — steht nur unter einer Trophäe.
        Der Spielname muss durchs Wörterbuch, sonst bliebe „bei
        Drachenhöhle" zu „at Drachenhöhle" und nur das Wörtchen wäre

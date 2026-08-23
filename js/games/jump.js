@@ -531,6 +531,10 @@
         laeuft = false;
         var win = Math.floor(stake * mult);
         GK.payout(win, { stake: stake });
+        /* Für die Hall of Fame zählt die erreichte Stufe, nicht der
+           Ausgang: wer hoch kommt und dann fällt, war trotzdem oben.
+           Deshalb steht die Meldung auch im Absturz. */
+        GK.rekord('jump', stufe);
         GK.logPlay('Endlos-Sprung', stake, win);
         GK.setResult(resultBox,
           (amZiel ? '☁️ Der Himmel ist erreicht! ' : (auto ? '🤖 Automatisch ausgestiegen: ' : 'Ausgestiegen auf Stufe ')) +
@@ -549,6 +553,7 @@
         sperreBis = performance.now() + 900;
         funken(held.x, held.y, '#ffd12e');
         GK.payout(0, { stake: stake });
+        GK.rekord('jump', stufe);
         GK.logPlay('Endlos-Sprung', stake, 0);
         GK.setResult(resultBox,
           woran + ' auf Stufe ' + stufe + ' — ' + GK.fmt(stake) + ' Chips weg', 'lose');
@@ -788,6 +793,7 @@
           var win = Math.floor(stake * mult);
           laeuft = false;
           GK.payout(win, { stake: stake });
+          GK.rekord('jump', stufe);
           GK.logPlay('Endlos-Sprung', stake, win);
           GK.toast('Lauf beendet auf Stufe ' + stufe + ' — ' + GK.fmt(win) + ' Chips gesichert',
                    'gold', '🦘');

@@ -305,7 +305,7 @@ function newPlayer(name, avatar, id) {
     /* Bestleistungen, die kein Kontostand ist: der hoechste Ausstieg beim
        Raketen-Crash und die weiteste Strecke im Flatterflug. Das Spiel
        meldet sie, der Server behaelt nur den Rekord. */
-    rekorde: { crash: 0, flappy: 0 },
+    rekorde: { crash: 0, flappy: 0, penguin: 0, jump: 0 },
     luck: 50,
     xp: 0,
     claimedLevel: 1,
@@ -407,7 +407,7 @@ function alleZuruecksetzen(mitXp) {
     x.plays = 0; x.wins = 0; x.losses = 0;
     x.biggestWin = 0; x.biggestWinGame = ''; x.peak = START_BALANCE;
     x.mioAt = 0; x.mio100At = 0;
-    x.rekorde = { crash: 0, flappy: 0 };
+    x.rekorde = { crash: 0, flappy: 0, penguin: 0, jump: 0 };
     x.lastBailout = 0;
     if (mitXp) { x.xp = 0; x.claimedLevel = 1; }
   });
@@ -931,17 +931,34 @@ var TITEL_FRISCH = 20000;      // so lange gilt eine geholte Angabe
 var TITEL_FRIST = 6000;        // so lange wird auf den Sender gewartet
 var titelCache = {};           // url -> { titel, zeit, laeuft }
 
-function icyTitel(url, merker) {
+/* Unter welcher Kennung angefragt wird.
+   Manche Aufbauten ruecken die Titel nur heraus, wenn der Anfragende nach
+   einem Abspielprogramm aussieht — ohne passende Kennung kommt zwar Ton,
+   aber kein icy-metaint. Welche Kennung ein Sender sehen will, steht
+   nirgends; also werden sie der Reihe nach durchprobiert.
+
+   WinampMPEG ist die Kennung, auf die Shoutcast- und Icecast-Aufbauten
+   seit zwanzig Jahren geprueft werden, VLC die zweithaeufigste. Die eigene
+   Kennung steht zuerst: ist der Sender ehrlich, bleibt es bei einer
+   einzigen Verbindung. */
+var ICY_KENNUNGEN = [
+  'GambaKing/1.0 (+radio)',
+  'WinampMPEG/5.0',
+  'VLC/3.0.20 LibVLC/3.0.20'
+];
+
+/** Ein Versuch bei einem Sender, unter genau einer Kennung. */
+function icyEinmal(url, kennung, merker) {
   var abbruch = new AbortController();
   var uhr = setTimeout(function () { abbruch.abort(); }, TITEL_FRIST);
   return fetch(url, {
     headers: {
       'Icy-MetaData': '1',
-      /* Manche Icecast-Aufbauten ruecken die Titel nur heraus, wenn der
-         Anfragende nach einem Abspielprogramm aussieht — ohne Kennung
-         kommt zwar Ton, aber kein icy-metaint. */
-      'User-Agent': 'GambaKing/1.0 (+radio)',
-      'Accept': '*/*'
+      'User-Agent': kennung,
+      'Accept': '*/*',
+      /* Gepackt wuerde der Strom byteweise verschoben — dann zeigte
+         icy-metaint ins Leere. Also ungepackt anfordern. */
+      'Accept-Encoding': 'identity'
     },
     signal: abbruch.signal
   })
@@ -953,7 +970,7 @@ function icyTitel(url, merker) {
       if (!r.ok) { if (merker) merker.grund = 'HTTP ' + r.status; }
       else if (!metaint) { if (merker) merker.grund = 'Sender schickt kein icy-metaint'; }
       if (!r.ok || !metaint || !r.body) { try { abbruch.abort(); } catch (e) {} return null; }
-      if (merker) merker.grund = '';
+      if (merker) { merker.grund = ''; merker.metaint = true; }
       var leser = r.body.getReader();
       var uebrig = metaint, laenge = -1, teile = [], da = 0, gelesen = 0;
       /* Nach dem ersten Block ist Schluss. Der Deckel verhindert, dass ein
@@ -1008,6 +1025,29 @@ function icyTitel(url, merker) {
       return null;
     })
     .then(function (t) { clearTimeout(uhr); return t; });
+}
+
+/**
+ * Den laufenden Titel eines Webradios holen.
+ *
+ * Klappt es unter der eigenen Kennung nicht, wird es der Reihe nach mit
+ * den Kennungen bekannter Abspielprogramme versucht. Abgebrochen wird,
+ * sobald ein Titel da ist oder der Sender wenigstens ein icy-metaint
+ * geschickt hat — dann liegt es nicht an der Kennung, und ein weiterer
+ * Versuch belastete den Sender nur.
+ */
+function icyTitel(url, merker) {
+  var eigen = merker || {};
+  function versuch(i) {
+    eigen.metaint = false;
+    return icyEinmal(url, ICY_KENNUNGEN[i], eigen).then(function (t) {
+      if (t) return t;
+      if (eigen.metaint) return null;           // Titel fehlt, nicht die Kennung
+      if (i + 1 >= ICY_KENNUNGEN.length) return null;
+      return versuch(i + 1);
+    });
+  }
+  return versuch(0);
 }
 
 /**
@@ -1114,18 +1154,20 @@ function applyOp(op) {
        spaeterer schlechterer Flug loescht den besseren also nicht. */
     case 'rekord': {
       /* Die Obergrenzen stehen in den Spielen: rollCrash deckelt den
-         Crashpunkt auf 500x, der Flatterflug endet nach ZIEL = 25 Roehren.
+         Crashpunkt auf 500x, der Flatterflug endet nach ZIEL = 25 Roehren,
+         der Pinguin hat MULTS.length = 12 Schollen, der Endlos-Sprung
+         endet nach ZIEL = 25 Stufen.
          Wer mehr meldet, hat nicht gespielt, sondern getippt — und wird
          abgewiesen statt gekappt: gekappt stuende der Unfug sonst als
          Bestwert in der Ruhmeshalle. */
-      var welche = { crash: 500, flappy: 25 };
+      var welche = { crash: 500, flappy: 25, penguin: 12, jump: 25 };
       var art = clean(op.art, 12);
       if (!welche[art]) return { error: 'Unbekannte Bestleistung', code: 400 };
       /* Hundertstel, damit der Multiplikator 12,45x nicht auf 12 faellt. */
       var wert = Math.round(Number(op.wert) * 100) / 100;
       if (!(wert > 0)) break;
       if (wert > welche[art]) return { error: 'So weit kommt hier niemand', code: 400 };
-      if (!p.rekorde || typeof p.rekorde !== 'object') p.rekorde = { crash: 0, flappy: 0 };
+      if (!p.rekorde || typeof p.rekorde !== 'object') p.rekorde = {};
       if (wert > (p.rekorde[art] || 0)) p.rekorde[art] = wert;
       break;
     }
@@ -1212,7 +1254,7 @@ function applyOp(op) {
       rp.plays = 0; rp.wins = 0; rp.losses = 0;
       rp.biggestWin = 0; rp.biggestWinGame = ''; rp.peak = START_BALANCE;
       rp.mioAt = 0; rp.mio100At = 0;
-      rp.rekorde = { crash: 0, flappy: 0 };
+      rp.rekorde = { crash: 0, flappy: 0, penguin: 0, jump: 0 };
       rp.xp = 0; rp.claimedLevel = 1;
       rp.lastBailout = 0;
       break;
@@ -1867,7 +1909,7 @@ function handleRequest(req, res) {
   }
 
   /* ── Hall of Fame ──
-     Sechs Auszeichnungen. Offen fuer jeden — es ist eine Ruhmeshalle,
+     Acht Auszeichnungen. Offen fuer jeden — es ist eine Ruhmeshalle,
      kein Geheimnis.
 
      Was schon als Spalte im Leaderboard steht (Kontostand, bester
@@ -1941,6 +1983,8 @@ function handleRequest(req, res) {
         { id: 'hundert', beste: zuerst('mio100At') },
         { id: 'rakete', beste: bestleistung('crash') },
         { id: 'flatter', beste: bestleistung('flappy') },
+        { id: 'pinguin', beste: bestleistung('penguin') },
+        { id: 'sprung', beste: bestleistung('jump') },
         { id: 'schlag', beste: schlimmste && opfer
             ? { spieler: wer(opfer), wert: schlimmste.weg, spiel: schlimmste.g || '', wann: schlimmste.t }
             : null },

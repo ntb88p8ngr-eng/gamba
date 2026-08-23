@@ -228,6 +228,9 @@
         var mult = multAt(pos);
         var win = Math.floor(stake * mult);
         GK.payout(win, { stake: stake });
+        /* Für die Hall of Fame: so viele Schollen hat er wirklich
+           betreten. */
+        GK.rekord('penguin', pos);
         GK.logPlay('Pinguin-Sprung', stake, win);
         GK.setResult(resultBox,
           (auto ? '🏔️ Festland erreicht! ' : '') + pos + ' Schollen · ' + GK.fmtX(mult) +
@@ -242,6 +245,9 @@
       function lose() {
         running = false; busy = false;
         GK.payout(0, { stake: stake });
+        /* Die brechende Scholle zählt nicht mit — er stand nie darauf.
+           Der Lauf ist also eine kürzer als die Nummer im Text. */
+        GK.rekord('penguin', pos - 1);
         GK.logPlay('Pinguin-Sprung', stake, 0);
         GK.setResult(resultBox,
           'Die Scholle bricht bei Nummer ' + pos + ' — ' + GK.fmt(stake) + ' Chips im Meer', 'lose');
