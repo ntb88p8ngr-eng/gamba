@@ -1073,6 +1073,7 @@
   }
 
   Music.radioAus = function () {
+    wunschVergessen();
     var warStrom = Music.strom.an;
     Music.radio.an = false;
     uhrAus();
@@ -1244,6 +1245,7 @@
   Music.setTrack = function (idx) {
     /* Wer selbst ein Stück wählt, schaltet das Radio ab — die eigene Wahl
        gewinnt gegen die Sendung. */
+    wunschVergessen();
     if (Music.radio.an) Music.radioAus();
     var vorher = Music.trackIdx;
     Music.trackIdx = GK.clamp(idx, 0, TRACKS.length - 1);
@@ -1266,8 +1268,9 @@
   };
 
   Music.toggle = function () {
-    if (Music.playing && Music.enabled) Music.stop();
+    if (Music.playing && Music.enabled) { wunschVergessen(); Music.stop(); }
     else {
+      wunschVergessen();
       Music.start();
       /* Nach einer Pause steht die Sendung woanders — also nachsehen und
          an die richtige Stelle springen, statt dort weiterzumachen, wo
@@ -1320,6 +1323,69 @@
     save();
     if (GK.emit) GK.emit('musik-liste');
   });
+
+  /* ── Den gemerkten Stand wiederherstellen ─────────────────────────
+     Nach dem Neuladen soll weiterlaufen, was vorher lief. Das ist aber
+     nicht in einem Zug zu haben: abgespielt werden darf erst nach der
+     ersten Berührung (so will es der Browser), und der gemerkte Sender
+     existiert zu dem Zeitpunkt womöglich noch gar nicht — das Sound-Pack
+     kommt über das Netz, die Webradios kommen mit dem Serverstand.
+
+     Vorher wurde genau einmal versucht. Kam der Klick zu früh, fand
+     senderVon() nichts, und es blieb beim ersten Hintergrundstück. Jetzt
+     wird der Wunsch aufbewahrt und bei jeder Gelegenheit erneut versucht,
+     bis er aufgeht — oder bis die Geduld zu Ende ist. */
+  Music.entsperrt = false;
+  var WUNSCH_FRIST = 20000;      // so lange wird auf den Sender gewartet
+  var WUNSCH_TAKT = 1500;        // und in diesem Abstand nachgesehen
+  var wunschAb = 0;
+  var wunschUhr = null;
+
+  function wunschUhrAus() {
+    if (wunschUhr) { clearTimeout(wunschUhr); wunschUhr = null; }
+  }
+
+  /* Wer selbst wählt, hat recht — ein noch offener Wunsch aus dem
+     Speicher darf ihn nicht gleich wieder überstimmen. */
+  function wunschVergessen() {
+    wunschUhrAus();
+    Music._radioWunsch = '';
+    Music.wanted = false;
+  }
+
+  Music.wunschStarten = function () {
+    wunschUhrAus();
+    if (!Music.entsperrt || !Music.wanted) return;
+    if (!wunschAb) wunschAb = Date.now();
+
+    if (Music._radioWunsch) {
+      /* Die Merker fallen, bevor radioAn läuft — nicht danach. radioAn
+         meldet selbst „musik-liste", und daran hängt diese Funktion:
+         stünde der Wunsch dann noch, riefe sie sich endlos selbst auf. */
+      var wer = Music._radioWunsch;
+      Music._radioWunsch = '';
+      Music.wanted = false;
+      if (Music.radioAn(wer)) return;
+      /* Den Sender gibt es (noch) nicht. Solange die Frist läuft, später
+         noch einmal — sonst lieber das gemerkte Stück als weiter Stille. */
+      if (Date.now() - wunschAb < WUNSCH_FRIST) {
+        Music._radioWunsch = wer;
+        Music.wanted = true;
+        /* Eine eigene Uhr, weil sonst niemand mehr nachfragt: kommt der
+           Sender gar nicht mehr — gelöscht, umbenannt —, meldet sich auch
+           kein „musik-liste" mehr, und es bliebe für immer still. */
+        wunschUhr = setTimeout(Music.wunschStarten, WUNSCH_TAKT);
+        return;
+      }
+    }
+    Music.wanted = false;
+    Music.start();
+  };
+
+  /* Die zwei Gelegenheiten, bei denen ein Sender dazukommen kann: das
+     Sound-Pack trifft ein, oder der Serverstand bringt die Webradios. */
+  GK.on('sfx-pack', function () { Music.wunschStarten(); });
+  GK.on('musik-liste', function () { Music.wunschStarten(); });
 
   Music.load = function () {
     try {

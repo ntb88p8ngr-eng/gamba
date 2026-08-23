@@ -3170,12 +3170,11 @@
     var unlock = function () {
       GK.sound.init();
       GK.sound.resume();
-      if (GK.music.wanted) {
-        /* Lief zuletzt das Radio, geht es damit weiter — sonst mit dem
-           zuletzt gewählten Stück. */
-        if (GK.music._radioWunsch) GK.music.radioAn(GK.music._radioWunsch);
-        else GK.music.start();
-      }
+      /* Ab jetzt darf getönt werden. Was zuletzt lief, versucht die Musik
+         selbst wiederherzustellen — auch noch einmal, wenn das Sound-Pack
+         oder die Webradios erst später eintreffen. */
+      GK.music.entsperrt = true;
+      GK.music.wunschStarten();
       document.removeEventListener('pointerdown', unlock);
       document.removeEventListener('keydown', unlock);
     };
