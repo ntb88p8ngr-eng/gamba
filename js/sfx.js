@@ -164,6 +164,9 @@
         /* Sekunden je Stueck — gilt nur fuer die erzeugten Loops, die von
            sich aus endlos laufen. Dateien wechseln, wenn sie zu Ende sind. */
         dauer: Math.max(30, Number(r.dauer) || 210),
+        /* Ein Faktor ueber allem, was dieser Sender spielt — er liegt
+           ueber dem Feinabgleich des einzelnen Stuecks. */
+        volume: r.volume === undefined ? 1 : Number(r.volume),
         skins: Array.isArray(r.skins) && r.skins.length ? r.skins.slice() : null
       });
     });

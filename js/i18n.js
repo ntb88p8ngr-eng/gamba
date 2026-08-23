@@ -292,6 +292,17 @@
     /* Musik & Radio im Admin-Panel */
     'MUSIK & RADIO': 'MUSIC & RADIO',
     '🎛 EINGEBAUTE LOOPS': '🎛 BUILT-IN LOOPS',
+    'Master-Lautstärke des Senders': 'Master volume of the station',
+    '＋ SENDER ANLEGEN': '＋ ADD STATION', '✓ SENDER ÄNDERN': '✓ SAVE STATION',
+    '🗑 SENDER LÖSCHEN': '🗑 DELETE STATION',
+    'z. B. Lounge FM': 'e.g. Lounge FM',
+    'Stücke mischen': 'Shuffle tracks',
+    'Ohne Haken läuft die Reihenfolge so, wie sie in der Liste steht.':
+      'Without the tick the order runs exactly as listed.',
+    'Der Sender braucht einen Namen': 'The station needs a name',
+    'Sender angelegt': 'Station added', 'Sender geändert': 'Station saved',
+    'Ein Offline-Sender spielt eigene Dateien vom Server. Stücke kommen über das Hochladen oben hinein oder über die Pfeile in der Liste. Eine Senderzeile anklicken holt sie zum Ändern herunter; der Regler daneben gilt für alles, was der Sender spielt.':
+      'An offline station plays your own files from the server. Tracks get in via the upload above or via the arrows in the list. Click a station row to load it for editing; the slider beside it applies to everything the station plays.',
     'ausgeblendet': 'hidden',
     'Sichtbar für alle': 'Visible to everyone',
     'Noch keine eigenen Stücke aus Dateien.': 'No tracks of your own from files yet.',
@@ -681,6 +692,13 @@
                                           .replace('überall', 'everywhere') : '');
     }],
     [/^Hochgeladen: (.+)$/, 'Uploaded: $1'],
+    /* Die Titelzeile eines Webradios im Panel — entweder was läuft, oder
+       warum nichts kommt. */
+    [/^kein Titel — (.+)$/, function (m, grund) {
+      return 'no title — ' + grund
+        .replace('Sender schickt kein icy-metaint', 'station sends no icy-metaint')
+        .replace('nicht erreichbar', 'unreachable');
+    }],
     [/^(\d+) Runden$/, '$1 rounds'],
     [/^(\d+) Spiele$/, '$1 rounds'],
     [/^(\d+) Siege$/, '$1 wins'],

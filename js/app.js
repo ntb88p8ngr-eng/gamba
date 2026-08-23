@@ -922,7 +922,8 @@
     var radioKopf = el('div', { class: 'bet-label', text: '📻 RADIO' });
     var radioLuft = el('div', { style: 'height:6px' });
     var radioLuft2 = el('div', { style: 'height:14px' });
-    var radioHinweis = el('p', { class: 'hint', text: 'Ein Sender spielt seine Stücke hintereinander und schaltet von selbst weiter. Wer ein Stück oben anklickt, beendet die Sendung.' });
+    /* Ohne Fliesstext: was die Kacheln tun, sieht man an ihnen. */
+    var radioHinweis = el('span', { hidden: 'hidden' });
     radioTeile.push(radioKopf, radioLuft, radioBox, jetztBox, radioHinweis, radioLuft2);
     radioBauen();
 
@@ -965,7 +966,7 @@
     GK.modal({
       emoji: '🎵',
       title: 'Musik & Sound',
-      text: 'Fünf Techno-Loops, live im Browser erzeugt — zwei tiefe Dub-Stücke, ein krummer Minimal-Groove und zwei Acid-Nummern. Dazu alles, was im Sound-Pack als Datei liegt (💿) — ganze Sendungen laufen nur unten im Radio. Jederzeit abschaltbar.',
+      text: '',
       nodes: [
         el('div', { class: 'bet-label', text: 'HINTERGRUND-TRACKS' }),
         el('div', { style: 'height:8px' }),
@@ -1957,6 +1958,43 @@
       }, function () {});
     }
 
+    /**
+     * Ein Regler für einen ganzen Sender.
+     *
+     * Er liegt über dem Feinabgleich der einzelnen Stücke: ein Webradio
+     * kann durchweg lauter senden als die eigenen Dateien, und dann will
+     * man nicht jedes Stück nachziehen. Beide Faktoren multiplizieren
+     * sich, deshalb heisst er hier „Master".
+     */
+    function senderRegler(art, id, wert, danach) {
+      var anzeige = el('b', { text: Math.round(wert * 100) + '%' });
+      var reg = el('input', {
+        type: 'range', min: '0', max: '150', step: '5',
+        value: String(Math.round(wert * 100)), title: 'Master-Lautstärke des Senders'
+      });
+      reg.addEventListener('input', function () { anzeige.textContent = reg.value + '%'; });
+      reg.addEventListener('click', function (e) { e.stopPropagation(); });
+      reg.addEventListener('change', function () {
+        GK.sfx('chip');
+        var op = art === 'webradio' ? 'webRadioSet' : 'packStation';
+        var last = { id: id, volume: Number(reg.value) / 100 };
+        /* webRadioSet schreibt den ganzen Eintrag neu — Name und Adresse
+           müssen also mit, sonst fiele der Sender in sich zusammen. */
+        if (art === 'webradio') {
+          var r = null;
+          (GK.state.webRadios || []).forEach(function (x) { if (x.id === id) r = x; });
+          if (!r) return;
+          last.name = r.name; last.url = r.url; last.icon = r.icon;
+          last.was = r.was; last.skins = r.skins || [];
+        }
+        GK.net.op(op, last).then(function (out) {
+          if (out && out.pack) packDaten = out.pack;
+          if (danach) danach();
+        });
+      });
+      return el('div', { class: 'pack-laut' }, [reg, anzeige]);
+    }
+
     /** Ein Regler von 0 bis 150 Prozent, direkt an einem Stück. */
     function lautstaerkeRegler(t) {
       var wert = el('b', { text: Math.round((t.volume === undefined ? 1 : t.volume) * 100) + '%' });
@@ -2097,19 +2135,21 @@
         ? s.skins.map(function (id) { return GK.skinInfo(id).name; }).join(', ')
         : 'überall';
 
-      return el('div', { class: 'pack-block' }, [
-        el('div', { class: 'pack-zeile' }, [
+      var kopf = el('div', { class: 'pack-zeile pack-klick' }, [
           el('span', { class: 'pack-ic', text: '📼' }),
           el('span', { class: 'pack-text' }, [
             el('b', { text: s.name }),
             markenZeile([stuecke.length + ' Titel', wo,
                          s.mischen ? 'gemischt' : 'feste Reihenfolge'])
           ]),
+          senderRegler('sender', s.id, s.volume === undefined ? 1 : s.volume, packMalen),
           schieber('sender', s.id),
           auf
-        ]),
-        innen
-      ]);
+        ]);
+      /* Anklicken holt den Sender ins Formular — Ändern ist häufiger als
+         Anlegen, genau wie bei den Webradios. */
+      kopf.addEventListener('click', function () { stFormular(s); GK.sfx('chip'); });
+      return el('div', { class: 'pack-block' }, [kopf, innen]);
     }
 
     /**
@@ -2177,6 +2217,70 @@
       }
       zielFuellen();
     }
+
+    /* ── Offline-Sender anlegen und ändern ──
+       Dasselbe Formular für beides, wie bei den Webradios: eine Zeile
+       anklicken holt sie herunter, ohne Kennung entsteht ein neuer. Die
+       Stücke kommen nicht hier hinein, sondern beim Hochladen oder über
+       die Pfeile in der Liste — das ist der Weg, den man ohnehin geht. */
+    var stName = el('input', { class: 'mp-feld', type: 'text', maxlength: '60', placeholder: 'z. B. Lounge FM' });
+    var stWas = el('input', { class: 'mp-feld', type: 'text', maxlength: '90', placeholder: 'Kurze Zeile darunter (optional)' });
+    var stSkinBox = el('div', { class: 'webradio-skins' });
+    var stMischen = el('input', { type: 'checkbox' });
+    var stSpeichern = el('button', { class: 'btn btn-small btn-lime', text: '＋ SENDER ANLEGEN' });
+    var stNeu = el('button', { class: 'btn btn-small btn-ghost', text: '✕ FORMULAR LEEREN' });
+    var stWeg = el('button', { class: 'btn btn-small btn-danger', text: '🗑 SENDER LÖSCHEN' });
+    var stId = '';
+
+    var stSkinFelder = GK.skins.map(function (sk) {
+      var box = el('input', { type: 'checkbox' });
+      box.dataset.skin = sk.id;
+      stSkinBox.appendChild(el('label', { class: 'party-schalter webradio-skin' }, [
+        box, el('span', {}, [el('b', { text: sk.emoji + ' ' + sk.name })])
+      ]));
+      return box;
+    });
+
+    function stFormular(s) {
+      stId = (s && s.id) || '';
+      stName.value = (s && s.name) || '';
+      stWas.value = (s && s.was) || '';
+      stMischen.checked = s ? !!s.mischen : true;
+      var gewaehlt = (s && s.skins) || [];
+      stSkinFelder.forEach(function (b) { b.checked = gewaehlt.indexOf(b.dataset.skin) >= 0; });
+      stSpeichern.textContent = stId ? '✓ SENDER ÄNDERN' : '＋ SENDER ANLEGEN';
+      stWeg.hidden = !stId;
+    }
+
+    stNeu.addEventListener('click', function () { GK.sfx('click'); stFormular(null); });
+    stSpeichern.addEventListener('click', function () {
+      if (!stName.value.trim()) { GK.toast('Der Sender braucht einen Namen', 'bad', '📼'); return; }
+      GK.sfx('click');
+      GK.net.op('packStation', {
+        id: stId, name: stName.value, was: stWas.value,
+        mischen: stMischen.checked,
+        skins: stSkinFelder.filter(function (b) { return b.checked; })
+                           .map(function (b) { return b.dataset.skin; })
+      }).then(function (out) {
+        if (!out || out.error) return;
+        if (out.pack) { packDaten = out.pack; packMalen(); }
+        radioSenderHolen();
+        GK.toast(stId ? 'Sender geändert' : 'Sender angelegt', 'gold', '📼');
+        stFormular(null);
+      });
+    });
+    stWeg.addEventListener('click', function () {
+      if (!stId) return;
+      if (!window.confirm(GK.txt('Sender „' + stName.value + '" löschen? Die Stücke bleiben erhalten.',
+                                 'Delete station "' + stName.value + '"? The tracks are kept.'))) return;
+      GK.sfx('click');
+      GK.net.op('packStation', { id: stId, weg: true }).then(function (out) {
+        if (out && out.pack) { packDaten = out.pack; packMalen(); }
+        radioSenderHolen();
+        stFormular(null);
+      });
+    });
+    stFormular(null);
 
     /* ── Hochladen ── */
     var upDatei = el('input', { type: 'file', accept: 'audio/*', class: 'mp-feld' });
@@ -2311,6 +2415,17 @@
         var wo = (r.skins && r.skins.length)
           ? r.skins.map(function (id) { return GK.skinInfo(id).name; }).join(', ')
           : 'überall';
+        /* Was der Sender gerade spielt — und wenn nichts kommt, warum
+           nicht. Sonst steht man vor einem Sender, der spielt, aber
+           keinen Titel zeigt, und weiss nicht, ob es an ihm liegt. */
+        var titelZeile2 = el('span', { class: 'webradio-titel', text: '' });
+        if (GK.net && GK.net.radio) {
+          GK.net.radio(r.id).then(function (d) {
+            if (!titelZeile2.isConnected) return;
+            if (d && d.titel) titelZeile2.textContent = '♪ ' + d.titel;
+            else if (d && d.grund) titelZeile2.textContent = 'kein Titel — ' + d.grund;
+          }, function () {});
+        }
         var weg = el('button', { class: 'btn btn-small btn-danger', text: '🗑' });
         weg.addEventListener('click', function (ev) {
           ev.stopPropagation();
@@ -2325,8 +2440,10 @@
           el('span', { class: 'webradio-ic', text: r.icon || '📻' }),
           el('span', { class: 'webradio-text' }, [
             el('b', { text: r.name }),
-            el('span', { text: wo })
+            el('span', { text: wo }),
+            titelZeile2
           ]),
+          senderRegler('webradio', r.id, r.volume === undefined ? 1 : r.volume, wrBauen),
           schieber('webradio', r.id),
           weg
         ]);
@@ -2622,6 +2739,7 @@
     var gruppen = [
       { id: 'spieler', icon: '👥', name: 'Spieler', felder: [
         feld('SPIELER', [
+                    el('div', { class: 'admin-note', html: '💡 <b>Money-Give:</b> Spieler antippen, Betrag eingeben, <b>GEBEN</b> drücken. Geschenkte Chips zählen nicht als Profit im Leaderboard.' }),
                     listBox,
                     el('div', { class: 'field' }, [el('label', { text: 'BETRAG' }), amount]),
                     quick,
@@ -2702,6 +2820,24 @@
 
                     el('div', { class: 'pack-kopf', text: '📼 OFFLINE-RADIOS' }),
                     senderBox,
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'mp-zwei' }, [
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), stName]),
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'UNTERZEILE' }), stWas])
+                    ]),
+                    el('label', { class: 'mp-label', text: 'IN WELCHEN ANSTRICHEN?' }),
+                    stSkinBox,
+                    el('label', { class: 'party-schalter' }, [
+                      stMischen,
+                      el('span', {}, [
+                        el('b', { text: 'Stücke mischen' }),
+                        el('span', { class: 'party-schalter-was',
+                                     text: 'Ohne Haken läuft die Reihenfolge so, wie sie in der Liste steht.' })
+                      ])
+                    ]),
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'modal-actions' }, [stSpeichern, stNeu, stWeg]),
+                    el('p', { class: 'hint', text: 'Ein Offline-Sender spielt eigene Dateien vom Server. Stücke kommen über das Hochladen oben hinein oder über die Pfeile in der Liste. Eine Senderzeile anklicken holt sie zum Ändern herunter; der Regler daneben gilt für alles, was der Sender spielt.' }),
                     el('div', { style: 'height:8px' }),
                     radioStand,
                     el('div', { style: 'height:8px' }),
@@ -2830,10 +2966,7 @@
       weit: true,
       title: 'Admin-Panel',
       text: 'Spieler wählen, Chips verteilen, Schicksal manipulieren. Mit großer Macht kommt großes Chaos.',
-      nodes: [
-        reiterLeiste,
-        el('div', { class: 'admin-note', html: '💡 <b>Money-Give:</b> Spieler antippen, Betrag eingeben, <b>GEBEN</b> drücken. Geschenkte Chips zählen nicht als Profit im Leaderboard.' })
-      ].concat(gruppen.map(function (g) { return flaechen[g.id]; }))
+      nodes: [reiterLeiste].concat(gruppen.map(function (g) { return flaechen[g.id]; }))
     });
 
     /* Beim nächsten Öffnen steht man wieder da, wo man aufgehört hat. */

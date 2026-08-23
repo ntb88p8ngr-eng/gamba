@@ -587,6 +587,7 @@ function packUebersicht() {
           id: r.id, name: r.name || r.id, was: r.was || '',
           tracks: Array.isArray(r.tracks) ? r.tracks.slice() : null,
           mischen: r.mischen !== false,
+          volume: r.volume === undefined ? 1 : Number(r.volume),
           skins: Array.isArray(r.skins) ? r.skins : []
         };
       })
@@ -886,15 +887,29 @@ var TITEL_FRISCH = 20000;      // so lange gilt eine geholte Angabe
 var TITEL_FRIST = 6000;        // so lange wird auf den Sender gewartet
 var titelCache = {};           // url -> { titel, zeit, laeuft }
 
-function icyTitel(url) {
+function icyTitel(url, merker) {
   var abbruch = new AbortController();
   var uhr = setTimeout(function () { abbruch.abort(); }, TITEL_FRIST);
-  return fetch(url, { headers: { 'Icy-MetaData': '1' }, signal: abbruch.signal })
+  return fetch(url, {
+    headers: {
+      'Icy-MetaData': '1',
+      /* Manche Icecast-Aufbauten ruecken die Titel nur heraus, wenn der
+         Anfragende nach einem Abspielprogramm aussieht — ohne Kennung
+         kommt zwar Ton, aber kein icy-metaint. */
+      'User-Agent': 'GambaKing/1.0 (+radio)',
+      'Accept': '*/*'
+    },
+    signal: abbruch.signal
+  })
     .then(function (r) {
       var metaint = parseInt(r.headers.get('icy-metaint') || '0', 10);
       /* Kein icy-metaint: der Sender bietet keine Titel an. Dann bleibt es
-         beim Sendernamen, und wir fragen ihn auch nicht wieder. */
+         beim Sendernamen. Damit man nicht raten muss, warum nichts kommt,
+         wird der Grund vermerkt. */
+      if (!r.ok) { if (merker) merker.grund = 'HTTP ' + r.status; }
+      else if (!metaint) { if (merker) merker.grund = 'Sender schickt kein icy-metaint'; }
       if (!r.ok || !metaint || !r.body) { try { abbruch.abort(); } catch (e) {} return null; }
+      if (merker) merker.grund = '';
       var leser = r.body.getReader();
       var uebrig = metaint, laenge = -1, teile = [], da = 0, gelesen = 0;
       /* Nach dem ersten Block ist Schluss. Der Deckel verhindert, dass ein
@@ -944,7 +959,10 @@ function icyTitel(url) {
         return null;
       });
     })
-    .catch(function () { return null; })
+    .catch(function (e) {
+      if (merker) merker.grund = 'nicht erreichbar: ' + (e && e.message || 'Abbruch');
+      return null;
+    })
     .then(function (t) { clearTimeout(uhr); return t; });
 }
 
@@ -959,10 +977,10 @@ function icyTitel(url) {
 function webTitel(url) {
   var e = titelCache[url];
   var jetzt = Date.now();
-  if (!e) e = titelCache[url] = { titel: '', zeit: 0, laeuft: false };
+  if (!e) e = titelCache[url] = { titel: '', zeit: 0, laeuft: false, grund: '' };
   if (!e.laeuft && jetzt - e.zeit > TITEL_FRISCH) {
     e.laeuft = true;
-    icyTitel(url).then(function (t) {
+    icyTitel(url, e).then(function (t) {
       e.titel = t || '';
       e.zeit = Date.now();
       e.laeuft = false;
@@ -972,6 +990,12 @@ function webTitel(url) {
     });
   }
   return e.titel;
+}
+
+/** Warum kommt kein Titel? Fuer die Anzeige im Panel. */
+function webTitelGrund(url) {
+  var e = titelCache[url];
+  return (e && e.grund) || '';
 }
 
 /* ─────────────── Operationen ─────────────── */
@@ -1269,6 +1293,9 @@ function applyOp(op) {
       if (op.name !== undefined) ps.name = clean(op.name, 60).trim() || ps.id;
       if (op.was !== undefined) ps.was = clean(op.was, 90).trim();
       if (op.mischen !== undefined) ps.mischen = !!op.mischen;
+      if (op.volume !== undefined) {
+        ps.volume = Math.round(clamp(Number(op.volume) || 0, 0, 2) * 100) / 100;
+      }
       if (op.skins !== undefined) {
         var psSkins = skinListe(op.skins);
         if (psSkins.length) ps.skins = psSkins; else delete ps.skins;
@@ -1368,15 +1395,24 @@ function applyOp(op) {
       if (!wrName) return { error: 'Name fehlt', code: 400 };
       if (!wrUrl) return { error: 'Adresse unbrauchbar — sie muss mit http:// oder https:// anfangen und einen gültigen Rechnernamen haben', code: 400 };
       var liste = db.settings.webRadios;
+      var wrKennung = clean(op.id, 40).trim();
+      var eintragVorher = null;
+      liste.forEach(function (r) { if (r.id === wrKennung) eintragVorher = r; });
       var eintrag = {
-        id: clean(op.id, 40).trim() || webRadioKennung(),
+        id: wrKennung || webRadioKennung(),
         name: wrName,
         /* Ein Zeichen als Symbol reicht — ein Emoji zaehlt in JavaScript
            gern als zwei, deshalb vier Stellen Luft statt einer. */
         icon: clean(op.icon, 4).trim() || '📻',
         was: clean(op.was, 90).trim(),
         url: wrUrl,
-        skins: skinListe(op.skins)
+        skins: skinListe(op.skins),
+        /* Ein Sender kann deutlich lauter aufgenommen sein als der
+           naechste — der Faktor richtet ihn gegen die anderen aus, fuer
+           alle Zuhoerer. */
+        volume: op.volume === undefined
+          ? (eintragVorher && eintragVorher.volume !== undefined ? eintragVorher.volume : 1)
+          : Math.round(clamp(Number(op.volume) || 0, 0, 2) * 100) / 100
       };
       var wo = -1;
       for (var wi = 0; wi < liste.length; wi++) if (liste[wi].id === eintrag.id) wo = wi;
@@ -1790,7 +1826,7 @@ function handleRequest(req, res) {
     if (wr) {
       return sendJSON(res, 200, {
         sender: wr.id, name: wr.name, web: true,
-        titel: webTitel(wr.url), jetzt: Date.now()
+        titel: webTitel(wr.url), grund: webTitelGrund(wr.url), jetzt: Date.now()
       });
     }
     return sendJSON(res, 404, { error: 'Sender läuft nicht auf dem Server' });

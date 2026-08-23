@@ -108,7 +108,7 @@
         "ui/hoof.mp3"
       ],
       "volume": 0.3,
-      "rateJitter": 1.0
+      "rateJitter": 1
     },
     "startbell": {
       "files": []
@@ -187,7 +187,9 @@
       "mood": "Dean Martin · Swing",
       "file": "music/vegas-fm/Dean Martin - Las Vegas.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -197,7 +199,9 @@
       "mood": "Elvis Presley · Rock 'n' Roll",
       "file": "music/vegas-fm/Elvis Presley - Jailhouse Rock.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -207,7 +211,9 @@
       "mood": "Swing · Bar-Klassiker",
       "file": "music/vegas-fm/Fly Me To The Moon (2008 Remastered).mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -217,7 +223,9 @@
       "mood": "Kanye West feat. Jamie Foxx · Hip-Hop",
       "file": "music/vegas-fm/Gold Digger - Kanye West ft Jamie Foxx (Dirty) - Zweanky1 (192k).mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -227,7 +235,9 @@
       "mood": "Horace Silver · Hard Bop",
       "file": "music/vegas-fm/Horace Silver-Gregory is Here.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -237,7 +247,9 @@
       "mood": "Blues · Klassiker",
       "file": "music/vegas-fm/House of the Rising Sun.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -247,7 +259,9 @@
       "mood": "John Coltrane · Hard Bop",
       "file": "music/vegas-fm/John Coltrane - Cousin Mary.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -257,7 +271,9 @@
       "mood": "John Coltrane · Ballade",
       "file": "music/vegas-fm/John Coltrane - In A Sentimental Mood.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -267,7 +283,9 @@
       "mood": "Patti Smith · Rock",
       "file": "music/vegas-fm/Patti Smith's  Because the Night.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -277,7 +295,9 @@
       "mood": "Dave Brubeck Quartet · Cool Jazz",
       "file": "music/vegas-fm/Take Five.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -287,7 +307,9 @@
       "mood": "Dolly Parton · Country",
       "file": "music/vegas-fm/Dolly Parton - Jolene.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -298,7 +320,9 @@
       "mood": "Eine Stunde und drei Viertel am Stück",
       "file": "music/80s-fm/80smix.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -308,7 +332,9 @@
       "mood": "A Flock Of Seagulls · New Wave",
       "file": "music/80s-fm/A Flock Of Seagulls - I Ran (So Far Away).mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     },
     {
@@ -318,7 +344,9 @@
       "mood": "Rick Springfield · Power-Pop",
       "file": "music/80s-fm/Rick Springfield - Jessie's Girl.mp3",
       "volume": 0.85,
-      "skins": ["old-vegas"],
+      "skins": [
+        "old-vegas"
+      ],
       "nurRadio": true
     }
   ],
@@ -344,7 +372,9 @@
         "vfm-gold-digger"
       ],
       "mischen": true,
-      "skins": ["old-vegas"]
+      "skins": [
+        "old-vegas"
+      ]
     },
     {
       "id": "80s-fm",
@@ -356,7 +386,9 @@
         "80s-mix"
       ],
       "mischen": false,
-      "skins": ["old-vegas"]
+      "skins": [
+        "old-vegas"
+      ]
     }
   ]
 }

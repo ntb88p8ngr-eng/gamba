@@ -639,7 +639,7 @@
        Faktor am Mischpult des Sequenzers. */
     var r = loopRegel(TRACKS[Music.trackIdx]);
     var eigen = (r && r.volume !== undefined) ? r.volume : 1;
-    var v = Music.enabled ? (Music.volume / 100) * 0.16 * eigen : 0;
+    var v = Music.enabled ? (Music.volume / 100) * 0.16 * eigen * senderFaktor() : 0;
     Music._gain.gain.setTargetAtTime(v, ctx().currentTime, 0.15);
   }
 
@@ -873,7 +873,8 @@
       if (!r || !r.url || !passt(r)) return;
       liste.push({
         id: r.id, name: r.name, was: r.was || '', icon: r.icon || '📻',
-        url: r.url, web: true
+        url: r.url, web: true,
+        volume: r.volume === undefined ? 1 : Number(r.volume)
       });
     });
     return liste;
@@ -1145,13 +1146,28 @@
     return audio;
   }
 
+  /**
+   * Der Faktor des laufenden Senders.
+   *
+   * Über dem Feinabgleich des einzelnen Stücks liegt noch einer für den
+   * ganzen Sender: ein Webradio kann durchweg lauter aufgenommen sein als
+   * die eigenen Dateien, und dann will man nicht jedes Stück einzeln
+   * nachziehen. Beide Faktoren multiplizieren sich.
+   */
+  function senderFaktor() {
+    if (!Music.radio.an) return 1;
+    var sd = senderVon(Music.radio.sender);
+    return (sd && sd.volume !== undefined) ? Number(sd.volume) : 1;
+  }
+
   function dateiLautstaerke() {
     if (!audio) return;
-    /* Ein fremder Strom bringt keinen eigenen Feinabgleich mit — dort
-       zählt allein der Regler. */
+    /* Ein fremder Strom bringt keinen eigenen Feinabgleich je Stück mit —
+       dort zählt nur der Faktor des Senders. */
     var tr = Music.strom.an ? null : TRACKS[Music.trackIdx];
     var eigen = tr && tr.volume !== undefined ? tr.volume : 1;
-    audio.volume = Math.max(0, Math.min(1, (Music.volume / 100) * 0.9 * eigen));
+    audio.volume = Math.max(0, Math.min(1,
+      (Music.volume / 100) * 0.9 * eigen * senderFaktor()));
   }
 
   function dateiAus() {
