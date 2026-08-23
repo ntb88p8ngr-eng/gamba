@@ -8,7 +8,7 @@ Gerät, nicht zum Konto.
 |---|---|---|
 | GambaKing (Standard) | `default` | — |
 | Old Vegas | `old-vegas` | `assets/skins/old-vegas/` |
-| Vaporwave | `vaporwave` | `assets/skins/vaporwave/` |
+| Vaporwave | `vaporwave` | `assets/skins/vaporwave/` (2 Bilder, 3 Filme) |
 | Strand | `strand` | `assets/skins/strand/` |
 
 Der Ordnername ist die **Kennung** des Skins, nicht sein Anzeigename —
@@ -57,6 +57,51 @@ Ab zwei Bildern erscheint im Konto-Fenster unter den Skin-Kacheln eine
 Reihe mit einer Vorschau je Bild, dazu **🔄 Wechsel** — dann laufen alle
 der Reihe nach durch, alle 45 Sekunden eines, weich überblendet. Die Wahl
 merkt sich das Gerät je Skin.
+
+### Bewegte Hintergründe
+
+Ein Eintrag mit `film: true` ist ein Film. Er bringt eine Liste von
+Fassungen mit und ein Standbild:
+
+```js
+{ id: 'film1', film: true,
+  dateien: ['film1.webm', 'film1.mp4'], standbild: 'film1.webp' }
+```
+
+Genommen wird die **erste Fassung, die der Browser abspielen kann** —
+deshalb steht WebM vorn: es wiegt weniger, und MP4 fängt die Browser auf,
+die kein VP9 können. Beide Fassungen sind nötig: H.264 ist nicht überall
+eingebaut (in manchen Chromium-Bauten gar nicht), VP9 nicht in jedem
+Safari. Fehlt die passende, bleibt das Standbild stehen — und das ist
+auch die Vorschau in der Auswahl und der Ersatz für alle, die
+`prefers-reduced-motion` gesetzt haben.
+
+Für die Aufbereitung: 1280 breit, 24 Bilder, **ohne Ton** (das Element
+ist stumm, der Ton wäre nur Ballast). Ein 4K-Original mit 60 Bildern wiegt
+schnell siebzig Megabyte; dieselbe Aufnahme so aufbereitet ein bis drei.
+
+```
+ffmpeg -i quelle.mp4 -an -vf "scale=1280:-2,fps=24"        -c:v libvpx-vp9 -crf 44 -b:v 0 -row-mt 1 ziel.webm
+ffmpeg -i quelle.mp4 -an -vf "scale=1280:-2,fps=24"        -c:v libx264 -crf 30 -preset medium -pix_fmt yuv420p        -movflags +faststart ziel.mp4
+```
+
+`-movflags +faststart` ist wichtig: ohne das steht der Inhaltsverzeichnis-
+Block am Dateiende und der Browser muss erst alles laden, bevor das erste
+Bild kommt.
+
+### Zu helle Aufnahmen
+
+Ist ein Motiv für den Schleier seines Anstrichs zu hell, bekommt der
+Eintrag ein `dunkel`:
+
+```js
+{ id: 'film2', film: true, dunkel: 'stark', … }
+```
+
+`stark` oder `mittel`. Das dimmt nur die Aufnahme selbst, nicht den
+Schleier und nicht den Text darüber — nützlich, wenn ein einzelner Film
+aus der Reihe fällt und man deshalb nicht den ganzen Anstrich umbauen
+will.
 
 Bilder sind optional: ohne sie bleibt der Verlauf aus `css/skins.css`.
 Empfohlen: 1920×1080 oder größer, `.webp`. Ein Foto als PNG wiegt

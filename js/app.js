@@ -758,13 +758,25 @@
           });
           bildReihe.appendChild(k);
         };
-        liste.forEach(function (b, i) {
+        /* Bilder und Filme werden getrennt gezählt: „1 2 3 · 🎬 1 🎬 2"
+           liest sich besser als eine durchlaufende Nummer, bei der man
+           raten muss, was davon ein Film ist. */
+        var nrBild = 0, nrFilm = 0;
+        liste.forEach(function (b) {
           /* Ein Film taugt nicht als Kachelbild — für ihn steht sein
              Standbild dort, und statt einer Nummer ein Filmzeichen. */
+          var beschriftung;
+          if (b.film) {
+            nrFilm++;
+            beschriftung = b.name || '🎬 ' + nrFilm;
+          } else {
+            nrBild++;
+            beschriftung = b.name || String(nrBild);
+          }
           mach(b.id,
                GK.skinBildVorschau ? GK.skinBildVorschau(GK.skin(), b.id)
                                    : GK.skinBildPfad(GK.skin(), b.id),
-               b.film ? '🎬 Film' : String(i + 1));
+               beschriftung);
         });
         mach('wechsel', '', '🔄 Wechsel');
       }

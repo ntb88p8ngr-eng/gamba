@@ -59,10 +59,29 @@
       was: 'Rosa Sonne, Chromgitter, 1984 im Einkaufszentrum.',
       farbe: '#1b0736',
       /* Liegt die Datei nicht da, bleibt es beim gemalten Sonnenuntergang
-         aus css/skins.css — die Bildebene bleibt dann einfach leer. */
+         aus css/skins.css — die Bildebene bleibt dann einfach leer.
+
+         Die Fotos stehen vorn und eines davon ist die Voreinstellung: ein
+         Film wiegt ein Vielfaches, und den soll bekommen, wer ihn auch
+         ausgesucht hat. Wer einmal wählt, behält seine Wahl. */
       bilder: [
         { id: '1', datei: 'hintergrund1.webp' },
-        { id: '2', datei: 'hintergrund2.webp' }
+        { id: '2', datei: 'hintergrund2.webp' },
+        /* Wie bei Old Vegas zwei Fassungen, WebM zuerst: es wiegt weniger,
+           und MP4 faengt die Browser auf, die kein VP9 koennen. Umgekehrt
+           ginge es nicht — H.264 ist nicht ueberall eingebaut, das eigene
+           Chromium der Tests etwa kann es gar nicht. Ohne die WebM-Fassung
+           liefe dort nur das Standbild.
+           Das Standbild ist zugleich die Vorschau in der Auswahl und der
+           Ersatz fuer alle, die keine Bewegung wollen. */
+        { id: 'film1', film: true,
+          dateien: ['film1.webm', 'film1.mp4'], standbild: 'film1.webp' },
+        /* Die Neonstadt ist die hellste der drei — ungedimmt verschwinden
+           die Zeilen darüber im Leuchten. */
+        { id: 'film2', film: true, dunkel: 'stark',
+          dateien: ['film2.webm', 'film2.mp4'], standbild: 'film2.webp' },
+        { id: 'film3', film: true,
+          dateien: ['film3.webm', 'film3.mp4'], standbild: 'film3.webp' }
       ]
     },
     {
@@ -137,6 +156,10 @@
   GK.skinBildVorschau = function (skinId, bildId) {
     var e = eintragVon(skinId || jetzt, bildId);
     if (!e) return '';
+    /* Ein Film ohne Standbild hat kein Kachelbild — die Filmdatei selbst
+       taugt nicht als background-image. Dann bleibt die Kachel leer und
+       das Filmzeichen darauf sagt, worum es geht. */
+    if (e.film && !e.standbild) return '';
     return 'assets/skins/' + (skinId || jetzt) + '/' + (e.standbild || e.datei);
   };
 
@@ -169,6 +192,22 @@
     var w = document.documentElement;
     if (an) w.setAttribute('data-bg-bild', 'an');
     else w.removeAttribute('data-bg-bild');
+  }
+
+  /**
+   * Wie stark eine Aufnahme heruntergedimmt wird.
+   *
+   * Der Schleier eines Anstrichs ist auf sein Motiv abgestimmt — eine
+   * Nachtaufnahme braucht wenig, eine Neonstadt bei voller Helligkeit
+   * viel. Statt den Schleier je Datei umzuschreiben, trägt der Eintrag
+   * selbst ein `dunkel` und die Aufnahme bekommt einen Filter. Das kommt
+   * zum Schleier hinzu, statt ihn zu ersetzen, und gilt nur für die
+   * Bild- und Filmebene — Text und Kacheln bleiben unberührt.
+   */
+  function dunkelFlagge(e) {
+    var w = document.documentElement;
+    if (e && e.dunkel) w.setAttribute('data-bg-dunkel', e.dunkel);
+    else w.removeAttribute('data-bg-dunkel');
   }
 
   /* Welches Bild zuletzt gewünscht wurde. Wer schnell durchklickt, löst
@@ -275,6 +314,12 @@
        während der Film lädt, und es bleibt, wenn er nicht darf. */
     if (eintrag.standbild) {
       bildZeigen('assets/skins/' + skinId + '/' + eintrag.standbild);
+    } else {
+      /* Ohne Standbild muss die Bildebene leer werden. Sonst bliebe das
+         Foto liegen, das vorher gewählt war, und läge unter dem Film —
+         sichtbar in jeder Sekunde, in der er noch lädt, und dauerhaft für
+         alle, die keine Bewegung wollen. */
+      bildZeigen('');
     }
     var v = document.querySelector('.bg-film');
     if (!v || ruhigGewuenscht()) return;    // dann bleibt es beim Standbild
@@ -307,6 +352,7 @@
    * unsichtbar weiterspielt, kostet nur Strom.
    */
   function eintragZeigen(e) {
+    dunkelFlagge(e);
     if (!e) { filmAus(); bildZeigen(''); return; }
     if (e.film) { filmZeigen(e, jetzt); return; }
     filmAus();
