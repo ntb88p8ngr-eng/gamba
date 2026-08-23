@@ -1409,6 +1409,9 @@
 }
 .pack-punkt{color:var(--line);font-style:normal;font-size:.63rem}
 /* Hoch und runter, schmal übereinander — sie stehen in jeder Zeile. */
+/* Ein ausgeblendeter Loop bleibt sichtbar, aber sichtbar abgeschaltet. */
+.pack-zeile.pack-aus{opacity:.5}
+.pack-schalter{display:flex;align-items:center;flex:0 0 auto;cursor:pointer}
 .pack-schieber{display:flex;flex-direction:column;gap:2px;flex:0 0 auto}
 .pack-pfeil{
   padding:0;width:26px;height:15px;line-height:1;

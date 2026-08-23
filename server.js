@@ -104,7 +104,12 @@ function emptyDB() {
          skins }. Anders als die Sender aus dem Sound-Pack liegen sie hier
          und nicht in einer Datei — sie sollen sich im laufenden Betrieb
          anlegen lassen, ohne dass jemand ans Dateisystem muss. */
-      webRadios: []
+      webRadios: [],
+      /* Die fuenf eingebauten Loops entstehen im Browser und stehen in
+         keiner Datei — loeschen kann man sie also nicht. Ausblenden schon,
+         und die Lautstaerke gegen die anderen ausrichten. Drinsteht nur,
+         was vom Normalfall abweicht: { keller: { aus: true } }. */
+      loopRegel: {}
     }
   };
 }
@@ -122,6 +127,7 @@ function loadDB() {
     if (!db.settings.spielLuck || typeof db.settings.spielLuck !== 'object') db.settings.spielLuck = {};
     if (!db.settings.spielRegel || typeof db.settings.spielRegel !== 'object') db.settings.spielRegel = {};
     if (!Array.isArray(db.settings.webRadios)) db.settings.webRadios = [];
+    if (!db.settings.loopRegel || typeof db.settings.loopRegel !== 'object') db.settings.loopRegel = {};
     return db;
   } catch (e) {
     return emptyDB();
@@ -369,7 +375,10 @@ function publicState() {
     /* Die Webradios gehen an jeden: sie stehen ohnehin gleich in der
        Senderauswahl, und ohne sie wüsste der Browser nicht, was es zu
        hören gibt. */
-    webRadios: db.settings.webRadios || []
+    webRadios: db.settings.webRadios || [],
+    /* Welche eingebauten Loops ausgeblendet sind und wie laut sie
+       laufen — das gilt fuer alle, also geht es an alle. */
+    loopRegel: db.settings.loopRegel || {}
   };
 }
 
@@ -967,7 +976,7 @@ function webTitel(url) {
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1, packTrack: 1, packStation: 1, packMove: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1, packTrack: 1, packStation: 1, packMove: 1, loopRegel: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
 var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1 };
 
@@ -1279,6 +1288,23 @@ function applyOp(op) {
       if (!packSchreiben()) return { error: 'Sound-Pack nicht schreibbar', code: 500 };
       packLesen();
       return { pack: packUebersicht(), state: publicState() };
+    }
+
+    /* Ein eingebauter Loop: ausblenden oder Lautstaerke setzen.
+       Loeschen geht nicht — er steht im Programm, nicht in einer Datei. */
+    case 'loopRegel': {
+      var lrId = clean(op.id, 40).trim();
+      if (!lrId) return { error: 'Keine Kennung', code: 400 };
+      db.settings.loopRegel = db.settings.loopRegel || {};
+      var lr = db.settings.loopRegel[lrId] || {};
+      if (op.aus !== undefined) lr.aus = !!op.aus;
+      if (op.volume !== undefined) {
+        lr.volume = Math.round(clamp(Number(op.volume) || 0, 0, 2) * 100) / 100;
+      }
+      /* Nichts Besonderes eingestellt? Dann auch keinen Eintrag behalten. */
+      if (!lr.aus && (lr.volume === undefined || lr.volume === 1)) delete db.settings.loopRegel[lrId];
+      else db.settings.loopRegel[lrId] = lr;
+      break;
     }
 
     /* Reihenfolge aendern — einen Platz hoch oder runter.

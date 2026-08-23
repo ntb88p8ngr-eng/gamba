@@ -573,11 +573,27 @@
    * Zurück kommen Paare aus Stück und echter Position, damit setTrack()
    * weiterhin mit der Position in TRACKS arbeitet.
    */
+  /**
+   * Regel für einen eingebauten Loop.
+   *
+   * Die fünf Loops entstehen hier im Browser und stehen in keiner Datei —
+   * löschen kann man sie also nicht. Ausblenden schon: der Admin setzt
+   * das, und es gilt für alle.
+   */
+  function loopRegel(t) {
+    if (t.datei) return null;                       // nur die erzeugten
+    var alle = (GK.state && GK.state.loopRegel) || {};
+    return alle[t.id] || null;
+  }
+
   function zumAnstrich() {
     var skin = GK.skin ? GK.skin() : 'default';
     var raus = [];
     TRACKS.forEach(function (t, i) {
-      if (!t.skins || t.skins.indexOf(skin) >= 0) raus.push({ track: t, idx: i });
+      if (t.skins && t.skins.indexOf(skin) < 0) return;
+      var r = loopRegel(t);
+      if (r && r.aus) return;
+      raus.push({ track: t, idx: i });
     });
     return raus;
   }
@@ -618,7 +634,12 @@
 
   function applyGain() {
     if (!Music._gain) return;
-    var v = Music.enabled ? (Music.volume / 100) * 0.16 : 0;
+    /* Auch ein erzeugter Loop darf gegen die anderen ausgerichtet werden.
+       Bei den Datei-Stücken macht das dateiLautstaerke, hier sitzt der
+       Faktor am Mischpult des Sequenzers. */
+    var r = loopRegel(TRACKS[Music.trackIdx]);
+    var eigen = (r && r.volume !== undefined) ? r.volume : 1;
+    var v = Music.enabled ? (Music.volume / 100) * 0.16 * eigen : 0;
     Music._gain.gain.setTargetAtTime(v, ctx().currentTime, 0.15);
   }
 
@@ -792,6 +813,41 @@
     Music.sync.dauer = 0;
     syncUhrAus();
   }
+
+  /**
+   * Die eingebauten Loops, für das Admin-Panel.
+   *
+   * Sie stehen in keiner Datei, tauchen also auch nicht im Sound-Pack
+   * auf — trotzdem soll man sie dort sehen und ausblenden können.
+   */
+  Music.loops = function () {
+    var raus = [];
+    TRACKS.forEach(function (t) {
+      if (t.datei) return;
+      var r = loopRegel(t) || {};
+      raus.push({
+        id: t.id, name: t.name, mood: t.mood, bpm: t.bpm || 0,
+        aus: !!r.aus, volume: r.volume === undefined ? 1 : r.volume
+      });
+    });
+    return raus;
+  };
+
+  /* Blendet der Admin den Loop aus, der hier gerade läuft, muss etwas
+     anderes anlaufen — sonst spielt weiter, was niemand mehr sehen kann. */
+  GK.on('musik-liste', function () {
+    if (Music.strom.an) return;
+    var jetzt = TRACKS[Music.trackIdx];
+    var r = loopRegel(jetzt);
+    if (!r || !r.aus) return;
+    var erlaubt = Music.sichtbar();
+    if (!erlaubt.length) { Music.stop(); return; }
+    var lief = Music.enabled && Music.playing;
+    Music.trackIdx = erlaubt[0].idx;
+    Music.playing = false;
+    if (lief) Music.start();
+    save();
+  });
 
   /** Die Webradios, die der Admin angelegt hat. */
   Music.webRadios = function () {

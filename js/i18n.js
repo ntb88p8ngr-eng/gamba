@@ -282,8 +282,21 @@
     /* Radio: Gleichlauf und die Bedienung im Admin-Panel. */
     'SENDER': 'STATION', 'STÜCK': 'TRACK',
     '⏭ WEITER': '⏭ NEXT', '▶ AUFLEGEN': '▶ PLAY',
+    /* Die Reiter des Admin-Panels („Spieler", „Spiele" und „Musik" stehen
+       schon weiter oben). */
+    'Statistiken': 'Statistics', 'Einstellungen': 'Settings',
+    /* „Spiele" heisst anderswo „gespielte Runden" und wird deshalb als
+       „Rounds" uebersetzt — als Reiterbeschriftung waere das falsch.
+       Also das Wort, das die Halle ohnehin traegt. */
+    'Spielhalle': 'Games',
     /* Musik & Radio im Admin-Panel */
     'MUSIK & RADIO': 'MUSIC & RADIO',
+    '🎛 EINGEBAUTE LOOPS': '🎛 BUILT-IN LOOPS',
+    'ausgeblendet': 'hidden',
+    'Sichtbar für alle': 'Visible to everyone',
+    'Noch keine eigenen Stücke aus Dateien.': 'No tracks of your own from files yet.',
+    'Diese fünf entstehen live im Browser und liegen in keiner Datei — löschen lassen sie sich deshalb nicht. Das Häkchen blendet einen aus, für alle. Läuft er bei jemandem gerade, springt der auf das nächste Stück.':
+      'These five are generated live in the browser and exist in no file — so they cannot be deleted. The tick hides one, for everyone. If it happens to be playing for someone, they jump to the next track.',
     '⬆ NEUEN TITEL HOCHLADEN': '⬆ UPLOAD A NEW TRACK',
     '💿 EINZELNE TITEL': '💿 INDIVIDUAL TRACKS',
     '📼 OFFLINE-RADIOS': '📼 OFFLINE RADIOS',

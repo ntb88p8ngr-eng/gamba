@@ -284,22 +284,25 @@
   GK.adoptState = function (s) {
     if (!s || !s.players) return false;
     var before = JSON.stringify([state.players, state.feed, state.spielLuck,
-                                 state.spielRegel, state.wipeAt, state.webRadios]);
+                                 state.spielRegel, state.wipeAt, state.webRadios,
+                                 state.loopRegel]);
     state.players = s.players;
     state.feed = s.feed || [];
     state.spielLuck = s.spielLuck || {};
     state.spielRegel = s.spielRegel || {};
     state.wipeAt = s.wipeAt || 0;
     state.wipeXp = !!s.wipeXp;
-    var radiosVorher = JSON.stringify(state.webRadios || []);
+    var radiosVorher = JSON.stringify([state.webRadios || [], state.loopRegel || {}]);
     state.webRadios = Array.isArray(s.webRadios) ? s.webRadios : [];
+    state.loopRegel = (s.loopRegel && typeof s.loopRegel === 'object') ? s.loopRegel : {};
     /* Kommt ein Webradio dazu oder fällt eines weg, muss die Senderliste
        neu gebaut werden — sie steht womöglich gerade offen. */
-    if (JSON.stringify(state.webRadios) !== radiosVorher && GK.emit) GK.emit('musik-liste');
+    if (JSON.stringify([state.webRadios, state.loopRegel]) !== radiosVorher && GK.emit) GK.emit('musik-liste');
     if (state.currentId && !state.players[state.currentId]) state.currentId = null;
     GK.save();
     return JSON.stringify([state.players, state.feed, state.spielLuck,
-                           state.spielRegel, state.wipeAt, state.webRadios]) !== before;
+                           state.spielRegel, state.wipeAt, state.webRadios,
+                           state.loopRegel]) !== before;
   };
 
   /**

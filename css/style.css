@@ -758,7 +758,36 @@ input[type=range]{flex:1;accent-color:var(--pink)}
    normalen Dialogs. Erst auf dem Rechner (ab 900 px) wird der Dialog breit
    und die Abschnitte stehen als Karten nebeneinander. */
 .admin-gitter{display:flex;flex-direction:column;gap:16px}
+.admin-gitter[hidden]{display:none}
 .admin-feld{min-width:0}
+
+/* ── Reiterleiste ──
+   Bleibt beim Scrollen oben stehen: die Abschnitte sind lang, und wer
+   unten angekommen ist, will nicht erst wieder hochscrollen, um den
+   Bereich zu wechseln. */
+.admin-reiter{
+  position:sticky;top:0;z-index:3;
+  display:flex;gap:6px;flex-wrap:wrap;
+  margin:-4px -4px 14px;padding:8px 4px;
+  background:linear-gradient(180deg,var(--panel-solid) 70%,transparent);
+  border-bottom:2px solid var(--line)
+}
+.admin-reiter button{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.05);border-color:var(--line)
+}
+.admin-reiter button.sel{
+  border-color:var(--gold);color:var(--gold);
+  background:rgba(255,209,46,.14);box-shadow:0 0 14px rgba(255,209,46,.35)
+}
+.reiter-ic{font-size:.9rem;line-height:1}
+/* Am Handy zählt jeder Millimeter — dort nur die Zeichen, ohne Wörter. */
+@media (max-width:560px){
+  .admin-reiter{gap:4px}
+  .admin-reiter button{padding:8px 10px}
+  .admin-reiter button span:last-child{display:none}
+  .reiter-ic{font-size:1.05rem}
+}
 
 /* Quoten je Spiel */
 .quoten-liste{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow-y:auto}
@@ -806,6 +835,10 @@ input[type=range]{flex:1;accent-color:var(--pink)}
   .modal.weit .admin-gitter{
     display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 22px;align-items:start
   }
+  /* Muss hier noch einmal stehen: die Regel eine Zeile darüber ist
+     spezifischer als .admin-gitter[hidden] und würde einen versteckten
+     Reiter sonst wieder als Gitter anzeigen. */
+  .modal.weit .admin-gitter[hidden]{display:none}
   .modal.weit .admin-feld{
     background:rgba(0,0,0,.26);border:2px solid var(--line);border-radius:18px;padding:14px 16px
   }

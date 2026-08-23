@@ -1036,6 +1036,11 @@
     });
   }
 
+  /* Welcher Reiter im Admin-Panel zuletzt offen war. Steht ausserhalb der
+     Funktion, damit er ein Schliessen überlebt: wer an den Quoten sitzt,
+     will beim nächsten Öffnen nicht wieder bei den Spielern landen. */
+  var adminReiter = 'spieler';
+
   function adminPanel() {
     var selectedId = (GK.player() || {}).id || null;
 
@@ -2107,10 +2112,60 @@
       ]);
     }
 
+    /**
+     * Ein eingebauter Loop.
+     *
+     * Er entsteht im Browser und liegt in keiner Datei — hinauswerfen
+     * lässt er sich also nicht, ausblenden schon. Deshalb ein Schalter
+     * statt eines Papierkorbs: was hier verschwindet, ist wiederholbar.
+     */
+    function loopZeile(l) {
+      var reg = el('input', {
+        type: 'range', min: '0', max: '150', step: '5', value: String(Math.round(l.volume * 100))
+      });
+      var wert = el('b', { text: Math.round(l.volume * 100) + '%' });
+      reg.addEventListener('input', function () { wert.textContent = reg.value + '%'; });
+      reg.addEventListener('change', function () {
+        GK.sfx('chip');
+        GK.net.op('loopRegel', { id: l.id, volume: Number(reg.value) / 100 });
+      });
+
+      var schalter = el('input', { type: 'checkbox' });
+      schalter.checked = !l.aus;
+      schalter.addEventListener('change', function () {
+        GK.sfx('click');
+        GK.net.op('loopRegel', { id: l.id, aus: !schalter.checked });
+      });
+
+      var marken = [l.mood];
+      if (l.bpm) marken.push(l.bpm + ' BPM');
+      if (l.aus) marken.push('ausgeblendet');
+
+      return el('div', { class: 'pack-zeile' + (l.aus ? ' pack-aus' : '') }, [
+        el('label', { class: 'pack-schalter', title: 'Sichtbar für alle' }, [schalter]),
+        el('span', { class: 'pack-ic', text: '🎛' }),
+        el('span', { class: 'pack-text' }, [
+          el('b', { text: l.name }),
+          markenZeile(marken)
+        ]),
+        el('div', { class: 'pack-laut' }, [reg, wert])
+      ]);
+    }
+
+    var loopBox = el('div', { class: 'pack-liste' });
+    function loopsMalen() {
+      loopBox.innerHTML = '';
+      var loops = (GK.music && GK.music.loops) ? GK.music.loops() : [];
+      loops.forEach(function (l) { loopBox.appendChild(loopZeile(l)); });
+    }
+    /* Der Serverstand kommt nach — dann steht hier, was wirklich gilt. */
+    GK.on('musik-liste', function () { if (loopBox.isConnected) loopsMalen(); });
+    loopsMalen();
+
     function packMalen() {
       titelBox.innerHTML = '';
       if (!packDaten.musik.length) {
-        titelBox.appendChild(el('p', { class: 'hint', text: 'Noch keine eigenen Stücke — die eingebauten Loops entstehen im Browser und stehen nicht hier.' }));
+        titelBox.appendChild(el('p', { class: 'hint', text: 'Noch keine eigenen Stücke aus Dateien.' }));
       } else {
         packDaten.musik.forEach(function (t) { titelBox.appendChild(titelZeile(t)); });
       }
@@ -2555,182 +2610,234 @@
           .concat(kinder));
     }
 
+    /* ── Reiter ──────────────────────────────────────────────────
+       Dreizehn Kästen untereinander waren mehrere Bildschirmlängen zum
+       Scrollen, in denen man nichts wiederfand. Jetzt liegen sie in fünf
+       Gruppen, und oben steht, welche man gerade sieht.
+
+       Gebaut werden alle auf einmal, versteckt wird nur. Die Kästen halten
+       nämlich Zustand — die getroffene Spielerauswahl, ein aufgeklappter
+       Sender, die laufende Uhr des Radios —, und der ginge beim Neubauen
+       jedes Mal verloren. */
+    var gruppen = [
+      { id: 'spieler', icon: '👥', name: 'Spieler', felder: [
+        feld('SPIELER', [
+                    listBox,
+                    el('div', { class: 'field' }, [el('label', { text: 'BETRAG' }), amount]),
+                    quick,
+                    el('div', { style: 'height:12px' }),
+                    el('div', { class: 'modal-actions' }, [giveBtn, takeBtn, setBtn])
+                  ]),
+
+        feld('ERFAHRUNG (XP & LEVEL)', [
+                    el('div', { class: 'field' }, [el('label', { text: 'XP-BETRAG' }), xpAmount]),
+                    xpQuick,
+                    el('div', { style: 'height:10px' }),
+                    xpGiveBtn,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [xpAllBtn]),
+                    el('p', { class: 'hint', text: 'Level bringen Chips und schalten Spiele frei. XP abziehen kann ein Spiel auch wieder sperren.' })
+                  ]),
+
+        feld('GLÜCKS-REGLER (HEIMLICHER CHEAT)', [
+                    el('div', { class: 'range-row' }, [
+                      luckSlider,
+                      el('div', { class: 'info-box', style: 'min-width:92px' }, [
+                        el('div', { class: 'luck-eingabe' }, [luckFeld, luckVal]),
+                        el('span', { text: 'Luck' })
+                      ])
+                    ]),
+                    el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet, auf ein Zehntel genau. Gilt nur für den oben gewählten Spieler und kommt zur Quote des Spiels dazu.' })
+                  ]),
+
+        feld('EINZELNEN SPIELER ZURÜCKSETZEN', [
+                    el('div', { class: 'modal-actions' }, [resetOneBtn]),
+                    el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' })
+                  ])
+      ] },
+      { id: 'spiele', icon: '🎰', name: 'Spielhalle', felder: [
+        feld('SPIELE & EINSÄTZE', [
+                    regelBox,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [regelnZurueck]),
+                    el('p', { class: 'hint', text: 'Das Häkchen zeigt oder versteckt ein Spiel — für alle, überall: Spielhalle, Zufallsspiel, Party. Min und Max begrenzen den Einsatz in diesem Spiel; leer heißt, es gilt die Grenze des Spiels selbst. In einer Party kann der Gastgeber zusätzlich eigene Grenzen setzen — es gilt immer die engere.' })
+                  ], true),
+
+        feld('QUOTEN JE SPIEL', [
+                    quotenBox,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [quotenNeutral]),
+                    el('p', { class: 'hint', text: '50 ist neutral, Zehntel sind möglich — 50,5 ist ein Hauch gnädiger. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat stehen nicht in der Liste: dort werden echte Karten ausgeteilt, da gibt es nichts zu schieben.' })
+                  ], true)
+      ] },
+      { id: 'musik', icon: '🎵', name: 'Musik', felder: [
+        feld('MUSIK & RADIO', [
+                    el('div', { class: 'pack-kopf', text: '⬆ NEUEN TITEL HOCHLADEN' }),
+                    upDatei,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'mp-zwei' }, [
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), upName]),
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'WOHIN?' }), upZiel])
+                    ]),
+                    el('label', { class: 'party-schalter' }, [
+                      upNurRadio,
+                      el('span', {}, [
+                        el('b', { text: 'Nur im Radio' }),
+                        el('span', { class: 'party-schalter-was',
+                                     text: 'Ohne Haken steht der Titel auch einzeln in der Stückauswahl.' })
+                      ])
+                    ]),
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [upKnopf]),
+                    upStand,
+                    el('p', { class: 'hint', text: 'Die Datei wandert nach assets/sfx/music/, die Spieldauer liest der Server selbst aus dem Dateikopf, und der Eintrag landet in sounds.json. MP3 wird dabei genau vermessen — bei anderen Formaten zählt für das Radio die Voreinstellung des Senders.' }),
+
+                    el('div', { class: 'pack-kopf', text: '🎛 EINGEBAUTE LOOPS' }),
+                    loopBox,
+                    el('p', { class: 'hint', text: 'Diese fünf entstehen live im Browser und liegen in keiner Datei — löschen lassen sie sich deshalb nicht. Das Häkchen blendet einen aus, für alle. Läuft er bei jemandem gerade, springt der auf das nächste Stück.' }),
+
+                    el('div', { class: 'pack-kopf', text: '💿 EINZELNE TITEL' }),
+                    titelBox,
+                    el('p', { class: 'hint', text: 'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen.' }),
+
+                    el('div', { class: 'pack-kopf', text: '📼 OFFLINE-RADIOS' }),
+                    senderBox,
+                    el('div', { style: 'height:8px' }),
+                    radioStand,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'mp-zwei' }, [
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'SENDER' }), radioSenderWahl]),
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'STÜCK' }), radioStueckWahl])
+                    ]),
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'modal-actions' }, [radioSkip, radioAuflegen, radioNeu]),
+                    el('p', { class: 'hint', text: 'Diese Sender laufen aus eigenen Dateien auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle.' }),
+
+                    el('div', { class: 'pack-kopf', text: '📻 WEBRADIOS' }),
+                    wrListe,
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'mp-zwei' }, [
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), wrName]),
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'SYMBOL' }), wrIcon])
+                    ]),
+                    wrEmojiBox,
+                    el('label', { class: 'mp-label', text: 'ADRESSE DES STROMS' }), wrUrl,
+                    el('label', { class: 'mp-label', text: 'UNTERZEILE' }), wrWas,
+                    el('label', { class: 'mp-label', text: 'IN WELCHEN ANSTRICHEN?' }),
+                    wrSkinBox,
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'modal-actions' }, [wrSpeichern, wrNeu]),
+                    el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
+                  ], true)
+      ] },
+      { id: 'zahlen', icon: '📊', name: 'Statistiken', felder: [
+        feld('STATISTIK', [
+                    el('div', { class: 'stat-waehler' }, [spielerWahl, spielWahl]),
+                    el('div', { style: 'height:8px' }),
+                    spannenReihe,
+                    reihenReihe,
+                    typReihe,
+                    el('div', { style: 'height:8px' }),
+                    statKopf,
+                    statRahmen,
+                    el('div', { style: 'height:8px' }),
+                    statTabelle,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [statNeu, statJson, statCsv, statLeeren]),
+                    el('p', { class: 'hint', text: 'Netto ist aus Sicht der Spieler: positiv heißt, das Spiel hat in diesem Zeitraum mehr ausgezahlt als eingenommen. Aufgezeichnet werden die letzten 31 Tage.' })
+                  ], true),
+
+        feld('PARTY-PROTOKOLL', [
+                    partyWahl,
+                    el('div', { style: 'height:8px' }),
+                    partyBox,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [partyNeu]),
+                    el('p', { class: 'hint', text: 'Jede zu Ende gespielte Party landet hier mit ihren Einstellungen und dem Endstand — die letzten 120 Sitzungen.' })
+                  ], true),
+
+                  /* Alles, was klingt, in einem Kasten: die Stücke selbst, die
+                     Sender aus eigenen Dateien und die Webradios. Vorher standen
+                     die an drei Stellen, und wer eine Lautstärke geraderücken
+                     wollte, musste an die Datei. */,
+
+        feld('OFFENE TISCHE & PARTYS', [
+                    mpBox,
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [mpNeu]),
+                    el('p', { class: 'hint', text: 'Auflösen bucht alle Einkäufe zurück aufs Konto. Tische und Partys, in denen drei Minuten lang nichts passiert und die nie gestartet sind, verschwinden von selbst.' })
+                  ])
+      ] },
+      { id: 'system', icon: '⚙️', name: 'Einstellungen', felder: [
+        feld('VERWALTUNG', [
+                    el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
+                  ]),
+
+        feld('NÄCHSTER WIPE', [
+                    el('div', { class: 'field' }, [el('label', { text: 'DATUM (0 UHR)' }), wipeDatum]),
+                    el('label', { class: 'party-schalter' }, [
+                      wipeXpBox,
+                      el('span', {}, [
+                        el('b', { text: 'Stufen mit zurücksetzen' }),
+                        el('span', { class: 'party-schalter-was',
+                                     text: 'Ohne Haken bleiben XP und Level stehen, nur die Chips gehen zurück.' })
+                      ])
+                    ]),
+                    el('div', { style: 'height:8px' }),
+                    el('div', { class: 'modal-actions' }, [wipeSetzen, wipeAus]),
+                    wipeStand
+                  ]),
+
+        feld('GEFAHRENZONE', [
+                    el('div', { class: 'admin-note', html: '⚠️ Löscht alle Spieler, Chips und Statistiken — für alle, auf dem Server. Nicht rückgängig zu machen.' }),
+                    el('div', { class: 'modal-actions' }, [wipeBtn])
+                  ])
+      ] }
+    ];
+
+    var reiterLeiste = el('nav', { class: 'admin-reiter' });
+    var flaechen = {};
+    var reiterKnoepfe = [];
+
+    function reiterZeigen(id) {
+      adminReiter = id;
+      Object.keys(flaechen).forEach(function (k) { flaechen[k].hidden = k !== id; });
+      reiterKnoepfe.forEach(function (b) { b.classList.toggle('sel', b.dataset.reiter === id); });
+      /* Die Statistik zeichnet auf ein Canvas, und ein verstecktes misst
+         null — die Kurve käme in falscher Breite heraus. Also neu malen,
+         sobald der Reiter wirklich sichtbar ist. */
+      if (id === 'zahlen') setTimeout(function () { try { statZeichnen(); } catch (e) {} }, 0);
+    }
+
+    gruppen.forEach(function (g) {
+      var knopf = el('button', { class: 'btn btn-small', type: 'button' }, [
+        el('span', { class: 'reiter-ic', text: g.icon }),
+        el('span', { text: g.name })
+      ]);
+      knopf.dataset.reiter = g.id;
+      knopf.addEventListener('click', function () { GK.sfx('click'); reiterZeigen(g.id); });
+      reiterLeiste.appendChild(knopf);
+      reiterKnoepfe.push(knopf);
+      var flaeche = el('div', { class: 'admin-gitter' }, g.felder);
+      flaeche.hidden = true;
+      flaechen[g.id] = flaeche;
+    });
+
     GK.modal({
       emoji: '👑',
       weit: true,
       title: 'Admin-Panel',
       text: 'Spieler wählen, Chips verteilen, Schicksal manipulieren. Mit großer Macht kommt großes Chaos.',
       nodes: [
-        el('div', { class: 'admin-note', html: '💡 <b>Money-Give:</b> Spieler antippen, Betrag eingeben, <b>GEBEN</b> drücken. Geschenkte Chips zählen nicht als Profit im Leaderboard.' }),
-        el('div', { class: 'admin-gitter' }, [
-
-          feld('SPIELER', [
-            listBox,
-            el('div', { class: 'field' }, [el('label', { text: 'BETRAG' }), amount]),
-            quick,
-            el('div', { style: 'height:12px' }),
-            el('div', { class: 'modal-actions' }, [giveBtn, takeBtn, setBtn])
-          ]),
-
-          feld('ERFAHRUNG (XP & LEVEL)', [
-            el('div', { class: 'field' }, [el('label', { text: 'XP-BETRAG' }), xpAmount]),
-            xpQuick,
-            el('div', { style: 'height:10px' }),
-            xpGiveBtn,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [xpAllBtn]),
-            el('p', { class: 'hint', text: 'Level bringen Chips und schalten Spiele frei. XP abziehen kann ein Spiel auch wieder sperren.' })
-          ]),
-
-          feld('GLÜCKS-REGLER (HEIMLICHER CHEAT)', [
-            el('div', { class: 'range-row' }, [
-              luckSlider,
-              el('div', { class: 'info-box', style: 'min-width:92px' }, [
-                el('div', { class: 'luck-eingabe' }, [luckFeld, luckVal]),
-                el('span', { text: 'Luck' })
-              ])
-            ]),
-            el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet, auf ein Zehntel genau. Gilt nur für den oben gewählten Spieler und kommt zur Quote des Spiels dazu.' })
-          ]),
-
-          feld('QUOTEN JE SPIEL', [
-            quotenBox,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [quotenNeutral]),
-            el('p', { class: 'hint', text: '50 ist neutral, Zehntel sind möglich — 50,5 ist ein Hauch gnädiger. Höher heißt: dieses Spiel ist zu allen Spielern gnädiger, tiefer heißt gieriger. Wirkt zusätzlich zum Glücks-Regler des Spielers. Blackjack und Baccarat stehen nicht in der Liste: dort werden echte Karten ausgeteilt, da gibt es nichts zu schieben.' })
-          ], true),
-
-          feld('PARTY-PROTOKOLL', [
-            partyWahl,
-            el('div', { style: 'height:8px' }),
-            partyBox,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [partyNeu]),
-            el('p', { class: 'hint', text: 'Jede zu Ende gespielte Party landet hier mit ihren Einstellungen und dem Endstand — die letzten 120 Sitzungen.' })
-          ], true),
-
-          /* Alles, was klingt, in einem Kasten: die Stücke selbst, die
-             Sender aus eigenen Dateien und die Webradios. Vorher standen
-             die an drei Stellen, und wer eine Lautstärke geraderücken
-             wollte, musste an die Datei. */
-          feld('MUSIK & RADIO', [
-            el('div', { class: 'pack-kopf', text: '⬆ NEUEN TITEL HOCHLADEN' }),
-            upDatei,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'mp-zwei' }, [
-              el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), upName]),
-              el('div', {}, [el('label', { class: 'mp-label', text: 'WOHIN?' }), upZiel])
-            ]),
-            el('label', { class: 'party-schalter' }, [
-              upNurRadio,
-              el('span', {}, [
-                el('b', { text: 'Nur im Radio' }),
-                el('span', { class: 'party-schalter-was',
-                             text: 'Ohne Haken steht der Titel auch einzeln in der Stückauswahl.' })
-              ])
-            ]),
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [upKnopf]),
-            upStand,
-            el('p', { class: 'hint', text: 'Die Datei wandert nach assets/sfx/music/, die Spieldauer liest der Server selbst aus dem Dateikopf, und der Eintrag landet in sounds.json. MP3 wird dabei genau vermessen — bei anderen Formaten zählt für das Radio die Voreinstellung des Senders.' }),
-
-            el('div', { class: 'pack-kopf', text: '💿 EINZELNE TITEL' }),
-            titelBox,
-            el('p', { class: 'hint', text: 'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen.' }),
-
-            el('div', { class: 'pack-kopf', text: '📼 OFFLINE-RADIOS' }),
-            senderBox,
-            el('div', { style: 'height:8px' }),
-            radioStand,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'mp-zwei' }, [
-              el('div', {}, [el('label', { class: 'mp-label', text: 'SENDER' }), radioSenderWahl]),
-              el('div', {}, [el('label', { class: 'mp-label', text: 'STÜCK' }), radioStueckWahl])
-            ]),
-            el('div', { style: 'height:10px' }),
-            el('div', { class: 'modal-actions' }, [radioSkip, radioAuflegen, radioNeu]),
-            el('p', { class: 'hint', text: 'Diese Sender laufen aus eigenen Dateien auf dem Server — alle Zuhörer hören dasselbe Stück an derselben Stelle. WEITER überspringt den Rest, AUFLEGEN startet das gewählte Stück sofort. Beides gilt für alle.' }),
-
-            el('div', { class: 'pack-kopf', text: '📻 WEBRADIOS' }),
-            wrListe,
-            el('div', { style: 'height:10px' }),
-            el('div', { class: 'mp-zwei' }, [
-              el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), wrName]),
-              el('div', {}, [el('label', { class: 'mp-label', text: 'SYMBOL' }), wrIcon])
-            ]),
-            wrEmojiBox,
-            el('label', { class: 'mp-label', text: 'ADRESSE DES STROMS' }), wrUrl,
-            el('label', { class: 'mp-label', text: 'UNTERZEILE' }), wrWas,
-            el('label', { class: 'mp-label', text: 'IN WELCHEN ANSTRICHEN?' }),
-            wrSkinBox,
-            el('div', { style: 'height:10px' }),
-            el('div', { class: 'modal-actions' }, [wrSpeichern, wrNeu]),
-            el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
-          ], true),
-
-          feld('SPIELE & EINSÄTZE', [
-            regelBox,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [regelnZurueck]),
-            el('p', { class: 'hint', text: 'Das Häkchen zeigt oder versteckt ein Spiel — für alle, überall: Spielhalle, Zufallsspiel, Party. Min und Max begrenzen den Einsatz in diesem Spiel; leer heißt, es gilt die Grenze des Spiels selbst. In einer Party kann der Gastgeber zusätzlich eigene Grenzen setzen — es gilt immer die engere.' })
-          ], true),
-
-          feld('STATISTIK', [
-            el('div', { class: 'stat-waehler' }, [spielerWahl, spielWahl]),
-            el('div', { style: 'height:8px' }),
-            spannenReihe,
-            reihenReihe,
-            typReihe,
-            el('div', { style: 'height:8px' }),
-            statKopf,
-            statRahmen,
-            el('div', { style: 'height:8px' }),
-            statTabelle,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [statNeu, statJson, statCsv, statLeeren]),
-            el('p', { class: 'hint', text: 'Netto ist aus Sicht der Spieler: positiv heißt, das Spiel hat in diesem Zeitraum mehr ausgezahlt als eingenommen. Aufgezeichnet werden die letzten 31 Tage.' })
-          ], true),
-
-          feld('OFFENE TISCHE & PARTYS', [
-            mpBox,
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [mpNeu]),
-            el('p', { class: 'hint', text: 'Auflösen bucht alle Einkäufe zurück aufs Konto. Tische und Partys, in denen drei Minuten lang nichts passiert und die nie gestartet sind, verschwinden von selbst.' })
-          ]),
-
-          feld('EINZELNEN SPIELER ZURÜCKSETZEN', [
-            el('div', { class: 'modal-actions' }, [resetOneBtn]),
-            el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' })
-          ]),
-
-          feld('VERWALTUNG', [
-            el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
-          ]),
-
-          feld('NÄCHSTER WIPE', [
-            el('div', { class: 'field' }, [el('label', { text: 'DATUM (0 UHR)' }), wipeDatum]),
-            el('label', { class: 'party-schalter' }, [
-              wipeXpBox,
-              el('span', {}, [
-                el('b', { text: 'Stufen mit zurücksetzen' }),
-                el('span', { class: 'party-schalter-was',
-                             text: 'Ohne Haken bleiben XP und Level stehen, nur die Chips gehen zurück.' })
-              ])
-            ]),
-            el('div', { style: 'height:8px' }),
-            el('div', { class: 'modal-actions' }, [wipeSetzen, wipeAus]),
-            wipeStand
-          ]),
-
-          feld('GEFAHRENZONE', [
-            el('div', { class: 'admin-note', html: '⚠️ Löscht alle Spieler, Chips und Statistiken — für alle, auf dem Server. Nicht rückgängig zu machen.' }),
-            el('div', { class: 'modal-actions' }, [wipeBtn])
-          ])
-        ])
-      ]
+        reiterLeiste,
+        el('div', { class: 'admin-note', html: '💡 <b>Money-Give:</b> Spieler antippen, Betrag eingeben, <b>GEBEN</b> drücken. Geschenkte Chips zählen nicht als Profit im Leaderboard.' })
+      ].concat(gruppen.map(function (g) { return flaechen[g.id]; }))
     });
+
+    /* Beim nächsten Öffnen steht man wieder da, wo man aufgehört hat. */
+    reiterZeigen(flaechen[adminReiter] ? adminReiter : 'spieler');
 
     /* Der Sender läuft weiter, während das Panel offen steht — die Anzeige
        zieht im Takt nach und räumt sich weg, sobald das Fenster zu ist. */
