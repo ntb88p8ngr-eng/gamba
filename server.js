@@ -757,7 +757,10 @@ function stromAdresse(roh) {
 }
 
 /** Nur Anstriche, die es wirklich gibt — der Rest faellt still weg. */
-var SKIN_IDS = { 'default': 1, 'old-vegas': 1 };
+/* Muss zur Liste in js/skins.js passen — ein neuer Anstrich dort will
+   auch hier eingetragen werden, sonst laesst sich kein Sender auf ihn
+   beschraenken. */
+var SKIN_IDS = { 'default': 1, 'old-vegas': 1, 'vaporwave': 1, 'strand': 1 };
 
 function skinListe(roh) {
   if (!Array.isArray(roh)) return [];

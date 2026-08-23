@@ -259,6 +259,12 @@
     /* Stufentitel — sie stehen im Konto, im Leaderboard und in der Lobby. */
     'Chip-Küken': 'Chip chick', 'Zocker': 'Gambler', 'Hochroller': 'High roller',
     'Casino-Hai': 'Casino shark', 'Legende': 'Legend', 'GambaKing': 'GambaKing',
+    /* Anstriche: die Namen bleiben, die Beschreibungen nicht. */
+    'Rosa Sonne, Chromgitter, 1984 im Einkaufszentrum.':
+      'Pink sun, chrome grid, 1984 in the shopping mall.',
+    'Türkises Wasser, warmer Sand, Sonne kurz vorm Untergehen.':
+      'Turquoise water, warm sand, sun about to set.',
+    'Strand': 'Beach',
     'Großmeister': 'Grandmaster', 'Chip-Baron': 'Chip baron', 'Neon-Fürst': 'Neon prince',
     'Glücksgott': 'God of luck', 'Unsterblicher': 'Immortal', 'Mythos': 'Myth',
     'Spiele': 'Rounds', 'PASSWORT ÄNDERN': 'CHANGE PASSWORD',

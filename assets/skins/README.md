@@ -8,6 +8,13 @@ Gerät, nicht zum Konto.
 |---|---|---|
 | GambaKing (Standard) | `default` | — |
 | Old Vegas | `old-vegas` | `assets/skins/old-vegas/` |
+| Vaporwave | `vaporwave` | — |
+| Strand | `strand` | — |
+
+Old Vegas bringt eigene Bilder mit. Vaporwave und Strand kommen ohne aus:
+ihre Hintergründe entstehen vollständig aus Verläufen und den Ebenen, die
+`index.html` ohnehin mitbringt — Sonne, Gitter, Lichtflecken, Streifen.
+Das lädt nichts nach und lässt sich in einer Zeile nachjustieren.
 
 ---
 
@@ -18,6 +25,11 @@ Skin an einem Block `:root[data-skin="…"]`, der die Farbvariablen aus
 `css/style.css` überschreibt. Weil fast jede Regel im Haus über
 `var(--pink)`, `var(--gold)` und Geschwister geht, färbt sich damit die
 ganze Seite mit — Knöpfe, Ränder, Leuchten, Kacheln, Tabellen.
+
+Wer einen weiteren Skin anlegt, trägt ihn an drei Stellen ein: die Liste
+in `js/skins.js`, einen Block in `css/skins.css` samt Farbprobe
+(`.skin-probe-<kennung>`), und `SKIN_IDS` in `server.js` — ohne das
+Letzte lässt sich kein Radiosender auf ihn beschränken.
 
 ## Eigene Bilder
 

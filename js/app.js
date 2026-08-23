@@ -2768,6 +2768,11 @@
                     el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet, auf ein Zehntel genau. Gilt nur für den oben gewählten Spieler und kommt zur Quote des Spiels dazu.' })
                   ]),
 
+        feld('ALLE SPIELER AUF EINMAL', [
+                    el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
+                    el('p', { class: 'hint', text: 'Gilt für jeden auf dem Server, nicht nur für den oben gewählten. Der Betrag kommt aus dem Feld darüber.' })
+                  ]),
+
         feld('EINZELNEN SPIELER ZURÜCKSETZEN', [
                     el('div', { class: 'modal-actions' }, [resetOneBtn]),
                     el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' })
@@ -2905,10 +2910,9 @@
                   ])
       ] },
       { id: 'system', icon: '⚙️', name: 'Einstellungen', felder: [
-        feld('VERWALTUNG', [
-                    el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
-                    el('div', { style: 'height:8px' }),
-                    el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
+        feld('ZUGANG', [
+                    el('div', { class: 'modal-actions' }, [pinBtn, exitBtn]),
+                    el('p', { class: 'hint', text: 'Die PIN gilt für alle, die ins Panel wollen. Verlassen meldet nur dich ab — das Spiel läuft weiter.' })
                   ]),
 
         feld('NÄCHSTER WIPE', [

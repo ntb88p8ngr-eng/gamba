@@ -27,7 +27,8 @@
   var SKINS = [
     {
       id: 'default', name: 'GambaKing', emoji: '👑',
-      was: 'Neon, Lila und Chaos — wie gehabt.'
+      was: 'Neon, Lila und Chaos — wie gehabt.',
+      farbe: '#12002b'
     },
     {
       id: 'old-vegas', name: 'Old Vegas', emoji: '🎲',
@@ -36,6 +37,7 @@
          durchnummeriert — welches Motiv dahintersteckt, zeigt die
          Vorschau in der Auswahl besser als jeder Name, und wer eine
          Datei austauscht, muss hier nichts nachziehen. */
+      farbe: '#1a0407',
       bilder: [
         { id: '1', datei: 'hintergrund1.webp' },
         { id: '2', datei: 'hintergrund2.webp' },
@@ -51,6 +53,16 @@
           dateien: ['hintergrundfilm.webm', 'hintergrundfilm.mp4'],
           standbild: 'hintergrundfilm.webp' }
       ]
+    },
+    {
+      id: 'vaporwave', name: 'Vaporwave', emoji: '🌴',
+      was: 'Rosa Sonne, Chromgitter, 1984 im Einkaufszentrum.',
+      farbe: '#1b0736'
+    },
+    {
+      id: 'strand', name: 'Strand', emoji: '🏖',
+      was: 'Türkises Wasser, warmer Sand, Sonne kurz vorm Untergehen.',
+      farbe: '#07304a'
     }
   ];
 
@@ -293,7 +305,11 @@
     /* Die Farbe der Browserleiste am Handy zieht mit — sonst steht über
        einem roten Casino ein lila Balken. */
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', jetzt === 'old-vegas' ? '#1a0407' : '#12002b');
+    if (meta) {
+      var sk = null;
+      for (var i = 0; i < SKINS.length; i++) if (SKINS[i].id === jetzt) sk = SKINS[i];
+      meta.setAttribute('content', (sk && sk.farbe) || '#12002b');
+    }
     bildAnwenden();
   }
 
