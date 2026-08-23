@@ -100,7 +100,7 @@
     rules: [
       'Setze Chips und starte den Flug. <b>Tippen, klicken oder Leertaste</b> lässt den Vogel flattern — sonst fällt er.',
       'Jede durchflogene Röhre erhöht den Multiplikator. Die erste bringt nur <b>+2 %</b>, danach steigt der Zuwachs mit jeder Röhre: die fünfte bringt <b>+14 %</b>, die zehnte <b>+29 %</b>, ab der 21. sind es <b>+60 %</b>. Früh aussteigen lohnt sich also kaum — das Geld liegt weit hinten.',
-      'Mit <b>AUSSTEIGEN</b> sicherst du dir jederzeit Einsatz × Multiplikator — auch mitten in der Luft.',
+      'Mit <b>AUSSTEIGEN</b> oder der Taste <b>S</b> sicherst du dir jederzeit Einsatz × Multiplikator — auch mitten in der Luft.',
       'Ein Treffer an Röhre oder Boden kostet den ganzen Einsatz. Die Decke ist weich, dort passiert nichts.',
       'Mit jeder Röhre wird die <b>Lücke enger</b>, das Tempo höher und der Abstand kürzer. Nach <b>' + ZIEL + ' Röhren</b> ist der Flug am Ziel und zahlt von selbst aus — dann stehen <b>' + Math.round(multNach(ZIEL)) + '×</b> auf der Uhr.',
       'Wer mitten im Flug in die Lobby geht, bekommt den Stand von diesem Moment ausgezahlt.'
@@ -162,7 +162,7 @@
           el('div', { style: 'height:8px' }),
           cashBtn,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 <b>Tippen oder Leertaste</b> — auch zum Starten. Der Zuwachs je Röhre wächst mit, dafür wird die Lücke enger und das Tempo höher. Nach <b>' + ZIEL + ' Röhren</b> zahlt der Flug von selbst aus.' })
+          el('p', { class: 'hint', html: '💡 <b>Tippen oder Leertaste</b> — auch zum Starten, <b>S</b> zum Aussteigen. Der Zuwachs je Röhre wächst mit, dafür wird die Lücke enger und das Tempo höher. Nach <b>' + ZIEL + ' Röhren</b> zahlt der Flug von selbst aus.' })
         ])
       ]);
       root.appendChild(stage);
@@ -541,10 +541,20 @@
       }
       buehne.addEventListener('pointerdown', tipp);
       function taste(ev) {
+        /* Nur solange dieses Spiel offen ist und niemand in ein Feld tippt. */
+        var z = document.activeElement;
+        if (z && /input|textarea|select/i.test(z.tagName)) return;
+        /* Aussteigen auf Tastendruck: mit der einen Hand flattern und mit
+           derselben aussteigen zu müssen, kostete jedes Mal den Weg zur
+           Maus — und der Weg zur Maus kostete Röhren. */
+        if (ev.code === 'KeyS' || ev.key === 's' || ev.key === 'S') {
+          if (!laeuft || cashBtn.disabled) return;
+          ev.preventDefault();
+          GK.sfx('cash');
+          aussteigen(false);
+          return;
+        }
         if (ev.code === 'Space' || ev.code === 'ArrowUp' || ev.key === ' ') {
-          /* Nur solange dieses Spiel offen ist und niemand in ein Feld tippt. */
-          var z = document.activeElement;
-          if (z && /input|textarea|select/i.test(z.tagName)) return;
           ev.preventDefault();
           if (laeuft) flattern(); else if (!startBtn.disabled) start();
         }

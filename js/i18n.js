@@ -694,8 +694,8 @@
       '💡 The closer to Smaug\'s hoard in the middle, the richer the find — and the more awake he gets. Before “HUNTING!” you can flee at any time.',
     '💡 Der <b>Dreizack</b> ersetzt alles außer der Truhe. Fünf Dreizacke auf einer Linie zahlen <b>1900×</b> den Linieneinsatz. <b>Endlos</b> taucht weiter, bis du stoppst oder die Chips alle sind.':
       '💡 The <b>trident</b> substitutes for everything except the chest. Five tridents on one line pay <b>1900×</b> the line bet. <b>Endless</b> keeps diving until you stop or run out of chips.',
-    '💡 <b>Tippen oder Leertaste</b> — auch zum Starten. Der Zuwachs je Röhre wächst mit, dafür wird die Lücke enger und das Tempo höher. Nach <b>25 Röhren</b> zahlt der Flug von selbst aus.':
-      '💡 <b>Tap or press space</b> — that starts the run too. The gain per pipe keeps growing, but the gap gets tighter and the pace faster. After <b>25 pipes</b> the flight cashes out by itself.',
+    '💡 <b>Tippen oder Leertaste</b> — auch zum Starten, <b>S</b> zum Aussteigen. Der Zuwachs je Röhre wächst mit, dafür wird die Lücke enger und das Tempo höher. Nach <b>25 Röhren</b> zahlt der Flug von selbst aus.':
+      '💡 <b>Tap or press space</b> — that starts the run too, <b>S</b> cashes out. The gain per pipe keeps growing, but the gap gets tighter and the pace faster. After <b>25 pipes</b> the flight cashes out by itself.',
     '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.':
       '💡 <b>A</b>/<b>D</b> to move, <b>click</b> to shoot — on a phone use the buttons on the field and tap the field itself. A tap also starts the run.',
     'Noch am Boden': 'Still on the ground',
