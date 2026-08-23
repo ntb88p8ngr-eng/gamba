@@ -1481,6 +1481,15 @@
 
 .mp-sitze{display:grid;gap:8px;grid-template-columns:repeat(3,minmax(0,1fr))}
 .mp-sitze.n2{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Vier Plaetze gehoeren in eine Reihe. Ohne diese Zeile fielen sie in das
+   Dreierraster zurueck, der vierte rutschte allein in eine zweite Reihe —
+   und die Handkarten darunter waren eine ganze Kastenhoehe zu tief. */
+.mp-sitze.n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+/* Zu viert wird es je Kasten eng: weniger Rand, kleinere Schrift, und die
+   Kartenreihe darin darf schmaler werden. */
+.mp-sitze.n4 .mp-sitz{padding:6px 5px;gap:3px}
+.mp-sitze.n4 .mp-karten{min-height:0;gap:3px}
+.mp-sitze.n4 .mp-sitz-name{font-size:.72rem}
 .mp-sitz{
   min-width:0;padding:8px;border-radius:14px;text-align:center;
   border:2px solid rgba(255,255,255,.12);background:rgba(10,0,26,.55);
@@ -1515,7 +1524,7 @@
   width:18px;height:18px;border-radius:50%;background:#fff;color:#12002b;
   font-size:.62rem;font-weight:900;display:grid;place-items:center;flex:0 0 18px
 }
-.mp-karten{display:flex;gap:4px;min-height:56px;align-items:center}
+.mp-karten{display:flex;gap:4px;min-height:56px;align-items:center;justify-content:center}
 .mp-stack{font-size:.74rem;color:var(--lime)}
 /* Einsatz dieser Setzrunde, gross und mit Chip; darunter klein, was der
    Spieler in der ganzen Hand schon drin hat. */
@@ -1546,7 +1555,11 @@
 .btn-mp{background:linear-gradient(135deg,#00e5ff,#7c3bff);color:#fff;border-color:rgba(255,255,255,.35)}
 
 @media(max-width:620px){
-  .mp-sitze{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* Am Handy passen keine vier nebeneinander — dort wieder zwei. Die
+     Kennung muss mitgenannt werden, sonst gewaenne sie mit ihrer
+     hoeheren Gewichtung auch hier. */
+  .mp-sitze,
+  .mp-sitze.n4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .mp-spiel{flex-wrap:wrap}
   .mp-spiel-ic{width:44px;height:44px;flex:0 0 44px}
   .mp-knoepfe{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
@@ -1593,6 +1606,15 @@
    schmaler und dafuer gleich hoch wie ueberall sonst. */
 .mp-board .card[data-deck=watten]{width:73px}
 .mp-karten .card[data-deck=watten].mini{width:49px}
+/* Vier Watten-Blaetter nebeneinander in einem Viertel der Breite. */
+.mp-sitze.n4 .mp-karten .card[data-deck=watten].mini{width:42px}
+/* Am Handy stehen wieder zwei Kaesten nebeneinander, also ist auch wieder
+   Platz. Die Regel steht hier unten und nicht oben bei den uebrigen
+   Handy-Regeln: sonst kaeme die Zeile darueber spaeter im Blatt und
+   gewaenne bei gleicher Gewichtung. */
+@media(max-width:620px){
+  .mp-sitze.n4 .mp-karten .card[data-deck=watten].mini{width:49px}
+}
 .mp-hand .card[data-deck=watten]{width:70px}
 .mp-legekarte .card[data-deck=watten]{width:67px}
 
