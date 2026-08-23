@@ -456,6 +456,11 @@
 :root[data-skin="strand"] .topbar{
   background:linear-gradient(180deg,rgba(7,48,74,.96),rgba(7,48,74,.72))
 }
+/* Am Strand keine Laufschrift. Der Balken schnitt quer durch die
+   Aufnahme, und das Gerenne darin passt nicht zu einem Anstrich, dessen
+   ganzer Punkt Ruhe ist. Der Inhalt steckt ohnehin nur in der Marquee —
+   verloren geht damit nichts, was es nicht anderswo gäbe. */
+:root[data-skin="strand"] .marquee{display:none}
 
 /* ─────────────────────── Titelanzeige je Anstrich ───────────────────────
    Das Band unter der Kopfzeile (css/style.css) färbt sich über die

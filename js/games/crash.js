@@ -128,8 +128,21 @@
         var maxM = Math.max(2.4, last.m * 1.55);
 
         function px(p) { return (p.t / maxT) * (W * 0.84) + W * 0.05; }
+        /* Die Höhe folgt dem Multiplikator selbst, nicht seinem Logarithmus.
+           Der Multiplikator waechst exponentiell mit der Zeit — der
+           Logarithmus davon waechst linear, und genau deshalb war die Kurve
+           frueher eine Gerade. Direkt aufgetragen bleibt sie am Anfang fast
+           waagerecht und stellt sich auf, je hoeher es geht: eine Rakete,
+           die abhebt, statt einer Rampe. */
+        /* Die Spitze liegt durch die Kopffreiheit immer auf derselben
+           Hoehe. Genau daran wird die Kurve gemessen: alles darunter wird
+           mit einer Potenz nach unten gezogen, die Spitze selbst bleibt,
+           wo sie war. So wird die Biegung deutlich, ohne dass die Rakete
+           in der Bildmitte kleben bliebe. */
+        var spitze = Math.max(0.001, (last.m - 1) / Math.max(0.001, maxM - 1));
         function py(p) {
-          var f = Math.min(1, Math.log(p.m) / Math.log(maxM));
+          var roh = Math.min(1, (p.m - 1) / Math.max(0.001, maxM - 1));
+          var f = spitze * Math.pow(Math.min(1, roh / spitze), 1.7);
           return H - (f * (H * 0.70) + H * 0.10) + p.z * (H * 0.05);
         }
 
