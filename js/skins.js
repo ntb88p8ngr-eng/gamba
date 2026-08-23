@@ -57,12 +57,21 @@
     {
       id: 'vaporwave', name: 'Vaporwave', emoji: '🌴',
       was: 'Rosa Sonne, Chromgitter, 1984 im Einkaufszentrum.',
-      farbe: '#1b0736'
+      farbe: '#1b0736',
+      /* Liegt die Datei nicht da, bleibt es beim gemalten Sonnenuntergang
+         aus css/skins.css — die Bildebene bleibt dann einfach leer. */
+      bilder: [
+        { id: '1', datei: 'hintergrund1.webp' },
+        { id: '2', datei: 'hintergrund2.webp' }
+      ]
     },
     {
       id: 'strand', name: 'Strand', emoji: '🏖',
       was: 'Türkises Wasser, warmer Sand, Sonne kurz vorm Untergehen.',
-      farbe: '#07304a'
+      farbe: '#07304a',
+      bilder: [
+        { id: '1', datei: 'hintergrund1.webp' }
+      ]
     }
   ];
 
@@ -151,20 +160,63 @@
    * aufgeblendet. Ein weicher Übergang geht nur so — background-image
    * selbst lässt sich nicht überblenden.
    */
+  /* Liegt ein Foto im Hintergrund, merkt das Wurzelelement es sich.
+     Manche Anstriche malen ihren Hintergrund selbst — eine Sonne, ein
+     Gitter, einen Horizont —, und das alles muss aus dem Weg, sobald ein
+     Foto dahinterliegt. Ohne die Flagge wüsste das Stylesheet nichts
+     davon; die Bildebenen sind ihm gleichgültig. */
+  function bildFlagge(an) {
+    var w = document.documentElement;
+    if (an) w.setAttribute('data-bg-bild', 'an');
+    else w.removeAttribute('data-bg-bild');
+  }
+
+  /* Welches Bild zuletzt gewünscht wurde. Wer schnell durchklickt, löst
+     mehrere Ladevorgänge aus, und die kommen nicht in der Reihenfolge
+     zurück, in der sie losgeschickt wurden — angezeigt wird nur, was auch
+     noch gewollt ist. */
+  var bildWunsch = '';
+
+  function bildLeeren(a, b) {
+    a.style.backgroundImage = ''; b.style.backgroundImage = '';
+    a.classList.remove('an'); b.classList.remove('an');
+    delete a.dataset.pfad; delete b.dataset.pfad;
+    bildFlagge(false);
+  }
+
   function bildZeigen(pfad) {
     var a = document.querySelector('.bg-bild[data-bg="a"]');
     var b = document.querySelector('.bg-bild[data-bg="b"]');
     if (!a || !b) return;
-    if (!pfad) { a.style.backgroundImage = ''; b.style.backgroundImage = '';
-                 a.classList.remove('an'); b.classList.remove('an'); return; }
+    bildWunsch = pfad || '';
+    if (!pfad) { bildLeeren(a, b); return; }
+
     var neu = lage === 'a' ? b : a;
-    var alt = lage === 'a' ? a : b;
     if (neu.dataset.pfad === pfad && neu.classList.contains('an')) return;
-    neu.style.backgroundImage = 'url("' + pfad + '")';
-    neu.dataset.pfad = pfad;
-    neu.classList.add('an');
-    alt.classList.remove('an');
-    lage = lage === 'a' ? 'b' : 'a';
+
+    /* Erst laden, dann zeigen. Fehlt die Datei, bliebe sonst eine leere
+       Ebene über dem gemalten Hintergrund liegen — und bei einem Anstrich,
+       der seine Sonne selbst malt, stünde man vor einer dunklen Fläche.
+       So fällt es sauber auf das zurück, was das Stylesheet kann.
+       Aus dem Zwischenspeicher kommt das Bild sofort zurück; der Umweg
+       kostet also nur beim allerersten Mal etwas. */
+    var probe = new Image();
+    probe.onload = function () {
+      if (bildWunsch !== pfad) return;         // inzwischen weitergeklickt
+      var oben = lage === 'a' ? b : a;
+      var unten = lage === 'a' ? a : b;
+      oben.style.backgroundImage = 'url("' + pfad + '")';
+      oben.dataset.pfad = pfad;
+      oben.classList.add('an');
+      unten.classList.remove('an');
+      lage = lage === 'a' ? 'b' : 'a';
+      bildFlagge(true);
+    };
+    probe.onerror = function () {
+      if (bildWunsch !== pfad) return;
+      bildLeeren(a, b);
+    };
+    probe.src = pfad;
   }
 
   /* Welche Fassung eines Films kann dieser Browser? Gefragt wird der
