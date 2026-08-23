@@ -2319,7 +2319,7 @@
       wo.forEach(function (n) { marken.push(n); });
       if (t.dauer) marken.push(mmssKurz(t.dauer));
 
-      return el('div', { class: 'pack-zeile' }, [
+      var zeile = el('div', { class: 'pack-zeile pack-klick' }, [
         el('span', { class: 'pack-ic', text: '💿' }),
         el('span', { class: 'pack-text' }, [
           el('b', { text: t.name }),
@@ -2328,6 +2328,9 @@
         lautstaerkeRegler(t),
         weg
       ]);
+      /* Anklicken holt den Titel ins Formular — wie bei den Sendern. */
+      zeile.addEventListener('click', function () { tiFormular(t); GK.sfx('chip'); });
+      return zeile;
     }
 
     function senderZeile(s) {
@@ -2354,7 +2357,17 @@
                führt. Nimmt er ohnehin alles, gibt es nichts zu ordnen. */
             if (s.tracks) unten.push(schieber('track', t.id, s.id));
             unten.push(lautstaerkeRegler(t));
-            return el('div', { class: 'pack-unterzeile' }, unten);
+            var uz = el('div', { class: 'pack-unterzeile pack-klick' }, unten);
+            /* Auch hier: das Stueck, das man vor sich sieht, ist das, was
+               man ändern will. Der Klick darf aber nicht bis zum Kopf des
+               Senders durchschlagen — der holte sonst den Sender ins
+               Formular statt des Titels. */
+            uz.addEventListener('click', function (ev) {
+              ev.stopPropagation();
+              tiFormular(t);
+              GK.sfx('chip');
+            });
+            return uz;
           })
         : [el('p', { class: 'hint', text: 'Noch kein Stück in diesem Sender.' })]);
       innen.hidden = true;
@@ -2453,6 +2466,71 @@
       }
       zielFuellen();
     }
+
+    /* ── Einen einzelnen Titel ändern ──
+       Name und Unterzeile stehen in der Datei nicht drin; was in der Liste
+       und in der Titelanzeige erscheint, kommt aus sounds.json. Bisher
+       liess sich beides nur beim Hochladen setzen — wer sich vertippt
+       hatte oder nachtragen wollte, wer da singt, musste an die Datei.
+
+       Angelegt wird hier nichts: ein Titel entsteht durch Hochladen.
+       Deshalb nur Ändern, und der Papierkorb bleibt in der Zeile. */
+    var tiName = el('input', { class: 'mp-feld', type: 'text', maxlength: '60', placeholder: 'Wie heißt das Stück?' });
+    var tiMood = el('input', { class: 'mp-feld', type: 'text', maxlength: '80', placeholder: 'z. B. Dean Martin · Swing' });
+    var tiSkinBox = el('div', { class: 'webradio-skins' });
+    var tiNurRadio = el('input', { type: 'checkbox' });
+    var tiSpeichern = el('button', { class: 'btn btn-small btn-lime', text: '✓ TITEL ÄNDERN' });
+    var tiNeu = el('button', { class: 'btn btn-small btn-ghost', text: '✕ FORMULAR LEEREN' });
+    var tiHinweis = el('p', { class: 'hint', text: 'Eine Titelzeile in den Listen anklicken holt sie hierher.' });
+    var tiId = '';
+
+    var tiSkinFelder = GK.skins.map(function (sk) {
+      var box = el('input', { type: 'checkbox' });
+      box.dataset.skin = sk.id;
+      tiSkinBox.appendChild(el('label', { class: 'party-schalter webradio-skin' }, [
+        box, el('span', {}, [el('b', { text: sk.emoji + ' ' + sk.name })])
+      ]));
+      return box;
+    });
+
+    function tiFormular(t) {
+      tiId = (t && t.id) || '';
+      tiName.value = (t && t.name) || '';
+      tiMood.value = (t && t.mood) || '';
+      tiNurRadio.checked = !!(t && t.nurRadio);
+      var tiGewaehlt = (t && t.skins) || [];
+      tiSkinFelder.forEach(function (b) { b.checked = tiGewaehlt.indexOf(b.dataset.skin) >= 0; });
+      /* Ohne ausgewählten Titel hat das Formular nichts zu tun — dann
+         steht dort der Hinweis statt leerer Felder. */
+      tiSpeichern.disabled = !tiId;
+      tiHinweis.textContent = tiId
+        ? GK.txt('Wird geändert: ' + (t.file || tiId), 'Editing: ' + (t.file || tiId))
+        : GK.txt('Eine Titelzeile in den Listen anklicken holt sie hierher.',
+                 'Click a track row in the lists to load it here.');
+    }
+
+    tiNeu.addEventListener('click', function () { GK.sfx('click'); tiFormular(null); });
+    tiSpeichern.addEventListener('click', function () {
+      if (!tiId) return;
+      if (!tiName.value.trim()) { GK.toast('Der Titel braucht einen Namen', 'bad', '💿'); return; }
+      GK.sfx('click');
+      GK.net.op('packTrack', {
+        id: tiId, name: tiName.value, mood: tiMood.value,
+        nurRadio: tiNurRadio.checked,
+        skins: tiSkinFelder.filter(function (b) { return b.checked; })
+                           .map(function (b) { return b.dataset.skin; })
+      }).then(function (out) {
+        if (!out || out.error) return;
+        if (out.pack) { packDaten = out.pack; packMalen(); }
+        /* Die Musikliste im Browser hat ihre eigene Kopie von sounds.json —
+           ohne das Nachladen stünde im Musikfenster und in der
+           Titelanzeige noch der alte Name. */
+        if (GK.sfxPack && GK.sfxPack.reload) GK.sfxPack.reload();
+        GK.toast('Titel geändert', 'gold', '💿');
+        tiFormular(null);
+      });
+    });
+    tiFormular(null);
 
     /* ── Offline-Sender anlegen und ändern ──
        Dasselbe Formular für beides, wie bei den Webradios: eine Zeile
@@ -3057,7 +3135,25 @@
 
                     el('div', { class: 'pack-kopf', text: '💿 EINZELNE TITEL' }),
                     titelBox,
-                    el('p', { class: 'hint', text: 'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen.' }),
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'mp-zwei' }, [
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), tiName]),
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'UNTERZEILE' }), tiMood])
+                    ]),
+                    el('label', { class: 'mp-label', text: 'IN WELCHEN ANSTRICHEN?' }),
+                    tiSkinBox,
+                    el('label', { class: 'party-schalter' }, [
+                      tiNurRadio,
+                      el('span', {}, [
+                        el('b', { text: 'Nur im Radio' }),
+                        el('span', { class: 'party-schalter-was',
+                                     text: 'Ohne Haken steht der Titel auch einzeln in der Stückauswahl.' })
+                      ])
+                    ]),
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'modal-actions' }, [tiSpeichern, tiNeu]),
+                    tiHinweis,
+                    el('p', { class: 'hint', text: 'Der Regler richtet einen Titel gegen die anderen aus — aufgenommen ist nicht alles gleich laut. 100 % heißt: so, wie die Datei klingt. Der Papierkorb nimmt den Eintrag heraus, die Datei bleibt liegen. Die Unterzeile ist das, was klein unter dem Namen steht — im Musikfenster, in der Titelanzeige und in dieser Liste.' }),
 
                     el('div', { class: 'pack-kopf', text: '📼 OFFLINE-RADIOS' }),
                     senderBox,
