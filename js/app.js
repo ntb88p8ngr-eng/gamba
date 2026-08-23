@@ -413,10 +413,107 @@
     });
   }
 
+  /* ─────────────── HALL OF GAMBA ───────────────
+     Sechs Auszeichnungen, die nicht vom Kontostand abhängen, sondern von
+     dem, was jemand angerichtet hat. Das Leaderboard sagt, wer vorne
+     liegt; hier steht, wer eine Geschichte hat.
+
+     Gerechnet wird auf dem Server — die Rundenliste liegt dort, und der
+     härteste Einzelverlust steht in keiner Spalte, den muss man suchen. */
+  var TROPHAEEN = {
+    krone:    { icon: '👑', name: 'Die dickste Krone',   was: 'Höchster Stand, den jemand je hatte',      art: 'chips' },
+    sieg:     { icon: '💥', name: 'Der große Wurf',      was: 'Größter Gewinn in einer einzigen Runde',   art: 'chips' },
+    schlag:   { icon: '💣', name: 'Der harte Schlag',    was: 'Größter Verlust in einer einzigen Runde',  art: 'chips' },
+    verlust:  { icon: '📉', name: 'Der Großverlierer',   was: 'Tiefstes Minus über alles gerechnet',      art: 'chips' },
+    million:  { icon: '💎', name: 'Der Millionär',       was: 'Als Erster über eine Million',             art: 'zeit' },
+    ausdauer: { icon: '🎲', name: 'Die Ausdauer',        was: 'Meiste gespielte Runden',                  art: 'runden' }
+  };
+
+  var hallDaten = null;
+
+  function renderHall() {
+    var box = $('#hall');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!hallDaten) {
+      box.appendChild(el('div', { class: 'feed-empty', text: 'Die Ruhmeshalle wird gerade poliert.' }));
+      return;
+    }
+    hallDaten.trophaeen.forEach(function (t) {
+      var def = TROPHAEEN[t.id];
+      if (!def) return;
+      var b = t.beste;
+      var karte = el('div', { class: 'hall-karte' + (b ? '' : ' hall-leer') }, [
+        el('div', { class: 'hall-ic', text: def.icon }),
+        el('div', { class: 'hall-text' }, [
+          el('b', { text: def.name }),
+          el('span', { class: 'hall-was', text: def.was })
+        ])
+      ]);
+      if (!b) {
+        /* Eine unvergebene Auszeichnung ist kein Fehler, sondern eine
+           Einladung — deshalb steht sie da und wird nicht versteckt. */
+        karte.appendChild(el('div', { class: 'hall-offen', text: 'Noch zu haben' }));
+        box.appendChild(karte);
+        return;
+      }
+      var wert;
+      /* Das Datum folgt der Sprache der Seite, nicht der des Browsers: sonst
+         steht im deutschen Casino 8/23/2026. */
+      if (def.art === 'zeit') wert = new Date(b.wert).toLocaleDateString(GK.lang() === 'en' ? 'en-GB' : 'de-DE');
+      else if (def.art === 'runden') wert = GK.fmt(b.wert) + ' Runden';
+      else wert = GK.fmt(b.wert) + ' Chips';
+
+      var spielName = '';
+      if (b.spiel) {
+        var g = GK.games.filter(function (x) { return x.id === b.spiel; })[0];
+        spielName = g ? g.name : b.spiel;
+      }
+      karte.appendChild(el('div', { class: 'hall-halter' }, [
+        el('span', { class: 'hall-av', text: b.spieler.avatar || '👤' }),
+        el('span', { class: 'hall-name', text: b.spieler.name })
+      ]));
+      karte.appendChild(el('div', { class: 'hall-wert', text: wert }));
+      if (spielName) karte.appendChild(el('div', { class: 'hall-spiel', text: 'bei ' + spielName }));
+      box.appendChild(karte);
+    });
+  }
+
+  /* Beim Sprachwechsel neu zeichnen: das Datum des Millionärs steckt in
+     keinem Wörterbuch, das muss noch einmal durch die Formatierung. */
+  GK.on('sprache', function () { if (hallDaten) renderHall(); });
+
+  var hallZuletzt = 0, hallLaeuft = false;
+  var HALL_TAKT = 15000;
+
+  /**
+   * Die Auszeichnungen beim Server nachfragen.
+   *
+   * Gedrosselt, weil renderAll bei jeder Kontoänderung läuft und eine
+   * Ruhmeshalle sich nicht im Sekundentakt ändert. `sofort` übergeht die
+   * Sperre — nach einer Runde will man seinen neuen Rekord auch sehen.
+   */
+  function hallHolen(sofort) {
+    if (!GK.net || !GK.net.hall) return;
+    var jetzt = Date.now();
+    if (hallLaeuft) return;
+    if (!sofort && jetzt - hallZuletzt < HALL_TAKT) return;
+    hallLaeuft = true;
+    hallZuletzt = jetzt;
+    GK.net.hall().then(function (d) {
+      hallLaeuft = false;
+      if (!d || !d.trophaeen) return;
+      hallDaten = d;
+      renderHall();
+    }, function () { hallLaeuft = false; });
+  }
+
   function renderAll() {
     var me = GK.player();
     if ((me ? GK.levelOf(me.xp) : null) !== drawnLevel) renderGames();
     renderBoard();
+    renderHall();
+    hallHolen();
     renderFeed();
     renderWipe();
     renderMarquee();

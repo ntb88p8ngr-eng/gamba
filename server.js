@@ -296,6 +296,10 @@ function newPlayer(name, avatar, id) {
     biggestWin: 0,
     biggestWinGame: '',
     peak: START_BALANCE,
+    /* Wann dieser Spieler zum ersten Mal ueber der Million stand. 0 = nie.
+       Steht hier und nicht in der Ruhmeshalle, weil der Zeitpunkt sonst
+       verloren waere, sobald er wieder darunter faellt. */
+    mioAt: 0,
     luck: 50,
     xp: 0,
     claimedLevel: 1,
@@ -396,6 +400,7 @@ function alleZuruecksetzen(mitXp) {
     x.granted = 0; x.wagered = 0; x.returned = 0;
     x.plays = 0; x.wins = 0; x.losses = 0;
     x.biggestWin = 0; x.biggestWinGame = ''; x.peak = START_BALANCE;
+    x.mioAt = 0;
     x.lastBailout = 0;
     if (mitXp) { x.xp = 0; x.claimedLevel = 1; }
   });
@@ -639,6 +644,29 @@ function radioReihe(st) {
 }
 
 /**
+ * Einen Sender frisch anwerfen — mitten in der Sendung.
+ *
+ * Ein echtes Radio faengt nicht an, wenn man es einschaltet; es laeuft
+ * schon. Deshalb steigt ein Sender an einer zufaelligen Stelle der Reihe
+ * ein und das Stueck ist auch schon ein Stueck weit gelaufen. Ohne das
+ * begann jeder Serverstart mit demselben Titel ab Sekunde null — bei
+ * einem Sender mit fester Reihenfolge sogar immer mit demselben.
+ *
+ * Der Versatz bleibt unter dem Ende des Stuecks, sonst schaltete
+ * radioStand sofort weiter und der Zufall waere fuer nichts.
+ */
+function radioAnwerfen(st) {
+  var reihe = radioReihe(st);
+  var jetzt = Date.now();
+  var r = { reihe: reihe, pos: 0, start: jetzt };
+  if (!reihe.length) return r;
+  r.pos = Math.floor(Math.random() * reihe.length);
+  var dauer = stueckDauer(st, reihe[r.pos]);
+  r.start = jetzt - Math.floor(Math.random() * dauer * 0.85) * 1000;
+  return r;
+}
+
+/**
  * Stand eines Senders — und dabei so weit vorspulen, wie Zeit vergangen ist.
  *
  * Am Ende der Reihe wird neu gemischt, sonst hoerte man ewig dieselbe
@@ -651,9 +679,11 @@ function radioStand(id) {
   if (!st) return null;
   var r = radios[id];
   var jetzt = Date.now();
-  if (!r || !r.reihe.length) r = radios[id] = { reihe: radioReihe(st), pos: 0, start: jetzt };
+  if (!r || !r.reihe.length) r = radios[id] = radioAnwerfen(st);
   if (!r.reihe.length) return null;
-  if (jetzt - r.start > RADIO_MAX_SPRUNG) { r.reihe = radioReihe(st); r.pos = 0; r.start = jetzt; }
+  /* Lange keiner zugehoert? Dann nicht zehntausend Titelwechsel
+     nachrechnen, sondern neu einschalten — auch das mitten drin. */
+  if (jetzt - r.start > RADIO_MAX_SPRUNG) r = radios[id] = radioAnwerfen(st);
 
   var wache = 0;
   while (jetzt - r.start >= stueckDauer(st, r.reihe[r.pos]) * 1000) {
@@ -725,6 +755,7 @@ function radioWaehlen(id, trackId) {
    Angelegt werden sie im Admin-Panel und liegen deshalb in der Datenbank,
    nicht in einer Datei. */
 
+var MILLION = 1000000;
 var WEBRADIO_MAX = 40;
 /* Ein Stueck darf gross sein — der 80er-Mix wiegt allein hundert Megabyte. */
 var UPLOAD_MAX = 220 * 1024 * 1024;
@@ -1048,6 +1079,12 @@ function applyOp(op) {
         p.balance += win;
         p.returned += win;
         p.peak = Math.max(p.peak, p.balance);
+        /* Der Weg zur Million laesst sich hinterher nicht rekonstruieren:
+           der Kontostand steht nur als Zahl da, ohne Verlauf. Also wird der
+           Moment festgehalten, in dem jemand sie zum ersten Mal ueberschreitet.
+           Wer vor dieser Zeile schon darueber lag, faellt aus der Wertung —
+           das ist der Preis dafuer, nicht rueckwirkend raten zu wollen. */
+        if (!p.mioAt && p.balance >= MILLION) p.mioAt = Date.now();
         if (win - stake > p.biggestWin) {
           p.biggestWin = win - stake;
           p.biggestWinGame = clean(op.game, 24);
@@ -1139,7 +1176,8 @@ function applyOp(op) {
       rp.balance = START_BALANCE;
       rp.granted = 0; rp.wagered = 0; rp.returned = 0;
       rp.plays = 0; rp.wins = 0; rp.losses = 0;
-      rp.biggestWin = 0; rp.peak = START_BALANCE;
+      rp.biggestWin = 0; rp.biggestWinGame = ''; rp.peak = START_BALANCE;
+      rp.mioAt = 0;
       rp.xp = 0; rp.claimedLevel = 1;
       rp.lastBailout = 0;
       break;
@@ -1791,6 +1829,80 @@ function handleRequest(req, res) {
       });
     });
     return;
+  }
+
+  /* ── Hall of Gamba ──
+     Sechs Auszeichnungen, aus dem gerechnet, was ohnehin mitgeschrieben
+     wird: der Spielerstand und die Rundenliste. Offen fuer jeden — es ist
+     eine Ruhmeshalle, kein Geheimnis.
+
+     Geschenkte Chips zaehlen beim Profit nicht mit (so rechnet auch das
+     Leaderboard), sonst waere die groesste Auszeichnung ein Gefallen des
+     Admins. */
+  if (url === '/api/hall' && req.method === 'GET') {
+    var leute = Object.keys(db.players).map(function (k) { return db.players[k]; });
+    var runden = Array.isArray(db.runden) ? db.runden : [];
+
+    /* Der haerteste Einzelverlust steht in keiner Spalte — er ergibt sich
+       erst aus den Runden: Einsatz minus Rueckfluss. */
+    var schlimmste = null;
+    runden.forEach(function (r) {
+      var weg = (r.e || 0) - (r.w || 0);
+      if (weg <= 0) return;
+      if (!schlimmste || weg > schlimmste.weg) schlimmste = { weg: weg, p: r.p, g: r.g, t: r.t };
+    });
+
+    function wer(p) {
+      return p ? { id: p.id, name: p.name, avatar: p.avatar } : null;
+    }
+    /* Den Besten nach einem Mass suchen. `zaehlt` siebt aus, wer gar nicht
+       antritt — ein Nullwert ist keine Auszeichnung. */
+    function beste(mass, zaehlt) {
+      var b = null, bw = 0;
+      leute.forEach(function (p) {
+        var v = mass(p);
+        if (!zaehlt(v, p)) return;
+        if (!b || v > bw) { b = p; bw = v; }
+      });
+      return b ? { spieler: wer(b), wert: bw } : null;
+    }
+
+    var profit = function (p) { return p.balance - START_BALANCE - (p.granted || 0); };
+    var verlierer = null, vw = 0;
+    leute.forEach(function (p) {
+      var v = profit(p);
+      if (v >= 0 || (p.plays || 0) < 1) return;
+      if (!verlierer || v < vw) { verlierer = p; vw = v; }
+    });
+
+    var mio = null;
+    leute.forEach(function (p) {
+      if (!p.mioAt) return;
+      if (!mio || p.mioAt < mio.mioAt) mio = p;
+    });
+
+    var opfer = schlimmste ? db.players[schlimmste.p] : null;
+
+    return sendJSON(res, 200, {
+      jetzt: Date.now(),
+      million: MILLION,
+      trophaeen: [
+        { id: 'krone', beste: beste(function (p) { return p.peak || 0; },
+            function (v, p) { return v > START_BALANCE && (p.plays || 0) > 0; }) },
+        { id: 'sieg', beste: (function () {
+            var b = beste(function (p) { return p.biggestWin || 0; }, function (v) { return v > 0; });
+            if (b) b.spiel = (db.players[b.spieler.id] || {}).biggestWinGame || '';
+            return b;
+          })() },
+        { id: 'schlag', beste: schlimmste && opfer
+            ? { spieler: wer(opfer), wert: schlimmste.weg, spiel: schlimmste.g || '', wann: schlimmste.t }
+            : null },
+        { id: 'verlust', beste: verlierer ? { spieler: wer(verlierer), wert: Math.abs(vw) } : null },
+        { id: 'million', beste: mio ? { spieler: wer(mio), wert: mio.mioAt, wann: mio.mioAt } : null },
+        { id: 'ausdauer', beste: beste(function (p) { return p.plays || 0; },
+            function (v) { return v > 0; }) }
+      ]
+    });
   }
 
   /* ── Musik und Sender fuer das Panel ──

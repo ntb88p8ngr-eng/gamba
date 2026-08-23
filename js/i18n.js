@@ -76,6 +76,23 @@
       'This is where you will see who is cleaning up in the party (or losing everything).',
     'Noch keine Spieler. Leg los und hol dir die Krone!': 'No players yet. Get going and grab the crown!',
 
+    /* Ruhmeshalle */
+    '🏛 HALL OF GAMBA': '🏛 HALL OF GAMBA',
+    'Die dickste Krone': 'The Fattest Crown',
+    'Höchster Stand, den jemand je hatte': 'Highest balance anyone ever held',
+    'Der große Wurf': 'The Big One',
+    'Größter Gewinn in einer einzigen Runde': 'Biggest win in a single round',
+    'Der harte Schlag': 'The Hard Knock',
+    'Größter Verlust in einer einzigen Runde': 'Biggest loss in a single round',
+    'Der Großverlierer': 'The Grand Loser',
+    'Tiefstes Minus über alles gerechnet': 'Deepest minus over everything',
+    'Der Millionär': 'The Millionaire',
+    'Als Erster über eine Million': 'First one past a million',
+    'Die Ausdauer': 'The Long Haul',
+    'Meiste gespielte Runden': 'Most rounds played',
+    'Noch zu haben': 'Still up for grabs',
+    'Die Ruhmeshalle wird gerade poliert.': 'The hall of fame is being polished.',
+
     /* Anmeldung und Konto */
     'Anmelden': 'Log in', 'Neues Konto': 'New account', 'Abmelden': 'Log out',
     'Name': 'Name', 'Passwort': 'Password', 'Passwort wiederholen': 'Repeat password',
@@ -705,7 +722,13 @@
         .replace('Sender schickt kein icy-metaint', 'station sends no icy-metaint')
         .replace('nicht erreichbar', 'unreachable');
     }],
-    [/^(\d+) Runden$/, '$1 rounds'],
+    /* Zifferngruppen mit Punkt: „12.480 Runden" aus der Ruhmeshalle. */
+    [/^([\d.,]+) Runden$/, '$1 rounds'],
+    /* Wo der Rekord aufgestellt wurde — steht nur unter einer Trophäe.
+       Der Spielname muss durchs Wörterbuch, sonst bliebe „bei
+       Drachenhöhle" zu „at Drachenhöhle" und nur das Wörtchen wäre
+       übersetzt. */
+    [/^bei (.+)$/, function (m, spiel) { return 'at ' + (WB[spiel] || spiel); }],
     [/^(\d+) Spiele$/, '$1 rounds'],
     [/^(\d+) Siege$/, '$1 wins'],
     [/^vor (\d+) Min\.$/, '$1 min ago'],
