@@ -289,13 +289,21 @@
 /* Über einer Aufnahme braucht Text etwas Halt im Rücken. */
 :root[data-skin="vaporwave"][data-bg-bild="an"] .hero-sub,
 :root[data-skin="vaporwave"][data-bg-bild="an"] .hero-tag,
-:root[data-skin="vaporwave"][data-bg-bild="an"] .section-title span,
 :root[data-skin="vaporwave"][data-bg-bild="an"] .marquee-track,
 :root[data-skin="vaporwave"][data-bg-film="an"] .hero-sub,
 :root[data-skin="vaporwave"][data-bg-film="an"] .hero-tag,
-:root[data-skin="vaporwave"][data-bg-film="an"] .section-title span,
 :root[data-skin="vaporwave"][data-bg-film="an"] .marquee-track{
   text-shadow:0 2px 12px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.7)
+}
+/* Die Abschnittsüberschriften tragen ihren Verlauf über
+   background-clip:text — die Schrift selbst ist durchsichtig. Ein
+   text-shadow landet dort *in* den Buchstaben statt dahinter und färbt
+   sie schwarz. Ein Schlagschatten am Filter tut dasselbe, ohne in die
+   Schrift zu geraten; die Grundangabe aus style.css muss dabei mit
+   aufgeschrieben werden, sonst fiele sie weg. */
+:root[data-skin="vaporwave"][data-bg-bild="an"] .section-title span,
+:root[data-skin="vaporwave"][data-bg-film="an"] .section-title span{
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.55)) drop-shadow(0 3px 10px rgba(0,0,0,.85))
 }
 /* Ein Film läuft nie ganz ruhig — die Kopfzeile bekommt deshalb einen
    eigenen Rücken, sonst flackerte der Schriftzug darüber mit. */
@@ -416,13 +424,16 @@
 }
 :root[data-skin="strand"][data-bg-bild="an"] .hero-sub,
 :root[data-skin="strand"][data-bg-bild="an"] .hero-tag,
-:root[data-skin="strand"][data-bg-bild="an"] .section-title span,
 :root[data-skin="strand"][data-bg-bild="an"] .marquee-track,
 :root[data-skin="strand"][data-bg-film="an"] .hero-sub,
 :root[data-skin="strand"][data-bg-film="an"] .hero-tag,
-:root[data-skin="strand"][data-bg-film="an"] .section-title span,
 :root[data-skin="strand"][data-bg-film="an"] .marquee-track{
   text-shadow:0 2px 12px rgba(3,26,40,.95),0 0 3px rgba(3,26,40,.8)
+}
+/* Siehe Vaporwave: durchsichtige Schrift verträgt keinen text-shadow. */
+:root[data-skin="strand"][data-bg-bild="an"] .section-title span,
+:root[data-skin="strand"][data-bg-film="an"] .section-title span{
+  filter:drop-shadow(0 2px 0 rgba(3,26,40,.6)) drop-shadow(0 3px 10px rgba(3,26,40,.9))
 }
 
 :root[data-skin="strand"] .hero-title{
