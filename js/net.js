@@ -122,6 +122,12 @@
     return api('api/radio' + (sender ? '?sender=' + encodeURIComponent(sender) : ''));
   };
 
+  /** Die Auszeichnungen der Ruhmeshalle. Offen für jeden. */
+  Net.hall = function () {
+    if (!Net.online) return Promise.resolve(null);
+    return api('api/hall');
+  };
+
   /** Musik und Sender aus dem Sound-Pack (nur Admin). */
   Net.pack = function () {
     if (!Net.online) return Promise.resolve(null);

@@ -76,6 +76,24 @@
       'This is where you will see who is cleaning up in the party (or losing everything).',
     'Noch keine Spieler. Leg los und hol dir die Krone!': 'No players yet. Get going and grab the crown!',
 
+    /* Ruhmeshalle */
+    'Sechs Auszeichnungen, die man nicht kauft, sondern erreicht. Wer einmal drinsteht, bleibt drin — bis ihn jemand ablöst.':
+      'Six awards you do not buy — you earn them. Once you are in, you stay in until somebody takes your place.',
+    'Der Millionär': 'The Millionaire',
+    'Als Erster über eine Million': 'First one past a million',
+    'Der Hundertmillionär': 'The Hundred-Millionaire',
+    'Als Erster über 100.000.000': 'First one past 100,000,000',
+    'Der größte Raketenflug': 'The Highest Rocket',
+    'Höchster Ausstieg beim Raketen-Crash': 'Highest cash-out in Rocket Crash',
+    'Der längste Flatterflug': 'The Longest Flap',
+    'Weiteste Strecke im Flatterflug': 'Longest distance in Flappy Flight',
+    'Der harte Schlag': 'The Hard Knock',
+    'Größter Verlust in einer einzigen Runde': 'Biggest loss in a single round',
+    'Der Großverlierer': 'The Grand Loser',
+    'Tiefstes Minus über alles gerechnet': 'Deepest minus over everything',
+    'Noch zu haben': 'Still up for grabs',
+    'Die Ruhmeshalle wird gerade poliert.': 'The hall of fame is being polished.',
+
     /* Anmeldung und Konto */
     'Anmelden': 'Log in', 'Neues Konto': 'New account', 'Abmelden': 'Log out',
     'Name': 'Name', 'Passwort': 'Password', 'Passwort wiederholen': 'Repeat password',
@@ -259,6 +277,12 @@
     /* Stufentitel — sie stehen im Konto, im Leaderboard und in der Lobby. */
     'Chip-Küken': 'Chip chick', 'Zocker': 'Gambler', 'Hochroller': 'High roller',
     'Casino-Hai': 'Casino shark', 'Legende': 'Legend', 'GambaKing': 'GambaKing',
+    /* Anstriche: die Namen bleiben, die Beschreibungen nicht. */
+    'Rosa Sonne, Chromgitter, 1984 im Einkaufszentrum.':
+      'Pink sun, chrome grid, 1984 in the shopping mall.',
+    'Türkises Wasser, warmer Sand, Sonne kurz vorm Untergehen.':
+      'Turquoise water, warm sand, sun about to set.',
+    'Strand': 'Beach',
     'Großmeister': 'Grandmaster', 'Chip-Baron': 'Chip baron', 'Neon-Fürst': 'Neon prince',
     'Glücksgott': 'God of luck', 'Unsterblicher': 'Immortal', 'Mythos': 'Myth',
     'Spiele': 'Rounds', 'PASSWORT ÄNDERN': 'CHANGE PASSWORD',
@@ -700,6 +724,14 @@
         .replace('nicht erreichbar', 'unreachable');
     }],
     [/^(\d+) Runden$/, '$1 rounds'],
+    /* Die Strecke unter der Flatterflug-Trophäe — mit Punkt in der
+       Zifferngruppe, sobald jemand wirklich weit kommt. */
+    [/^([\d.,]+) Röhren$/, '$1 pipes'],
+    /* Wo der Rekord aufgestellt wurde — steht nur unter einer Trophäe.
+       Der Spielname muss durchs Wörterbuch, sonst bliebe „bei
+       Drachenhöhle" zu „at Drachenhöhle" und nur das Wörtchen wäre
+       übersetzt. */
+    [/^bei (.+)$/, function (m, spiel) { return 'at ' + (WB[spiel] || spiel); }],
     [/^(\d+) Spiele$/, '$1 rounds'],
     [/^(\d+) Siege$/, '$1 wins'],
     [/^vor (\d+) Min\.$/, '$1 min ago'],

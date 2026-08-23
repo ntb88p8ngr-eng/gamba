@@ -161,6 +161,185 @@
   border-color:rgba(255,215,106,.3)
 }
 
+/* ─────────────────────── VAPORWAVE ───────────────────────
+   1984 im Einkaufszentrum: Magenta und Türkis, eine Sonne mit Streifen,
+   darunter ein Chromgitter bis zum Horizont.
+
+   Der Standard-Anstrich hat dieses Gitter schon (.grid-floor) — Old Vegas
+   blendet es aus, hier bekommt es die Hauptrolle. Statt einer neuen Ebene
+   also nur andere Farben und eine ruhigere Gangart. */
+:root[data-skin="vaporwave"]{
+  --pink:#ff71ce;          /* das Rosa der Kassettenhüllen */
+  --purple:#b967ff;
+  --cyan:#01cdfe;
+  --lime:#05ffa1;          /* Minze, nicht Giftgrün */
+  --gold:#fffb96;          /* blasses Gelb statt Messing */
+  --orange:#ff9de2;
+  --red:#ff5c8a;
+  --blue:#5d8bff;
+
+  --bg:#1b0736;
+  --bg-2:#2a0b52;
+  --panel:rgba(48,12,92,.68);
+  --panel-solid:#300c5c;
+  --line:rgba(255,113,206,.26);
+  --text:#f6ecff;
+  --muted:#c2a5e8;
+
+  --neon:linear-gradient(135deg,#ff71ce,#b967ff 45%,#01cdfe);
+  --gold-grad:linear-gradient(180deg,#fffb96,#ff71ce 55%,#b967ff);
+  --shadow:0 18px 50px rgba(20,0,45,.6);
+  --glow-pink:0 0 24px rgba(255,113,206,.6);
+  --glow-cyan:0 0 24px rgba(1,205,254,.55);
+}
+
+/* Die Sonne: eine Scheibe am Horizont, quer gestreift wie auf jedem
+   Plattencover der Zeit. Die Streifen entstehen aus einem
+   wiederholten Verlauf, der nach unten dichter wird. */
+:root[data-skin="vaporwave"] .bg-fx{
+  background:
+    radial-gradient(closest-side circle at 50% 62%,
+      #ffe97a 0%, #ff8fd8 44%, #e75fb4 68%, transparent 70%),
+    linear-gradient(180deg,#1b0736 0%,#3d0f66 42%,#7a1c86 58%,#2a0b52 72%,#12032a 100%);
+}
+:root[data-skin="vaporwave"] .bg-fx::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+  /* Nur über der Sonne, nicht über allem: die Maske schneidet die
+     Streifen auf das untere Drittel der Scheibe. */
+  background:repeating-linear-gradient(180deg,
+    rgba(27,7,54,.85) 0 6px, transparent 6px 16px);
+  -webkit-mask-image:linear-gradient(180deg,transparent 52%,#000 58%,#000 66%,transparent 70%);
+  mask-image:linear-gradient(180deg,transparent 52%,#000 58%,#000 66%,transparent 70%);
+}
+:root[data-skin="vaporwave"] .blob{opacity:.34}
+:root[data-skin="vaporwave"] .blob-1{background:#ff71ce}
+:root[data-skin="vaporwave"] .blob-2{background:#01cdfe}
+:root[data-skin="vaporwave"] .blob-3{background:#b967ff;opacity:.26}
+:root[data-skin="vaporwave"] .blob-4{background:#05ffa1;opacity:.18}
+
+/* Das Gitter: breiter, langsamer und in Chrom statt Neon. Zu schnell
+   wirkt es wie ein Bildschirmschoner, zu eng wie ein Karopapier. */
+:root[data-skin="vaporwave"] .grid-floor{
+  background-image:
+    linear-gradient(rgba(1,205,254,.5) 2px,transparent 2px),
+    linear-gradient(90deg,rgba(255,113,206,.45) 2px,transparent 2px);
+  background-size:90px 90px;
+  animation-duration:6s;
+  opacity:.62
+}
+/* Der Schleier. Die Sonne ist hell genug, um Fließtext darüber
+   unlesbar zu machen — .scanlines liegt über allem Hintergrund und unter
+   allem Inhalt, also trägt sie ihn. Am stärksten dort, wo die Sonne
+   steht, nach aussen hin weniger. */
+:root[data-skin="vaporwave"] .scanlines{
+  background:
+    repeating-linear-gradient(180deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px),
+    radial-gradient(closest-side circle at 50% 62%, rgba(27,7,54,.5) 0%, rgba(27,7,54,.28) 60%, transparent 78%),
+    linear-gradient(180deg,rgba(20,4,42,.34),rgba(20,4,42,.2) 55%,rgba(20,4,42,.42))
+}
+:root[data-skin="vaporwave"] .hero-title{
+  background-image:linear-gradient(180deg,#fffb96 0%,#ff71ce 45%,#b967ff 70%,#01cdfe 100%);
+  filter:drop-shadow(0 4px 0 rgba(1,205,254,.55)) drop-shadow(0 0 30px rgba(255,113,206,.6));
+}
+:root[data-skin="vaporwave"] .btn-mp{
+  background:linear-gradient(135deg,#01cdfe,#b967ff);
+  border-color:rgba(255,113,206,.5)
+}
+:root[data-skin="vaporwave"] .modal{
+  background:
+    linear-gradient(160deg,#3a0f6e,#22073f) padding-box,
+    linear-gradient(120deg,#ff71ce,#b967ff,#01cdfe,#05ffa1,#ff71ce) border-box;
+  box-shadow:0 30px 90px rgba(0,0,0,.72),0 0 60px rgba(185,103,255,.32);
+}
+:root[data-skin="vaporwave"] .topbar{
+  background:linear-gradient(180deg,rgba(27,7,54,.96),rgba(27,7,54,.7))
+}
+
+/* ─────────────────────── STRAND ───────────────────────
+   Später Nachmittag am Wasser: Himmel, Meer und ein Streifen Sand.
+   Hier ist ausnahmsweise nicht Nacht — deshalb sind Text und Flächen
+   dunkler als sonst, sonst läge Helles auf Hellem. */
+:root[data-skin="strand"]{
+  --pink:#ff8a5b;          /* Koralle statt Neonrosa */
+  --purple:#2ec4b6;        /* was sonst lila ist, wird türkis */
+  --cyan:#ffd9a0;          /* und was cyan war, warmer Sand */
+  --lime:#3ddc97;
+  --gold:#ffc247;
+  --orange:#ff7a45;
+  --red:#ef5d5d;
+  --blue:#2a9bd4;
+
+  --bg:#07304a;
+  --bg-2:#0b4a63;
+  --panel:rgba(6,48,72,.72);
+  --panel-solid:#08405c;
+  --line:rgba(255,217,160,.3);
+  --text:#fdf6e8;
+  --muted:#a8cfdd;
+
+  --neon:linear-gradient(135deg,#ff8a5b,#ffc247 45%,#2ec4b6);
+  --gold-grad:linear-gradient(180deg,#fff0c4,#ffc247 45%,#ff7a45);
+  --shadow:0 18px 50px rgba(3,26,40,.55);
+  --glow-pink:0 0 24px rgba(255,138,91,.5);
+  --glow-cyan:0 0 24px rgba(46,196,182,.45);
+}
+
+/* Von oben nach unten: Abendhimmel, tiefstehende Sonne, Meer, Sand. */
+:root[data-skin="strand"] .bg-fx{
+  background:
+    radial-gradient(closest-side circle at 72% 34%,
+      #ffeaa8 0%, #ffb733 40%, rgba(240,120,70,.5) 64%, transparent 74%),
+    linear-gradient(180deg,
+      #0a3e63 0%, #17688f 24%, #3ea9b8 40%, #2ec4b6 52%,
+      #1d7f92 62%, #e8c98d 70%, #d8ab6a 86%, #c1904f 100%);
+}
+/* Wellenkämme: waagerechte Striche, die zum Horizont hin enger werden.
+   Die Maske hält sie im Wasserband — darüber ist Himmel, darunter Sand. */
+:root[data-skin="strand"] .bg-fx::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(180deg,
+    rgba(255,255,255,.16) 0 2px, transparent 2px 12px);
+  -webkit-mask-image:linear-gradient(180deg,transparent 42%,#000 52%,#000 66%,transparent 70%);
+  mask-image:linear-gradient(180deg,transparent 42%,#000 52%,#000 66%,transparent 70%);
+  opacity:.7
+}
+:root[data-skin="strand"] .blob{opacity:.26;filter:blur(90px)}
+:root[data-skin="strand"] .blob-1{background:#ffc247}
+:root[data-skin="strand"] .blob-2{background:#2ec4b6}
+:root[data-skin="strand"] .blob-3{background:#ff8a5b;opacity:.2}
+:root[data-skin="strand"] .blob-4{background:#fff3c4;opacity:.16}
+/* Kein Neongitter am Strand. */
+:root[data-skin="strand"] .grid-floor{display:none}
+/* Kein Fernsehflimmern, dafür ein Hauch Dunst über dem Wasser. */
+/* Auch hier ein Schleier: heller Sand und helles Wasser vertragen
+   keinen hellen Text. Am dichtesten über der Sonne. */
+:root[data-skin="strand"] .scanlines{
+  background:
+    radial-gradient(closest-side circle at 72% 34%, rgba(6,40,62,.46) 0%, rgba(6,40,62,.24) 62%, transparent 80%),
+    linear-gradient(180deg,rgba(4,32,50,.32),rgba(4,32,50,.16) 48%,rgba(4,32,50,.46)),
+    radial-gradient(120% 80% at 50% 45%, transparent 55%, rgba(3,26,40,.45) 100%)
+}
+:root[data-skin="strand"] .hero-title{
+  background-image:linear-gradient(180deg,#fff3c4 0%,#ffc247 45%,#ff8a5b 100%);
+  filter:drop-shadow(0 4px 0 rgba(3,26,40,.5)) drop-shadow(0 0 28px rgba(255,194,71,.55));
+}
+/* Über hellem Wasser braucht Fließtext Halt im Rücken. */
+:root[data-skin="strand"] .hero-sub,
+:root[data-skin="strand"] .hero-tag{text-shadow:0 2px 10px rgba(3,26,40,.8)}
+:root[data-skin="strand"] .btn-mp{
+  background:linear-gradient(135deg,#2ec4b6,#12707f);
+  border-color:rgba(255,217,160,.5)
+}
+:root[data-skin="strand"] .modal{
+  background:
+    linear-gradient(160deg,#0a4867,#062f47) padding-box,
+    linear-gradient(120deg,#ffc247,#ff8a5b,#2ec4b6,#3ddc97,#ffc247) border-box;
+  box-shadow:0 30px 90px rgba(0,0,0,.62),0 0 60px rgba(46,196,182,.28);
+}
+:root[data-skin="strand"] .topbar{
+  background:linear-gradient(180deg,rgba(7,48,74,.96),rgba(7,48,74,.72))
+}
+
 /* ─────────────────────── Auswahl im Konto ───────────────────────
    Eine Kachel je Skin, mit einer kleinen Farbprobe. */
 .skin-wahl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
@@ -177,6 +356,8 @@
 }
 .skin-probe-default{background:linear-gradient(135deg,#ff2fd0,#8b3bff 45%,#00e5ff)}
 .skin-probe-old-vegas{background:linear-gradient(135deg,#ff3b52,#b60f26 45%,#ffcf5a)}
+.skin-probe-vaporwave{background:linear-gradient(135deg,#fffb96,#ff71ce 45%,#01cdfe)}
+.skin-probe-strand{background:linear-gradient(135deg,#ffc247,#2ec4b6 55%,#0a3e63)}
 /* Die Hintergründe eines Skins: jede Kachel zeigt ihr eigenes Bild —
    das sagt mehr als jeder Name, und wer eine Datei tauscht, muss nichts
    umbenennen. */

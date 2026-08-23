@@ -413,6 +413,119 @@
     });
   }
 
+  /* ─────────────── HALL OF FAME ───────────────
+     Sechs Auszeichnungen auf einer eigenen Seite. Was schon als Spalte im
+     Leaderboard steht — Kontostand, bester Einzelgewinn, gespielte Runden —
+     kommt hier bewusst nicht vor: eine zweite Rangliste derselben Zahlen
+     wäre keine Auszeichnung. Hier zählen Marken, die man einmal erreicht,
+     und Bestleistungen aus den Spielen selbst.
+
+     Gerechnet wird auf dem Server — die Rundenliste liegt dort, und der
+     härteste Einzelverlust steht in keiner Spalte, den muss man suchen. */
+  var TROPHAEEN = {
+    million: { icon: '💎', name: 'Der Millionär',        was: 'Als Erster über eine Million',            art: 'zeit' },
+    hundert: { icon: '🏦', name: 'Der Hundertmillionär', was: 'Als Erster über 100.000.000',             art: 'zeit' },
+    rakete:  { icon: '🚀', name: 'Der größte Raketenflug', was: 'Höchster Ausstieg beim Raketen-Crash',  art: 'mult' },
+    flatter: { icon: '🐦', name: 'Der längste Flatterflug', was: 'Weiteste Strecke im Flatterflug',      art: 'roehren' },
+    schlag:  { icon: '💣', name: 'Der harte Schlag',     was: 'Größter Verlust in einer einzigen Runde', art: 'chips' },
+    verlust: { icon: '📉', name: 'Der Großverlierer',    was: 'Tiefstes Minus über alles gerechnet',     art: 'chips' }
+  };
+
+  var hallDaten = null;
+
+  function renderHall() {
+    var box = $('#hall');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!hallDaten) {
+      box.appendChild(el('div', { class: 'feed-empty', text: 'Die Ruhmeshalle wird gerade poliert.' }));
+      return;
+    }
+    hallDaten.trophaeen.forEach(function (t) {
+      var def = TROPHAEEN[t.id];
+      if (!def) return;
+      var b = t.beste;
+      var karte = el('div', { class: 'hall-karte' + (b ? '' : ' hall-leer') }, [
+        el('div', { class: 'hall-ic', text: def.icon }),
+        el('div', { class: 'hall-text' }, [
+          el('b', { text: def.name }),
+          el('span', { class: 'hall-was', text: def.was })
+        ])
+      ]);
+      if (!b) {
+        /* Eine unvergebene Auszeichnung ist kein Fehler, sondern eine
+           Einladung — deshalb steht sie da und wird nicht versteckt. */
+        karte.appendChild(el('div', { class: 'hall-offen', text: 'Noch zu haben' }));
+        box.appendChild(karte);
+        return;
+      }
+      var wert;
+      /* Das Datum folgt der Sprache der Seite, nicht der des Browsers: sonst
+         steht im deutschen Casino 8/23/2026. */
+      if (def.art === 'zeit') wert = new Date(b.wert).toLocaleDateString(GK.lang() === 'en' ? 'en-GB' : 'de-DE');
+      else if (def.art === 'mult') wert = GK.fmtX(b.wert);
+      else if (def.art === 'roehren') wert = GK.fmt(b.wert) + ' Röhren';
+      else wert = GK.fmt(b.wert) + ' Chips';
+
+      var spielName = '';
+      if (b.spiel) {
+        var g = GK.games.filter(function (x) { return x.id === b.spiel; })[0];
+        spielName = g ? g.name : b.spiel;
+      }
+      karte.appendChild(el('div', { class: 'hall-halter' }, [
+        el('span', { class: 'hall-av', text: b.spieler.avatar || '👤' }),
+        el('span', { class: 'hall-name', text: b.spieler.name })
+      ]));
+      karte.appendChild(el('div', { class: 'hall-wert', text: wert }));
+      /* Die Zeile steht auch leer da: sonst säßen Name und Wert auf den
+         Karten ohne Spielangabe eine Zeile höher als daneben. */
+      karte.appendChild(el('div', { class: 'hall-spiel', text: spielName ? 'bei ' + spielName : '' }));
+      box.appendChild(karte);
+    });
+  }
+
+  /* Beim Sprachwechsel neu zeichnen: das Datum des Millionärs steckt in
+     keinem Wörterbuch, das muss noch einmal durch die Formatierung. */
+  GK.on('sprache', function () { if (hallDaten) renderHall(); });
+
+  var hallZuletzt = 0, hallLaeuft = false;
+  var HALL_TAKT = 15000;
+
+  /**
+   * Die Auszeichnungen beim Server nachfragen.
+   *
+   * Gedrosselt, weil renderAll bei jeder Kontoänderung läuft und eine
+   * Ruhmeshalle sich nicht im Sekundentakt ändert. `sofort` übergeht die
+   * Sperre — nach einer Runde will man seinen neuen Rekord auch sehen.
+   */
+  function hallHolen(sofort) {
+    if (!GK.net || !GK.net.hall) return;
+    var jetzt = Date.now();
+    if (hallLaeuft) return;
+    if (!sofort && jetzt - hallZuletzt < HALL_TAKT) return;
+    hallLaeuft = true;
+    hallZuletzt = jetzt;
+    GK.net.hall().then(function (d) {
+      hallLaeuft = false;
+      if (!d || !d.trophaeen) return;
+      hallDaten = d;
+      renderHall();
+    }, function () { hallLaeuft = false; });
+  }
+
+  /**
+   * Die Ruhmeshalle aufschlagen.
+   *
+   * Erst zeichnen, dann nachfragen: der letzte Stand steht sofort da,
+   * statt dass die Seite eine Sekunde lang leer bleibt. Beim ersten Mal
+   * ist noch nichts da — dann steht dort, dass poliert wird.
+   */
+  function hallOeffnen() {
+    showView('view-hall');
+    renderHall();
+    hallHolen(true);
+  }
+
   function renderAll() {
     var me = GK.player();
     if ((me ? GK.levelOf(me.xp) : null) !== drawnLevel) renderGames();
@@ -2768,6 +2881,11 @@
                     el('p', { class: 'hint', text: '0 = verflucht, 50 = neutral, 100 = gesegnet, auf ein Zehntel genau. Gilt nur für den oben gewählten Spieler und kommt zur Quote des Spiels dazu.' })
                   ]),
 
+        feld('ALLE SPIELER AUF EINMAL', [
+                    el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
+                    el('p', { class: 'hint', text: 'Gilt für jeden auf dem Server, nicht nur für den oben gewählten. Der Betrag kommt aus dem Feld darüber.' })
+                  ]),
+
         feld('EINZELNEN SPIELER ZURÜCKSETZEN', [
                     el('div', { class: 'modal-actions' }, [resetOneBtn]),
                     el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' })
@@ -2905,10 +3023,9 @@
                   ])
       ] },
       { id: 'system', icon: '⚙️', name: 'Einstellungen', felder: [
-        feld('VERWALTUNG', [
-                    el('div', { class: 'modal-actions' }, [allBtn, resetBtn]),
-                    el('div', { style: 'height:8px' }),
-                    el('div', { class: 'modal-actions' }, [pinBtn, exitBtn])
+        feld('ZUGANG', [
+                    el('div', { class: 'modal-actions' }, [pinBtn, exitBtn]),
+                    el('p', { class: 'hint', text: 'Die PIN gilt für alle, die ins Panel wollen. Verlassen meldet nur dich ab — das Spiel läuft weiter.' })
                   ]),
 
         feld('NÄCHSTER WIPE', [
@@ -3057,6 +3174,11 @@
        führte sonst zu einer ausgeblendeten Tafel. */
     var zumBoard = $('#btn-goto-board');
     if (zumBoard) zumBoard.style.display = d ? 'none' : '';
+    /* Dasselbe für die Ruhmeshalle: sie zählt Casino-Chips und
+       Bestleistungen aus dem Casino. In der Party gilt die Partykasse, und
+       ein Rekord von dort steht dort auch nicht drin. */
+    var zurHalle = $('#btn-hall');
+    if (zurHalle) zurHalle.style.display = d ? 'none' : '';
   }
 
   function boot() {
@@ -3142,6 +3264,12 @@
       GK.sfx('click');
       showView('view-lobby');
       setTimeout(function () { $('#board-anchor').scrollIntoView({ behavior: 'smooth' }); }, 80);
+    });
+    $('#btn-hall').addEventListener('click', function () { GK.sfx('click'); hallOeffnen(); });
+    $('#btn-hall-back').addEventListener('click', function () {
+      GK.sfx('click');
+      showView('view-lobby');
+      renderAll();
     });
     $('#btn-daily').addEventListener('click', function () { GK.sfx('click'); dailyBonus(); });
     $('#btn-new-player').addEventListener('click', function () { GK.sfx('click'); authModal({ mode: 'register', closable: true }); });

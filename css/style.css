@@ -570,6 +570,44 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .board-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .pos{color:var(--lime)}.neg{color:var(--red)}
 
+/* ═══════════ HALL OF FAME ═══════════
+   Eine eigene Seite mit sechs Vitrinen. Die Karten wachsen von selbst mit —
+   ob am Ende fuenf oder acht Auszeichnungen vergeben werden, entscheidet
+   der Server, nicht das Raster. */
+.hall-intro{color:var(--muted);font-size:.92rem;max-width:62ch;margin:0 0 20px}
+.hall{
+  display:grid;gap:14px;
+  grid-template-columns:repeat(auto-fill,minmax(250px,1fr))
+}
+.hall-karte{
+  position:relative;display:flex;flex-direction:column;gap:8px;
+  padding:16px 16px 14px;border-radius:var(--radius);
+  background:var(--panel);border:2px solid var(--line);box-shadow:var(--shadow);
+  transition:transform .18s,border-color .2s;animation:rowin .4s both;
+  overflow:hidden
+}
+/* Ein Schimmer von oben, damit die Vitrine nach Glas aussieht und nicht
+   nach Kachel. Er darf nichts anklickbar verdecken — deshalb none. */
+.hall-karte::before{
+  content:"";position:absolute;inset:-40% -10% auto;height:120px;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 100%,rgba(255,209,46,.22),transparent 70%)
+}
+.hall-karte:hover{transform:translateY(-4px);border-color:var(--gold)}
+.hall-ic{font-size:2.2rem;line-height:1;filter:drop-shadow(0 3px 8px rgba(0,0,0,.5))}
+.hall-text{display:flex;flex-direction:column;gap:2px}
+.hall-text b{font-family:'Bungee',sans-serif;font-size:.92rem;letter-spacing:.02em;color:var(--gold)}
+.hall-was{font-size:.72rem;color:var(--muted);line-height:1.35}
+.hall-halter{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:8px;min-width:0}
+.hall-av{font-size:1.5rem;flex:0 0 auto}
+.hall-name{font-weight:900;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hall-wert{font-family:'Bungee',sans-serif;font-size:1.05rem;color:var(--cyan);white-space:nowrap}
+.hall-spiel{font-size:.7rem;color:var(--muted);min-height:1em}
+/* Noch nicht vergeben: blass, aber nicht versteckt — eine offene
+   Auszeichnung ist eine Einladung. */
+.hall-karte.hall-leer{opacity:.62;border-style:dashed}
+.hall-karte.hall-leer .hall-ic{filter:grayscale(1)}
+.hall-offen{margin-top:auto;padding-top:8px;font-size:.78rem;color:var(--muted);font-style:italic}
+
 /* ═══════════ FEED ═══════════ */
 .feed{display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto;padding-right:6px}
 .feed-item{
