@@ -777,6 +777,114 @@ function listeAufloesen(u) {
     });
 }
 
+/* ─────────────── Was laeuft im Webradio? ───────────────
+   Ein Strom sagt durchaus, was er gerade spielt — nur nicht dem Browser.
+   Icecast und Shoutcast schieben die Angabe im ICY-Verfahren zwischen die
+   Audiodaten: wer beim Verbinden „Icy-MetaData: 1" mitschickt, bekommt
+   „icy-metaint: N" zurueck und danach alle N Bytes einen kurzen Block mit
+   StreamTitle='Kuenstler - Titel';.
+
+   Ein <audio> im Browser reicht das nicht heraus, und selbst mitlesen kann
+   er es nicht: dazu muesste er den Strom ein zweites Mal holen und
+   dekodieren. Also macht es der Server. Er verbindet sich kurz, liest bis
+   zum ersten Block und legt gleich wieder auf.
+
+   Gemerkt wird das Ergebnis: bei zwanzig Zuhoerern soll nicht zwanzigmal
+   dieselbe Verbindung aufgehen. Ein Stueck dauert Minuten, ein paar
+   Sekunden alte Angabe stoert also niemanden. */
+
+var TITEL_FRISCH = 20000;      // so lange gilt eine geholte Angabe
+var TITEL_FRIST = 6000;        // so lange wird auf den Sender gewartet
+var titelCache = {};           // url -> { titel, zeit, laeuft }
+
+function icyTitel(url) {
+  var abbruch = new AbortController();
+  var uhr = setTimeout(function () { abbruch.abort(); }, TITEL_FRIST);
+  return fetch(url, { headers: { 'Icy-MetaData': '1' }, signal: abbruch.signal })
+    .then(function (r) {
+      var metaint = parseInt(r.headers.get('icy-metaint') || '0', 10);
+      /* Kein icy-metaint: der Sender bietet keine Titel an. Dann bleibt es
+         beim Sendernamen, und wir fragen ihn auch nicht wieder. */
+      if (!r.ok || !metaint || !r.body) { try { abbruch.abort(); } catch (e) {} return null; }
+      var leser = r.body.getReader();
+      var uebrig = metaint, laenge = -1, teile = [], da = 0, gelesen = 0;
+      /* Nach dem ersten Block ist Schluss. Der Deckel verhindert, dass ein
+         Sender mit riesigem metaint die Verbindung ewig offen haelt. */
+      var deckel = metaint + 16 * 255 + 8192;
+
+      function weiter() {
+        return leser.read().then(function (st) {
+          if (st.done || !st.value) return null;
+          gelesen += st.value.length;
+          var v = st.value, p = 0;
+          while (p < v.length) {
+            if (uebrig > 0) {
+              var nimm = Math.min(uebrig, v.length - p);
+              uebrig -= nimm; p += nimm;
+              continue;
+            }
+            if (laenge < 0) {
+              laenge = v[p++] * 16;
+              /* Ein leerer Block heisst „nichts Neues" — dann bis zum
+                 naechsten weiterzaehlen. */
+              if (laenge === 0) { uebrig = metaint; laenge = -1; }
+              continue;
+            }
+            var fehlt = laenge - da;
+            var holt = Math.min(fehlt, v.length - p);
+            teile.push(v.slice(p, p + holt));
+            da += holt; p += holt;
+            if (da >= laenge) {
+              var txt = Buffer.concat(teile).toString('latin1');
+              /* StreamTitle endet auf ';, nicht auf dem naechsten
+                 Apostroph — sonst bricht jeder Titel mit „Ain't" ab. */
+              var m = /StreamTitle='([\s\S]*?)';/.exec(txt)
+                   || /StreamTitle='([\s\S]*)/.exec(txt);
+              return m ? m[1].replace(/\0+$/, '').trim() : null;
+            }
+          }
+          if (gelesen > deckel) return null;
+          return weiter();
+        });
+      }
+      return weiter().then(function (t) {
+        try { abbruch.abort(); } catch (e) {}
+        return t;
+      }, function () {
+        try { abbruch.abort(); } catch (e) {}
+        return null;
+      });
+    })
+    .catch(function () { return null; })
+    .then(function (t) { clearTimeout(uhr); return t; });
+}
+
+/**
+ * Titel aus dem Zwischenspeicher, sonst einmal holen.
+ *
+ * Geantwortet wird immer sofort mit dem, was da ist — das Holen laeuft
+ * daneben und kommt bei der naechsten Frage an. Sonst haenge die Antwort
+ * an einem fremden Sender, und wenn der bummelt, bummelt die ganze Seite
+ * mit.
+ */
+function webTitel(url) {
+  var e = titelCache[url];
+  var jetzt = Date.now();
+  if (!e) e = titelCache[url] = { titel: '', zeit: 0, laeuft: false };
+  if (!e.laeuft && jetzt - e.zeit > TITEL_FRISCH) {
+    e.laeuft = true;
+    icyTitel(url).then(function (t) {
+      e.titel = t || '';
+      e.zeit = Date.now();
+      e.laeuft = false;
+    }, function () {
+      e.zeit = Date.now();
+      e.laeuft = false;
+    });
+  }
+  return e.titel;
+}
+
 /* ─────────────── Operationen ─────────────── */
 
 var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1 };
@@ -1316,8 +1424,18 @@ function handleRequest(req, res) {
       return sendJSON(res, 200, { sender: alle, jetzt: Date.now() });
     }
     var stand = radioStand(rId);
-    if (!stand) return sendJSON(res, 404, { error: 'Sender läuft nicht auf dem Server' });
-    return sendJSON(res, 200, stand);
+    if (stand) return sendJSON(res, 200, stand);
+    /* Kein Sender aus dem Pack — vielleicht ein Webradio. Dort gibt es
+       keine Uhr und keine Reihenfolge, nur die Frage, was gerade läuft. */
+    var wr = null;
+    (db.settings.webRadios || []).forEach(function (r) { if (r.id === rId) wr = r; });
+    if (wr) {
+      return sendJSON(res, 200, {
+        sender: wr.id, name: wr.name, web: true,
+        titel: webTitel(wr.url), jetzt: Date.now()
+      });
+    }
+    return sendJSON(res, 404, { error: 'Sender läuft nicht auf dem Server' });
   }
 
   /* ── Protokoll der Partys ──

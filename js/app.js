@@ -878,8 +878,16 @@
       /* Bei einem Webradio weiß niemand, was gerade gespielt wird — der
          Strom sagt es nicht. Dann steht dort der Sender selbst. */
       if (M.strom && M.strom.an) {
-        jetztTitel.textContent = M.strom.name || '—';
-        jetztWas.textContent = 'Webradio';
+        /* Gibt der Sender einen Titel heraus, steht der oben und der
+           Sendername darunter — man will wissen, was läuft, nicht wo man
+           eingeschaltet hat. Ohne Titel bleibt es beim Sender. */
+        if (M.strom.titel) {
+          jetztTitel.textContent = M.strom.titel;
+          jetztWas.textContent = M.strom.name || 'Webradio';
+        } else {
+          jetztTitel.textContent = M.strom.name || '—';
+          jetztWas.textContent = 'Webradio';
+        }
         jetztZeit.textContent = 'live';
         jetztBalken.hidden = true;
         return;
@@ -1932,6 +1940,34 @@
     var wrIcon = el('input', { class: 'mp-feld', type: 'text', maxlength: '4', placeholder: '📻' });
     var wrUrl = el('input', { class: 'mp-feld', type: 'url', maxlength: '500', placeholder: 'https://…' });
     var wrWas = el('input', { class: 'mp-feld', type: 'text', maxlength: '90', placeholder: 'Kurze Zeile darunter (optional)' });
+    /* Eine Handvoll Zeichen zum Anklicken. Kein vollständiger Satz —
+       das kann die Tastatur des Geräts besser. Hier stehen die, die man
+       für einen Sender tatsächlich nimmt: Radios, Musik, ein paar
+       Stilrichtungen, ein paar Stimmungen. Tippen geht weiterhin. */
+    var EMOJIS = ('📻 📡 🎙 🎚 🎛 🔊 🎵 🎶 🎧 💿 📀 🎼 🪩 ✨ 🔥 ❄️ 🌙 ☀️ ' +
+                  '🎸 🎺 🎷 🥁 🎻 🪕 🎹 🪗 🎤 🕺 💃 🍸 🍹 🥃 🎲 🃏 👑 💎 ' +
+                  '🚀 🛸 🌌 🪐 🌴 🏝 🌊 🇯🇲 🤠 🐉 👻 🎃 🧊 ⚡ 💀 🖤 ❤️ 💜').split(' ');
+
+    var wrEmojiBox = el('div', { class: 'emoji-wahl' });
+    function emojiBauen() {
+      wrEmojiBox.innerHTML = '';
+      EMOJIS.forEach(function (e) {
+        var k = el('button', {
+          class: 'emoji-knopf' + (wrIcon.value === e ? ' sel' : ''),
+          type: 'button', title: e, text: e
+        });
+        k.addEventListener('click', function () {
+          wrIcon.value = e;
+          GK.sfx('chip');
+          emojiBauen();
+        });
+        wrEmojiBox.appendChild(k);
+      });
+    }
+    /* Wer selbst tippt, soll die Markierung mitwandern sehen. */
+    wrIcon.addEventListener('input', emojiBauen);
+    emojiBauen();
+
     var wrSkinBox = el('div', { class: 'webradio-skins' });
     var wrSpeichern = el('button', { class: 'btn btn-small btn-lime', text: '＋ ANLEGEN' });
     var wrNeu = el('button', { class: 'btn btn-small btn-ghost', text: '✕ FORMULAR LEEREN' });
@@ -1955,6 +1991,7 @@
       var gewaehlt = (eintrag && eintrag.skins) || [];
       wrSkinFelder.forEach(function (b) { b.checked = gewaehlt.indexOf(b.dataset.skin) >= 0; });
       wrSpeichern.textContent = wrId ? '✓ ÄNDERN' : '＋ ANLEGEN';
+      emojiBauen();                       // Markierung auf das Zeichen des Eintrags
     }
 
     function wrBauen() {
@@ -2327,13 +2364,14 @@
               el('div', {}, [el('label', { class: 'mp-label', text: 'NAME' }), wrName]),
               el('div', {}, [el('label', { class: 'mp-label', text: 'SYMBOL' }), wrIcon])
             ]),
+            wrEmojiBox,
             el('label', { class: 'mp-label', text: 'ADRESSE DES STROMS' }), wrUrl,
             el('label', { class: 'mp-label', text: 'UNTERZEILE' }), wrWas,
             el('label', { class: 'mp-label', text: 'IN WELCHEN ANSTRICHEN?' }),
             wrSkinBox,
             el('div', { style: 'height:10px' }),
             el('div', { class: 'modal-actions' }, [wrSpeichern, wrNeu]),
-            el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft: es lässt sich nicht spulen und nicht weiterschalten, und was gerade gespielt wird, verrät der Strom nicht. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
+            el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
           ], true),
 
           feld('RADIO', [

@@ -287,8 +287,14 @@ es, nimmt er die `dauer` des Senders und schaltet nach dieser Zeit
 weiter, egal wie lang die Datei wirklich ist.
 
 Ein **Webradio** braucht davon nichts: es läuft ohnehin schon, und wer
-sich dranhängt, hört dasselbe wie alle anderen. Spulen, weiterschalten
-und Titel anzeigen geht dort nicht — der Strom gibt es nicht her.
+sich dranhängt, hört dasselbe wie alle anderen. Spulen und weiterschalten
+geht dort nicht.
+
+Was gerade läuft, steht trotzdem da. Icecast und Shoutcast schieben den
+Titel im ICY-Verfahren zwischen die Audiodaten — ein `<audio>` im Browser
+reicht das nicht heraus, also liest der Server kurz mit und gibt die
+Zeile weiter. Sender, die nichts mitschicken, zeigen ihren Namen; mehr
+gibt es dort dann nicht zu holen.
 
 Läuft kein Server (`index.html` direkt geöffnet), spielt jeder Sender
 lokal weiter — dann eben mit eigener Reihenfolge. Webradios gibt es dann

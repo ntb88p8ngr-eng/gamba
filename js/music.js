@@ -936,7 +936,50 @@
 
      Läuft er, schweigt alles andere — der Sequenzer der eingebauten
      Loops ebenso wie ein Stück aus einer Datei. */
-  Music.strom = { an: false, name: '', url: '' };
+  Music.strom = { an: false, name: '', url: '', titel: '', _uhr: null, _versuche: 0 };
+
+  /* Wie oft nachgefragt wird, was gerade läuft. Der Server hält die
+     Angabe ohnehin zwanzig Sekunden fest, öfter zu fragen brächte nichts.
+
+     Solange noch gar kein Titel da ist, wird schneller nachgehakt: beim
+     Einschalten antwortet der Server zuerst mit nichts, weil er den
+     Strom in dem Moment erst anzapft. Zwanzig Sekunden auf die erste
+     Zeile zu warten sähe aus, als könnte der Sender es nicht. */
+  var TITEL_TAKT = 20000;
+  var TITEL_ERSTE = 2500;
+  var TITEL_VERSUCHE = 6;      // danach kann der Sender es offenbar nicht
+
+  function titelUhrAus() {
+    if (Music.strom._uhr) { clearTimeout(Music.strom._uhr); Music.strom._uhr = null; }
+  }
+
+  /**
+   * Fragen, was das Webradio gerade spielt.
+   *
+   * Der Strom sagt es im ICY-Verfahren — nur nicht dem Browser, deshalb
+   * liest der Server mit. Kommt nichts zurück, bleibt es beim
+   * Sendernamen: nicht jeder Sender gibt Titel heraus.
+   */
+  function titelHolen() {
+    titelUhrAus();
+    if (!Music.strom.an || !GK.net || !GK.net.radio) return;
+    var wer = Music.radio.sender;
+    GK.net.radio(wer).then(function (d) {
+      if (!Music.strom.an || Music.radio.sender !== wer) return;
+      var neu = (d && d.titel) || '';
+      if (neu !== Music.strom.titel) {
+        Music.strom.titel = neu;
+        if (GK.emit) GK.emit('musik-liste');
+      }
+      /* Noch nichts da? Dann bald noch einmal — aber nicht endlos: gibt
+         der Sender keine Titel heraus, bleibt es eben beim Namen. */
+      var frueh = !Music.strom.titel && Music.strom._versuche < TITEL_VERSUCHE;
+      if (frueh) Music.strom._versuche++;
+      Music.strom._uhr = setTimeout(titelHolen, frueh ? TITEL_ERSTE : TITEL_TAKT);
+    }, function () {
+      if (Music.strom.an) Music.strom._uhr = setTimeout(titelHolen, TITEL_TAKT);
+    });
+  }
 
   function stromAn(sender) {
     var a = dateiElement();
@@ -947,6 +990,10 @@
     Music.strom.an = true;
     Music.strom.name = sender.name;
     Music.strom.url = sender.url;
+    Music.strom.titel = '';
+    Music.strom._versuche = 0;
+    /* Gleich einmal fragen, was läuft — und dann im Takt weiter. */
+    titelHolen();
     a.loop = false;
     if (a.dataset.quelle !== sender.url) { a.src = sender.url; a.dataset.quelle = sender.url; }
     applyGain();
@@ -958,10 +1005,12 @@
   }
 
   function stromAus() {
+    titelUhrAus();
     if (!Music.strom.an) return;
     Music.strom.an = false;
     Music.strom.name = '';
     Music.strom.url = '';
+    Music.strom.titel = '';
     dateiAus();
     if (audio) audio.dataset.quelle = '';
   }
