@@ -67,21 +67,21 @@
       bilder: [
         { id: '1', datei: 'hintergrund1.webp' },
         { id: '2', datei: 'hintergrund2.webp' },
-        /* Wie bei Old Vegas zwei Fassungen, WebM zuerst: es wiegt weniger,
-           und MP4 faengt die Browser auf, die kein VP9 koennen. Umgekehrt
-           ginge es nicht — H.264 ist nicht ueberall eingebaut, das eigene
-           Chromium der Tests etwa kann es gar nicht. Ohne die WebM-Fassung
-           liefe dort nur das Standbild.
-           Das Standbild ist zugleich die Vorschau in der Auswahl und der
-           Ersatz fuer alle, die keine Bewegung wollen. */
+        /* Nur WebM. Die MP4-Fassungen lagen einmal daneben und sind wieder
+           heraus — wer kein VP9 kann (manche Safari-Fassungen), sieht statt
+           des Films sein Standbild. Das ist kein Fehlerfall: dasselbe
+           Standbild steht dort auch fuer alle, die keine Bewegung wollen,
+           und es ist zugleich die Vorschau in der Auswahl.
+           Kommt eine MP4-Fassung zurueck, gehoert sie hinter die WebM —
+           genommen wird die erste, die der Browser abspielen kann. */
         { id: 'film1', film: true,
-          dateien: ['film1.webm', 'film1.mp4'], standbild: 'film1.webp' },
+          dateien: ['film1.webm'], standbild: 'film1.webp' },
         /* Die Neonstadt ist die hellste der drei — ungedimmt verschwinden
            die Zeilen darüber im Leuchten. */
         { id: 'film2', film: true, dunkel: 'stark',
-          dateien: ['film2.webm', 'film2.mp4'], standbild: 'film2.webp' },
+          dateien: ['film2.webm'], standbild: 'film2.webp' },
         { id: 'film3', film: true,
-          dateien: ['film3.webm', 'film3.mp4'], standbild: 'film3.webp' }
+          dateien: ['film3.webm'], standbild: 'film3.webp' }
       ]
     },
     {

@@ -69,12 +69,12 @@ Fassungen mit und ein Standbild:
 ```
 
 Genommen wird die **erste Fassung, die der Browser abspielen kann** —
-deshalb steht WebM vorn: es wiegt weniger, und MP4 fängt die Browser auf,
-die kein VP9 können. Beide Fassungen sind nötig: H.264 ist nicht überall
-eingebaut (in manchen Chromium-Bauten gar nicht), VP9 nicht in jedem
-Safari. Fehlt die passende, bleibt das Standbild stehen — und das ist
-auch die Vorschau in der Auswahl und der Ersatz für alle, die
-`prefers-reduced-motion` gesetzt haben.
+deshalb steht WebM vorn: es wiegt weniger. Wer mehr Abdeckung will, legt
+eine MP4-Fassung dahinter: H.264 ist nicht überall eingebaut (in manchen
+Chromium-Bauten gar nicht), VP9 nicht in jedem Safari. Fehlt die passende
+Fassung, bleibt das Standbild stehen — und das ist auch die Vorschau in
+der Auswahl und der Ersatz für alle, die `prefers-reduced-motion` gesetzt
+haben. Die drei Vaporwave-Filme liegen derzeit nur als WebM vor.
 
 Für die Aufbereitung: 1280 breit, 24 Bilder, **ohne Ton** (das Element
 ist stumm, der Ton wäre nur Ballast). Ein 4K-Original mit 60 Bildern wiegt
