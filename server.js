@@ -109,7 +109,17 @@ function emptyDB() {
          keiner Datei — loeschen kann man sie also nicht. Ausblenden schon,
          und die Lautstaerke gegen die anderen ausrichten. Drinsteht nur,
          was vom Normalfall abweicht: { keller: { aus: true } }. */
-      loopRegel: {}
+      loopRegel: {},
+      /* Aktionscodes. Der Admin legt sie im Panel an, die Spieler loesen
+         sie im Konto-Fenster ein. Ein Code gibt Chips, XP oder schaltet
+         ein Osterei frei:
+           { code, art: 'chips'|'xp'|'ei', wert, ei, max, benutzt: [],
+             bis, aus }
+         `benutzt` sind die Kennungen derer, die ihn schon hatten — jeder
+         darf jeden Code genau einmal, sonst waere er eine Druckerei.
+         `max` deckelt zusaetzlich die Gesamtzahl (0 = unbegrenzt), `bis`
+         ist ein Ablaufdatum (0 = nie). */
+      codes: []
     }
   };
 }
@@ -128,6 +138,7 @@ function loadDB() {
     if (!db.settings.spielRegel || typeof db.settings.spielRegel !== 'object') db.settings.spielRegel = {};
     if (!Array.isArray(db.settings.webRadios)) db.settings.webRadios = [];
     if (!db.settings.loopRegel || typeof db.settings.loopRegel !== 'object') db.settings.loopRegel = {};
+    if (!Array.isArray(db.settings.codes)) db.settings.codes = [];
     return db;
   } catch (e) {
     return emptyDB();
@@ -306,6 +317,9 @@ function newPlayer(name, avatar, id) {
        Raketen-Crash und die weiteste Strecke im Flatterflug. Das Spiel
        meldet sie, der Server behaelt nur den Rekord. */
     rekorde: { crash: 0, flappy: 0, penguin: 0, jump: 0 },
+    /* Freigeschaltete Ostereier, als Liste von Kennungen. Kommt ueber
+       einen Aktionscode und bleibt dann am Konto haengen. */
+    eier: [],
     luck: 50,
     xp: 0,
     claimedLevel: 1,
@@ -767,6 +781,45 @@ var MILLION = 1000000;
    gespielt, sondern das Casino leergeraeumt. */
 var MILLION100 = 100000000;
 var WEBRADIO_MAX = 40;
+var CODE_MAX = 200;           // mehr Aktionscodes braucht niemand
+
+/* ─────────────── Aktionscodes ───────────────
+   Ein Code ist eine Zeichenfolge, die ein Spieler im Konto-Fenster
+   eingibt. Er gibt Chips, XP oder schaltet ein Osterei frei.
+
+   Welche Ostereier es gibt, steht hier und nicht in der Datenbank: sie
+   haengen an Code im Browser (eine Animation, ein versteckter Sender),
+   und was der nicht kennt, kann der Admin auch nicht sinnvoll
+   freischalten. Der Server prueft nur gegen diese Liste. */
+var OSTEREIER = {
+  '420': {
+    name: 'Reggae & Rauch',
+    was: 'Schaltet den versteckten Reggae-Sender frei und legt Rauch über den Bildschirm.'
+  }
+};
+
+/** Tausenderpunkte fuer die Meldungen — der Browser macht das sonst. */
+function fmtZahl(n) {
+  return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function codeSchluessel(roh) {
+  /* Gross, ohne Leerzeichen: „ganja 420" und „GANJA420" sind derselbe
+     Code. Sonst scheitert das Einloesen an einem Tippfehler, den niemand
+     sieht. */
+  return String(roh || '').toUpperCase().replace(/\s+/g, '').slice(0, 24);
+}
+
+function codeFinden(roh) {
+  var k = codeSchluessel(roh);
+  if (!k) return null;
+  var liste = db.settings.codes || [];
+  for (var i = 0; i < liste.length; i++) {
+    if (liste[i].code === k) return liste[i];
+  }
+  return null;
+}
+
 /* Ein Stueck darf gross sein — der 80er-Mix wiegt allein hundert Megabyte. */
 var UPLOAD_MAX = 220 * 1024 * 1024;
 
@@ -1152,9 +1205,9 @@ function webTitelGrund(url) {
 
 /* ─────────────── Operationen ─────────────── */
 
-var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1, packTrack: 1, packStation: 1, packMove: 1, loopRegel: 1 };
+var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1, packTrack: 1, packStation: 1, packMove: 1, loopRegel: 1, codeSet: 1, codeDel: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
-var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1 };
+var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, code: 1 };
 
 function applyOp(op) {
   var type = op && op.type;
@@ -1175,7 +1228,7 @@ function applyOp(op) {
   }
 
   var p = op.id ? db.players[op.id] : null;
-  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1, resetPassword: 1 };
+  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, code: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1, resetPassword: 1 };
   if (needsPlayer[type] && !p) return { error: 'Spieler nicht gefunden', code: 404 };
 
   switch (type) {
@@ -1237,6 +1290,83 @@ function applyOp(op) {
       if (wert > welche[art]) return { error: 'So weit kommt hier niemand', code: 400 };
       if (!p.rekorde || typeof p.rekorde !== 'object') p.rekorde = {};
       if (wert > (p.rekorde[art] || 0)) p.rekorde[art] = wert;
+      break;
+    }
+
+    /* ── Einen Aktionscode einloesen ──
+       Die einzige Stelle, an der ein Spieler sich selbst etwas gutschreibt.
+       Entsprechend eng: den Code muss es geben, er muss offen sein, und
+       jeder darf jeden genau einmal. */
+    case 'code': {
+      var eingabe = codeSchluessel(op.code);
+      if (!eingabe) return { error: 'Gib einen Code ein', code: 400 };
+      var ak = codeFinden(eingabe);
+      if (!ak || ak.aus) return { error: 'Diesen Code gibt es nicht', code: 404 };
+      if (ak.bis && Date.now() > ak.bis) return { error: 'Dieser Code ist abgelaufen', code: 410 };
+      if (!Array.isArray(ak.benutzt)) ak.benutzt = [];
+      if (ak.benutzt.indexOf(p.id) >= 0) {
+        return { error: 'Den hast du schon eingelöst', code: 409 };
+      }
+      if (ak.max && ak.benutzt.length >= ak.max) {
+        return { error: 'Dieser Code ist aufgebraucht', code: 410 };
+      }
+
+      var was = '';
+      if (ak.art === 'chips') {
+        p.balance += ak.wert;
+        p.granted = (p.granted || 0) + ak.wert;
+        p.peak = Math.max(p.peak || 0, p.balance);
+        was = fmtZahl(ak.wert) + ' Chips';
+      } else if (ak.art === 'xp') {
+        p.xp = (p.xp || 0) + ak.wert;
+        was = fmtZahl(ak.wert) + ' XP';
+      } else if (ak.art === 'ei') {
+        if (!Array.isArray(p.eier)) p.eier = [];
+        if (p.eier.indexOf(ak.ei) < 0) p.eier.push(ak.ei);
+        was = (OSTEREIER[ak.ei] || {}).name || 'ein Osterei';
+      } else {
+        return { error: 'Dieser Code kann nichts', code: 400 };
+      }
+
+      ak.benutzt.push(p.id);
+      pushFeed('🎟 ' + p.name + ' hat einen Code eingelöst: ' + was, 'admin');
+      return { ok: true, was: was, art: ak.art, ei: ak.ei || '', wert: ak.wert || 0 };
+    }
+
+    /* ── Einen Aktionscode anlegen oder aendern (nur Admin) ── */
+    case 'codeSet': {
+      var neu = codeSchluessel(op.code);
+      if (!neu) return { error: 'Der Code braucht eine Zeichenfolge', code: 400 };
+      var liste = db.settings.codes = db.settings.codes || [];
+      var vorhanden = codeFinden(neu);
+      if (!vorhanden && liste.length >= CODE_MAX) {
+        return { error: 'Es gibt schon zu viele Codes', code: 429 };
+      }
+      var art = clean(op.art, 8);
+      if (['chips', 'xp', 'ei'].indexOf(art) < 0) art = 'chips';
+      var ei = clean(op.ei, 24);
+      if (art === 'ei' && !OSTEREIER[ei]) {
+        return { error: 'Dieses Osterei gibt es nicht', code: 400 };
+      }
+      var eintrag = vorhanden || { code: neu, benutzt: [] };
+      eintrag.art = art;
+      eintrag.wert = art === 'ei' ? 0 : clamp(int(op.wert), 0, 100000000);
+      eintrag.ei = art === 'ei' ? ei : '';
+      eintrag.max = clamp(int(op.max), 0, 100000);
+      eintrag.bis = clamp(int(op.bis), 0, 4102444800000);
+      eintrag.aus = !!op.aus;
+      if (art !== 'ei' && !eintrag.wert) {
+        return { error: 'Der Code muss etwas geben', code: 400 };
+      }
+      if (!vorhanden) liste.push(eintrag);
+      break;
+    }
+
+    case 'codeDel': {
+      var weg = codeSchluessel(op.code);
+      db.settings.codes = (db.settings.codes || []).filter(function (c) {
+        return c.code !== weg;
+      });
       break;
     }
 
@@ -2059,6 +2189,27 @@ function handleRequest(req, res) {
         { id: 'verlust', beste: verlierer ? { spieler: wer(verlierer), wert: Math.abs(vw) } : null }
       ]
     });
+  }
+
+  /* ── Aktionscodes fuer das Panel ──
+     Streng nur fuer den Admin: waeren sie im oeffentlichen Stand, koennte
+     sie jeder auslesen und einloesen, und das waere das Ende der Codes. */
+  if (url === '/api/codes' && req.method === 'POST') {
+    return readBody(req).then(function (body) {
+      if (!validToken(body.token)) return sendJSON(res, 403, { error: 'Nur der Admin darf das' });
+      sendJSON(res, 200, {
+        codes: (db.settings.codes || []).map(function (c) {
+          return {
+            code: c.code, art: c.art, wert: c.wert, ei: c.ei || '',
+            max: c.max || 0, bis: c.bis || 0, aus: !!c.aus,
+            benutzt: (c.benutzt || []).length
+          };
+        }),
+        eier: Object.keys(OSTEREIER).map(function (k) {
+          return { id: k, name: OSTEREIER[k].name, was: OSTEREIER[k].was };
+        })
+      });
+    }, function (e) { sendJSON(res, 400, { error: e.message }); });
   }
 
   /* ── Musik und Sender fuer das Panel ──

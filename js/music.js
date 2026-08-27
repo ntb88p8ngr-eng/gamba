@@ -877,6 +877,14 @@
         volume: r.volume === undefined ? 1 : Number(r.volume)
       });
     });
+    /* Versteckte Sender aus Ostereiern. Wer das Ei nicht hat, bekommt
+       eine leere Liste und merkt von ihnen nichts. Sie stehen hinten:
+       ein Fund gehoert ans Ende der Auswahl, nicht an den Anfang. */
+    if (GK.eierSender) {
+      GK.eierSender().forEach(function (r) {
+        if (r && r.url) liste.push(r);
+      });
+    }
     return liste;
   };
 

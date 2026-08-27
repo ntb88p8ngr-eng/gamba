@@ -128,6 +128,46 @@
     return api('api/hall');
   };
 
+  /**
+   * Einen Aktionscode einlösen.
+   *
+   * Geht bewusst nicht über Net.op: der behandelt jeden Fehler selbst und
+   * gibt nur null zurück. Hier ist die Absage aber die Antwort — „den
+   * hast du schon eingelöst" gehört ins Feld und nicht in einen
+   * allgemeinen „Server nicht erreichbar"-Hinweis.
+   *
+   * Den neuen Kontostand bringt der Server mit; er wird übernommen wie
+   * bei jeder anderen Operation auch.
+   */
+  Net.code = function (code) {
+    if (!Net.online) return Promise.reject(new Error('Kein Server'));
+    var body = { type: 'code', code: code };
+    if (Net.session) body.session = Net.session;
+    if (GK.state.currentId) body.id = GK.state.currentId;
+    return api('api/op', { method: 'POST', body: JSON.stringify(body) })
+      .then(function (out) {
+        if (out && out.state) {
+          GK.adoptState(out.state);
+          GK.updateHUD();
+          GK.emit('player-changed');
+        }
+        return out;
+      });
+  };
+
+  /**
+   * Die Aktionscodes (nur Admin).
+   *
+   * Bewusst ein eigener Endpunkt und nicht im allgemeinen Stand: stünden
+   * die Codes dort, könnte sie jeder auslesen und einlösen.
+   */
+  Net.codes = function () {
+    if (!Net.online) return Promise.resolve(null);
+    var body = {};
+    if (Net.token) body.token = Net.token;
+    return api('api/codes', { method: 'POST', body: JSON.stringify(body) });
+  };
+
   /** Musik und Sender aus dem Sound-Pack (nur Admin). */
   Net.pack = function () {
     if (!Net.online) return Promise.resolve(null);

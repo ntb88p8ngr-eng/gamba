@@ -76,6 +76,35 @@
       'This is where you will see who is cleaning up in the party (or losing everything).',
     'Noch keine Spieler. Leg los und hol dir die Krone!': 'No players yet. Get going and grab the crown!',
 
+    /* Aktionscodes und Ostereier */
+    'AKTIONSCODE': 'PROMO CODE', 'GEFUNDEN': 'FOUND',
+    '🎟 EINLÖSEN': '🎟 REDEEM',
+    'z. B. WILLKOMMEN': 'e.g. WELCOME',
+    'Gib einen Code ein': 'Enter a code',
+    'Diesen Code gibt es nicht': 'No such code',
+    'Den hast du schon eingelöst': 'You already redeemed that one',
+    'Dieser Code ist abgelaufen': 'This code has expired',
+    'Dieser Code ist aufgebraucht': 'This code is used up',
+    'Reggae & Rauch': 'Reggae & Smoke',
+    'Ein versteckter Sender und Rauch über dem Bildschirm.':
+      'A hidden station and smoke across the screen.',
+    '🌿 Rauch anzeigen': '🌿 Show smoke',
+    'Nur für dieses Gerät. Der Sender bleibt so oder so.':
+      'For this device only. The station stays either way.',
+    '🌿 Ganja FM ist jetzt in der Senderauswahl': '🌿 Ganja FM is now in the station list',
+    'Heavyweight Reggae, rund um die Uhr': 'Heavyweight reggae, around the clock',
+    /* Aktionscodes im Panel */
+    '🎟 AKTIONSCODES': '🎟 PROMO CODES',
+    'WAS GIBT ER?': 'WHAT DOES IT GIVE?', 'WIE OFT INSGESAMT?': 'HOW MANY IN TOTAL?',
+    '＋ CODE ANLEGEN': '＋ ADD CODE', '✓ CODE ÄNDERN': '✓ SAVE CODE',
+    '🪙 Chips': '🪙 Chips', '⭐ XP': '⭐ XP', '🥚 Osterei': '🥚 Easter egg',
+    'WELCHES OSTEREI?': 'WHICH EASTER EGG?',
+    'Noch kein Code angelegt.': 'No code set up yet.',
+    'Code gespeichert': 'Code saved',
+    'Der Code braucht eine Zeichenfolge': 'The code needs some characters',
+    'Die Spieler geben den Code im Konto-Fenster ein. Groß- und Kleinschreibung und Leerzeichen sind egal. Jeder darf jeden Code genau einmal; „wie oft insgesamt" deckelt zusätzlich alle zusammen, 0 heißt unbegrenzt. Eine Zeile anklicken holt sie zum Ändern herunter.':
+      'Players enter the code in their account window. Case and spaces do not matter. Everyone may redeem each code exactly once; "how many in total" caps everyone together on top of that, 0 means unlimited. Click a row to load it for editing.',
+
     /* Ruhmeshalle */
     'Acht Auszeichnungen, die man nicht kauft, sondern erreicht. Wer einmal drinsteht, bleibt drin — bis ihn jemand ablöst.':
       'Eight awards you do not buy — you earn them. Once you are in, you stay in until somebody takes your place.',
@@ -741,6 +770,13 @@
     [/^(\d+) Runden$/, '$1 rounds'],
     /* Die Strecke unter der Flatterflug-Trophäe — mit Punkt in der
        Zifferngruppe, sobald jemand wirklich weit kommt. */
+    /* Was ein Code gebracht hat: „Eingelöst: 5.000 Chips". */
+    [/^Eingelöst: (.+)$/, function (m, was) {
+      return 'Redeemed: ' + was.replace(/ Chips$/, ' chips').replace(/ XP$/, ' XP');
+    }],
+    [/^Code eingelöst — (.+)$/, function (m, was) {
+      return 'Code redeemed — ' + was.replace(/ Chips$/, ' chips');
+    }],
     [/^([\d.,]+) Röhren$/, '$1 pipes'],
     [/^([\d.,]+) Schollen$/, '$1 floes'],
     [/^([\d.,]+) Stufen$/, '$1 levels'],

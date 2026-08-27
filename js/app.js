@@ -738,6 +738,97 @@
       );
     }
 
+    /* ── Aktionscode ──
+       Ein Feld, ein Knopf, eine Zeile Antwort. Was der Code kann, steht
+       nicht dabei: das ist der Reiz daran. */
+    var codeFeld = el('input', {
+      class: 'input', type: 'text', maxlength: '24', placeholder: 'z. B. WILLKOMMEN',
+      autocapitalize: 'characters', spellcheck: 'false'
+    });
+    var codeKnopf = el('button', { class: 'btn btn-gold btn-small', text: '🎟 EINLÖSEN' });
+    var codeSagt = el('p', { class: 'code-sagt', hidden: 'hidden' });
+
+    function codeMelden(txt, gut) {
+      codeSagt.textContent = txt;
+      codeSagt.className = 'code-sagt ' + (gut ? 'gut' : 'schlecht');
+      codeSagt.hidden = false;
+    }
+    function codeSenden() {
+      var wert = codeFeld.value.trim();
+      if (!wert) { codeMelden(GK.txt('Gib einen Code ein', 'Enter a code'), false); return; }
+      codeKnopf.disabled = true;
+      GK.net.code(wert).then(function (out) {
+        codeKnopf.disabled = false;
+        if (!out) {
+          codeMelden(GK.txt('Server nicht erreichbar', 'Server unreachable'), false);
+          return;
+        }
+        codeFeld.value = '';
+        codeMelden(GK.txt('Eingelöst: ', 'Redeemed: ') + out.was, true);
+        GK.sfx('cash');
+        GK.toast(GK.txt('Code eingelöst — ', 'Code redeemed — ') + out.was, 'gold', '🎟');
+        /* Ein Osterei wirkt sofort: der Rauch zieht auf, der Sender taucht
+           in der Musikauswahl auf. */
+        if (out.art === 'ei' && GK.osterei) GK.osterei(out.ei, true);
+        GK.updateHUD();
+        renderAll();
+      }, function (err) {
+        codeKnopf.disabled = false;
+        /* Die Absage des Servers ist hier die Antwort — sie gehört ins
+           Feld, nicht in einen allgemeinen Hinweis. */
+        codeMelden((err && err.message) || GK.txt('Server nicht erreichbar', 'Server unreachable'), false);
+        GK.sfx('error');
+      });
+    }
+    codeKnopf.addEventListener('click', function () { GK.sfx('click'); codeSenden(); });
+    codeFeld.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); codeSenden(); }
+    });
+    nodes.push(
+      el('div', { class: 'bet-label', text: 'AKTIONSCODE' }),
+      el('div', { class: 'code-zeile' }, [codeFeld, codeKnopf]),
+      codeSagt,
+      el('div', { style: 'height:14px' })
+    );
+
+    /* ── Gefundene Ostereier ──
+       Steht nur da, wenn es etwas zu zeigen gibt. Wer keins hat, soll
+       nicht einmal ahnen, dass es welche gibt. */
+    if (GK.eierListe && GK.eierListe().length) {
+      var eierZeilen = GK.eierListe().map(function (e) {
+        return el('div', { class: 'ei-zeile' }, [
+          el('span', { class: 'ei-emoji', text: e.emoji || '🥚' }),
+          el('span', { class: 'ei-text' }, [
+            el('b', { text: e.name }),
+            el('span', { class: 'ei-was', text: e.was })
+          ])
+        ]);
+      });
+      /* Der Rauch ist hübsch, aber nicht jeder will ihn dauerhaft. Ein
+         Schalter fürs Gerät — das Osterei bleibt davon unberührt. */
+      if (GK.hatOsterei && GK.hatOsterei('420') && GK.rauchSchalten) {
+        var rauchBox = el('input', { type: 'checkbox' });
+        rauchBox.checked = GK.rauchLaeuft();
+        rauchBox.addEventListener('change', function () {
+          GK.sfx('click');
+          GK.rauchSchalten(rauchBox.checked);
+        });
+        eierZeilen.push(el('label', { class: 'party-schalter' }, [
+          rauchBox,
+          el('span', {}, [
+            el('b', { text: '🌿 Rauch anzeigen' }),
+            el('span', { class: 'party-schalter-was',
+                         text: 'Nur für dieses Gerät. Der Sender bleibt so oder so.' })
+          ])
+        ]));
+      }
+      nodes.push(
+        el('div', { class: 'bet-label', text: 'GEFUNDEN' }),
+        el('div', { class: 'ei-liste' }, eierZeilen),
+        el('div', { style: 'height:14px' })
+      );
+    }
+
     /* Anstrich der Seite — gehört wie die Sprache zum Gerät. */
     if (GK.skins && GK.setSkin) {
       /* Bringt ein Skin mehrere Hintergründe mit, steht darunter eine zweite
@@ -3067,6 +3158,110 @@
           .concat(kinder));
     }
 
+    /* ── Aktionscodes ────────────────────────────────────────────
+       Der Admin legt sie an, die Spieler lösen sie im Konto-Fenster ein.
+       Ein Code gibt Chips, XP — oder schaltet ein Osterei frei.
+
+       Die Liste kommt über einen eigenen Endpunkt und nicht mit dem
+       allgemeinen Stand: stünden die Codes dort, könnte sie jeder auslesen
+       und einlösen, und damit wären sie wertlos. */
+    var codeDaten = { codes: [], eier: [] };
+    var codeBox = el('div', { class: 'pack-liste' });
+    var cCode = el('input', { class: 'mp-feld', type: 'text', maxlength: '24',
+                              placeholder: 'z. B. WILLKOMMEN', spellcheck: 'false' });
+    var cArt = el('select', { class: 'mp-feld' });
+    var cWert = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '100', value: '1000' });
+    var cEi = el('select', { class: 'mp-feld' });
+    var cMax = el('input', { class: 'mp-feld', type: 'number', min: '0', step: '1', value: '0',
+                             placeholder: 'unbegrenzt' });
+    var cSpeichern = el('button', { class: 'btn btn-small btn-lime', text: '＋ CODE ANLEGEN' });
+    var cNeu = el('button', { class: 'btn btn-small btn-ghost', text: '✕ FORMULAR LEEREN' });
+    var cWertBlock = el('div', {}, [el('label', { class: 'mp-label', text: 'BETRAG' }), cWert]);
+    var cEiBlock = el('div', {}, [el('label', { class: 'mp-label', text: 'WELCHES OSTEREI?' }), cEi]);
+
+    [['chips', '🪙 Chips'], ['xp', '⭐ XP'], ['ei', '🥚 Osterei']].forEach(function (a) {
+      cArt.appendChild(el('option', { value: a[0], text: a[1] }));
+    });
+    function cArtZeigen() {
+      var ei = cArt.value === 'ei';
+      cWertBlock.hidden = ei;
+      cEiBlock.hidden = !ei;
+    }
+    cArt.addEventListener('change', function () { GK.sfx('click'); cArtZeigen(); });
+
+    function codeFormular(c) {
+      cCode.value = (c && c.code) || '';
+      cArt.value = (c && c.art) || 'chips';
+      cWert.value = c && c.wert ? String(c.wert) : '1000';
+      cEi.value = (c && c.ei) || (codeDaten.eier[0] && codeDaten.eier[0].id) || '';
+      cMax.value = c && c.max ? String(c.max) : '0';
+      cSpeichern.textContent = c ? '✓ CODE ÄNDERN' : '＋ CODE ANLEGEN';
+      cArtZeigen();
+    }
+
+    function codeMalen() {
+      cEi.innerHTML = '';
+      codeDaten.eier.forEach(function (e) {
+        cEi.appendChild(el('option', { value: e.id, text: e.id + ' — ' + e.name, title: e.was }));
+      });
+      codeBox.innerHTML = '';
+      if (!codeDaten.codes.length) {
+        codeBox.appendChild(el('p', { class: 'hint', text: 'Noch kein Code angelegt.' }));
+        return;
+      }
+      codeDaten.codes.forEach(function (c) {
+        var weg = el('button', { class: 'btn btn-small btn-danger', text: '🗑' });
+        weg.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          if (!window.confirm(GK.txt('Code „' + c.code + '" löschen?',
+                                     'Delete code "' + c.code + '"?'))) return;
+          GK.net.op('codeDel', { code: c.code }).then(codeHolen);
+        });
+        var marken = [];
+        if (c.art === 'chips') marken.push(GK.fmt(c.wert) + ' Chips');
+        else if (c.art === 'xp') marken.push(GK.fmt(c.wert) + ' XP');
+        else marken.push('Osterei ' + c.ei);
+        marken.push(c.benutzt + (c.max ? ' von ' + c.max : '') + ' eingelöst');
+        if (c.aus) marken.push('abgeschaltet');
+        var zeile = el('div', { class: 'pack-zeile pack-klick' + (c.aus ? ' pack-aus' : '') }, [
+          el('span', { class: 'pack-ic', text: c.art === 'ei' ? '🥚' : (c.art === 'xp' ? '⭐' : '🪙') }),
+          el('span', { class: 'pack-text' }, [
+            el('b', { text: c.code }),
+            markenZeile(marken)
+          ]),
+          weg
+        ]);
+        zeile.addEventListener('click', function () { codeFormular(c); GK.sfx('chip'); });
+        codeBox.appendChild(zeile);
+      });
+    }
+
+    function codeHolen() {
+      if (!GK.net || !GK.net.online) return;
+      GK.net.codes().then(function (d) {
+        if (!d || !d.codes) return;
+        codeDaten = d;
+        codeMalen();
+      }, function () {});
+    }
+
+    cNeu.addEventListener('click', function () { GK.sfx('click'); codeFormular(null); });
+    cSpeichern.addEventListener('click', function () {
+      if (!cCode.value.trim()) { GK.toast('Der Code braucht eine Zeichenfolge', 'bad', '🎟'); return; }
+      GK.sfx('click');
+      GK.net.op('codeSet', {
+        code: cCode.value, art: cArt.value,
+        wert: parseInt(cWert.value, 10) || 0,
+        ei: cEi.value,
+        max: parseInt(cMax.value, 10) || 0
+      }).then(function (out) {
+        if (!out || out.error) return;
+        GK.toast('Code gespeichert', 'gold', '🎟');
+        codeFormular(null);
+        codeHolen();
+      });
+    });
+
     /* ── Reiter ──────────────────────────────────────────────────
        Dreizehn Kästen untereinander waren mehrere Bildschirmlängen zum
        Scrollen, in denen man nichts wiederfand. Jetzt liegen sie in fünf
@@ -3116,6 +3311,22 @@
         feld('EINZELNEN SPIELER ZURÜCKSETZEN', [
                     el('div', { class: 'modal-actions' }, [resetOneBtn]),
                     el('p', { class: 'hint', text: 'Setzt den oben gewählten Spieler auf 0 XP und ' + GK.START_BALANCE + ' Chips. Statistik geht mit zurück, Konto, Name, Passwort und Glücks-Regler bleiben.' })
+                  ]),
+
+        feld('🎟 AKTIONSCODES', [
+                    codeBox,
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'mp-zwei' }, [
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'CODE' }), cCode]),
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'WAS GIBT ER?' }), cArt])
+                    ]),
+                    el('div', { class: 'mp-zwei' }, [
+                      cWertBlock, cEiBlock,
+                      el('div', {}, [el('label', { class: 'mp-label', text: 'WIE OFT INSGESAMT?' }), cMax])
+                    ]),
+                    el('div', { style: 'height:10px' }),
+                    el('div', { class: 'modal-actions' }, [cSpeichern, cNeu]),
+                    el('p', { class: 'hint', text: 'Die Spieler geben den Code im Konto-Fenster ein. Groß- und Kleinschreibung und Leerzeichen sind egal. Jeder darf jeden Code genau einmal; „wie oft insgesamt" deckelt zusätzlich alle zusammen, 0 heißt unbegrenzt. Eine Zeile anklicken holt sie zum Ändern herunter.' })
                   ])
       ] },
       { id: 'spiele', icon: '🎰', name: 'Spielhalle', felder: [
@@ -3338,6 +3549,7 @@
        zieht im Takt nach und räumt sich weg, sobald das Fenster zu ist. */
     radioSenderHolen();
     packHolen();
+    codeHolen();
     radioUhr = setInterval(function () {
       if (!radioStand.isConnected) { clearInterval(radioUhr); radioUhr = null; return; }
       radioStandHolen();

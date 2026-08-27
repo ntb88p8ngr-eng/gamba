@@ -637,6 +637,87 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .board-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .pos{color:var(--lime)}.neg{color:var(--red)}
 
+/* ═══════════ AKTIONSCODE ═══════════ */
+.code-zeile{display:flex;gap:8px;align-items:center}
+.code-zeile .input{flex:1 1 auto;min-width:0;text-transform:uppercase;letter-spacing:.06em}
+.code-zeile .btn{flex:0 0 auto}
+.code-sagt{margin:7px 0 0;font-size:.82rem}
+.code-sagt.gut{color:var(--lime)}
+.code-sagt.schlecht{color:var(--red)}
+
+/* Gefundene Ostereier im Konto-Fenster. */
+.ei-liste{display:flex;flex-direction:column;gap:7px}
+.ei-zeile{
+  display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:12px;
+  background:rgba(124,255,59,.1);border:1px solid rgba(124,255,59,.3)
+}
+.ei-emoji{font-size:1.5rem;flex:0 0 auto}
+.ei-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ei-text b{font-size:.9rem;color:var(--lime)}
+.ei-was{font-size:.72rem;color:var(--muted);line-height:1.35}
+
+/* ═══════════ RAUCH ═══════════
+   Das Osterei 420. Drei Schwaden ziehen langsam durchs Bild, jede mit
+   eigenem Takt und eigener Richtung — gleichmäßig wäre es ein Streifen,
+   nicht Rauch.
+
+   Die Ebene liegt über dem Hintergrund und unter allem Inhalt und nimmt
+   keine Klicks an: man soll sie sehen und sonst nichts von ihr merken. */
+.rauch{
+  /* Über dem Inhalt, aber unter Kopfzeile (50) und Fenstern (60): Rauch,
+     der hinter den Kacheln läge, wäre keiner — man sähe ihn nur in den
+     Lücken. Klicks gehen hindurch. */
+  position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;
+  opacity:0;transition:opacity 1.6s ease
+}
+.rauch.an{opacity:1}
+.rauch-schwade{
+  position:absolute;display:block;border-radius:50%;
+  /* Weiche, ungleichmäßige Wolken: zwei Verläufe übereinander, damit die
+     Schwade keinen erkennbaren Mittelpunkt hat.
+     `screen` statt normaler Deckung: Rauch nimmt Licht nicht weg, er
+     streut es. Über einer dunklen Seite ist das der Unterschied zwischen
+     „da hängt was in der Luft" und „da ist ein grauer Fleck". */
+  background:
+    radial-gradient(closest-side ellipse at 38% 45%, rgba(198,232,206,.95), transparent 70%),
+    radial-gradient(closest-side ellipse at 66% 58%, rgba(160,210,180,.8), transparent 72%);
+  filter:blur(30px);
+  mix-blend-mode:screen;
+  will-change:transform,opacity
+}
+/* Die negativen Verzögerungen sind Absicht: ohne sie stünden beim
+   Einschalten alle drei Schwaden noch links außerhalb des Bildes, und die
+   erste halbe Minute passierte gar nichts. So ist der Zug schon im
+   Gange, wenn er aufgeht. */
+.rauch-schwade.r1{width:62vw;height:40vh;left:-30vw;top:12vh;animation:rauchzug1 46s linear infinite -14s}
+.rauch-schwade.r2{width:78vw;height:52vh;left:-40vw;top:44vh;animation:rauchzug2 63s linear infinite -34s}
+.rauch-schwade.r3{width:52vw;height:34vh;left:-26vw;top:-6vh;animation:rauchzug3 38s linear infinite -22s}
+@keyframes rauchzug1{
+  0%{transform:translate(0,0) scale(1);opacity:0}
+  10%{opacity:.7}
+  85%{opacity:.62}
+  100%{transform:translate(150vw,-8vh) scale(1.5);opacity:0}
+}
+@keyframes rauchzug2{
+  0%{transform:translate(0,0) scale(.9);opacity:0}
+  12%{opacity:.6}
+  82%{opacity:.52}
+  100%{transform:translate(160vw,-16vh) scale(1.7);opacity:0}
+}
+@keyframes rauchzug3{
+  0%{transform:translate(0,0) scale(1.1);opacity:0}
+  10%{opacity:.5}
+  88%{opacity:.44}
+  100%{transform:translate(155vw,10vh) scale(1.4);opacity:0}
+}
+/* Wer keine Bewegung will, bekommt einen stillen Schleier statt Zug. */
+@media (prefers-reduced-motion:reduce){
+  .rauch-schwade{animation:none;opacity:.3;left:auto;right:auto}
+  .rauch-schwade.r1{left:6vw}
+  .rauch-schwade.r2{left:30vw}
+  .rauch-schwade.r3{left:58vw}
+}
+
 /* ═══════════ HALL OF FAME ═══════════
    Eine eigene Seite mit sechs Vitrinen. Die Karten wachsen von selbst mit —
    ob am Ende fuenf oder acht Auszeichnungen vergeben werden, entscheidet
