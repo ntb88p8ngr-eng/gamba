@@ -119,7 +119,11 @@ function emptyDB() {
          darf jeden Code genau einmal, sonst waere er eine Druckerei.
          `max` deckelt zusaetzlich die Gesamtzahl (0 = unbegrenzt), `bis`
          ist ein Ablaufdatum (0 = nie). */
-      codes: []
+      codes: [],
+      /* Ob die Codes fuer die Ostereier schon einmal angelegt wurden.
+         Siehe eierCodesAnlegen() — die Flagge verhindert, dass ein
+         geloeschter Code beim naechsten Start wiederkommt. */
+      eierCodes: 0
     }
   };
 }
@@ -794,7 +798,28 @@ var CODE_MAX = 200;           // mehr Aktionscodes braucht niemand
 var OSTEREIER = {
   '420': {
     name: 'Reggae & Rauch',
-    was: 'Schaltet den versteckten Reggae-Sender frei und legt Rauch über den Bildschirm.'
+    was: 'Versteckter Reggae-Sender, Rauch über dem Bildschirm — und aus GambaKing wird GanjaKing.',
+    code: '420'
+  },
+  'matrix': {
+    name: 'Digitaler Regen',
+    was: 'Grüne Zeichen rieseln hinter dem Casino herunter.',
+    code: 'FOLGEDEMKANINCHEN'
+  },
+  'disco': {
+    name: 'Discokugel',
+    was: 'Eine Kugel hängt über der Seite und wirft wandernde Lichtkegel.',
+    code: 'SATURDAYNIGHT'
+  },
+  'katze': {
+    name: 'Casinokatze',
+    was: 'Ab und zu spaziert eine Katze unten durchs Bild. Sie tut nichts.',
+    code: 'MIAU'
+  },
+  'glitzer': {
+    name: 'Sternenstaub',
+    was: 'Der Mauszeiger zieht eine Spur aus Funken hinter sich her.',
+    code: 'PIXIESTAUB'
   }
 };
 
@@ -819,6 +844,31 @@ function codeFinden(roh) {
   }
   return null;
 }
+
+/**
+ * Die Ostereier bekommen einmalig ihren Code.
+ *
+ * Ohne das waere jedes Ei tot geboren: der Admin muesste erst raten,
+ * welche Kennung es gibt, und von Hand einen Code dazu bauen. Also legen
+ * wir sie beim ersten Start selbst an.
+ *
+ * Einmalig heisst einmalig — die Flagge in der Datenbank sorgt dafuer,
+ * dass ein geloeschter oder umbenannter Code nicht beim naechsten
+ * Neustart wieder auftaucht. Der Admin hat das letzte Wort, nicht diese
+ * Funktion.
+ */
+function eierCodesAnlegen() {
+  if (db.settings.eierCodes) return;
+  db.settings.eierCodes = 1;
+  var liste = db.settings.codes = db.settings.codes || [];
+  Object.keys(OSTEREIER).forEach(function (k) {
+    var c = codeSchluessel(OSTEREIER[k].code || k);
+    if (!c || codeFinden(c)) return;
+    liste.push({ code: c, art: 'ei', wert: 0, ei: k, max: 0, benutzt: [], bis: 0, aus: false });
+  });
+  saveDB();
+}
+eierCodesAnlegen();
 
 /* Ein Stueck darf gross sein — der 80er-Mix wiegt allein hundert Megabyte. */
 var UPLOAD_MAX = 220 * 1024 * 1024;

@@ -655,6 +655,23 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .ei-text{display:flex;flex-direction:column;gap:1px;min-width:0}
 .ei-text b{font-size:.9rem;color:var(--lime)}
 .ei-was{font-size:.72rem;color:var(--muted);line-height:1.35}
+/* Kleiner Kippschalter am rechten Rand jeder Zeile: an oder aus, ohne
+   Aufschrift — was er schaltet, steht daneben. Das Kästchen selbst ist
+   unsichtbar, sichtbar ist das <i> dahinter. */
+.ei-schalter{margin-left:auto;flex:0 0 auto;cursor:pointer;display:flex;align-items:center}
+.ei-schalter input{position:absolute;opacity:0;width:0;height:0}
+.ei-schalter i{
+  display:block;width:38px;height:21px;border-radius:11px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);
+  position:relative;transition:background .18s ease,border-color .18s ease
+}
+.ei-schalter i::after{
+  content:"";position:absolute;left:2px;top:2px;width:15px;height:15px;border-radius:50%;
+  background:#cfd4e6;transition:transform .18s ease,background .18s ease
+}
+.ei-schalter input:checked + i{background:rgba(124,255,59,.4);border-color:rgba(124,255,59,.6)}
+.ei-schalter input:checked + i::after{transform:translateX(17px);background:#f2fff0}
+.ei-schalter input:focus-visible + i{outline:2px solid var(--cyan);outline-offset:2px}
 
 /* ═══════════ RAUCH ═══════════
    Das Osterei 420. Drei Schwaden ziehen langsam durchs Bild, jede mit
@@ -717,6 +734,130 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
   .rauch-schwade.r2{left:30vw}
   .rauch-schwade.r3{left:58vw}
 }
+
+/* ═══════════ DIGITALER REGEN ═══════════
+   Das Osterei „matrix". Anders als der Rauch liegt der Regen *hinter*
+   dem Inhalt (-1, direkt über der Hintergrundebene bei -2): grüne
+   Zeichen quer über den Spielkacheln wären keine Stimmung, sondern eine
+   unlesbare Seite. Gemalt wird in js/eier.js. */
+.matrix{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  opacity:0;transition:opacity 1.2s ease
+}
+.matrix.an{opacity:.34}
+/* Der Regen ist reine Bewegung — ohne sie bliebe ein Standbild aus
+   Zeichen stehen, das nur im Weg wäre. Also ganz weg. */
+@media (prefers-reduced-motion:reduce){ .matrix{display:none} }
+
+/* ═══════════ DISCOKUGEL ═══════════
+   Das Osterei „disco". Die Kugel hängt an einer Schnur unter der
+   Kopfzeile, drei Lichtkegel wandern darunter durchs Bild. Wie beim
+   Rauch: über dem Inhalt, unter Kopfzeile und Fenstern, klickdurchlässig. */
+.disco{
+  position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;
+  opacity:0;transition:opacity 1.1s ease
+}
+.disco.an{opacity:1}
+.disco-schnur{
+  /* Die Schnur ist der Aufhänger im Wortsinn: sie trägt die Kugel und
+     schwingt, die Kugel hängt nur daran. Zwei Elemente, weil ein
+     einzelnes nur ein transform-Zentrum hat. */
+  position:absolute;left:50%;top:0;width:2px;height:74px;margin-left:-1px;
+  background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.15));
+  transform-origin:top center;
+  animation:discoSchwung 6.5s ease-in-out infinite
+}
+.disco-kugel{
+  position:absolute;left:50%;top:100%;transform:translate(-50%,-6px);
+  font-size:40px;line-height:1;font-style:normal;
+  filter:drop-shadow(0 0 14px rgba(255,255,255,.55)) drop-shadow(0 0 26px rgba(0,229,255,.4));
+  animation:discoFunkeln 2.4s ease-in-out infinite
+}
+.disco-kegel{
+  /* Ein Lichtkegel: oben schmal an der Kugel, unten breit über der Seite.
+     `screen` statt Deckung — Licht nimmt nichts weg, es legt drauf. */
+  position:absolute;left:50%;top:56px;width:56vmax;height:150vh;
+  margin-left:-28vmax;
+  transform-origin:top center;
+  clip-path:polygon(49.2% 0,50.8% 0,100% 100%,0 100%);
+  mix-blend-mode:screen;filter:blur(6px);
+  will-change:transform
+}
+.disco-kegel.k1{background:linear-gradient(180deg,rgba(255,45,180,.4),transparent 68%);
+  animation:discoDreh1 13s linear infinite}
+.disco-kegel.k2{background:linear-gradient(180deg,rgba(0,229,255,.36),transparent 66%);
+  animation:discoDreh2 17s linear infinite}
+.disco-kegel.k3{background:linear-gradient(180deg,rgba(255,214,64,.32),transparent 70%);
+  animation:discoDreh3 21s linear infinite}
+@keyframes discoSchwung{
+  0%,100%{transform:rotate(-4deg)}
+  50%{transform:rotate(4deg)}
+}
+@keyframes discoFunkeln{
+  0%,100%{filter:drop-shadow(0 0 12px rgba(255,255,255,.45)) drop-shadow(0 0 22px rgba(0,229,255,.35))}
+  50%{filter:drop-shadow(0 0 20px rgba(255,255,255,.8)) drop-shadow(0 0 36px rgba(255,45,180,.5))}
+}
+/* Drei Kegel, drei Takte, drei Startwinkel — gleichmäßig wäre es ein
+   Ventilator, keine Kugel. */
+@keyframes discoDreh1{0%{transform:rotate(-38deg)}50%{transform:rotate(38deg)}100%{transform:rotate(-38deg)}}
+@keyframes discoDreh2{0%{transform:rotate(30deg)}50%{transform:rotate(-34deg)}100%{transform:rotate(30deg)}}
+@keyframes discoDreh3{0%{transform:rotate(-12deg)}50%{transform:rotate(20deg)}100%{transform:rotate(-12deg)}}
+@media (prefers-reduced-motion:reduce){
+  .disco-schnur,.disco-kugel,.disco-kegel{animation:none}
+  .disco-kegel{opacity:.5}
+}
+
+/* ═══════════ CASINOKATZE ═══════════
+   Das Osterei „katze". Läuft von links durchs Bild, wartet draußen,
+   kommt gespiegelt zurück und wartet wieder. Der ganze Zyklus dauert
+   knapp eine Minute — öfter wäre sie kein Gast mehr, sondern Personal. */
+.katze{
+  position:fixed;left:0;bottom:4px;z-index:41;pointer-events:none;
+  font-style:normal;
+  animation:katzeWeg 58s linear infinite
+}
+.katze b{
+  display:block;font-size:34px;line-height:1;font-weight:400;
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));
+  /* Der Gang sitzt im inneren Element: außen die Strecke, innen das
+     Wippen. In einem Element ginge das nicht — das zweite transform
+     überschriebe das erste. */
+  animation:katzeGang .42s ease-in-out infinite alternate
+}
+@keyframes katzeWeg{
+  0%   {transform:translateX(-16vw) scaleX(1)}
+  26%  {transform:translateX(112vw) scaleX(1)}
+  /* Der Sprung um einen Hauch: hier dreht sie sich außerhalb des Bildes
+     um, das sieht niemand. */
+  26.1%{transform:translateX(112vw) scaleX(-1)}
+  48%  {transform:translateX(112vw) scaleX(-1)}
+  74%  {transform:translateX(-16vw) scaleX(-1)}
+  74.1%{transform:translateX(-16vw) scaleX(1)}
+  100% {transform:translateX(-16vw) scaleX(1)}
+}
+@keyframes katzeGang{
+  from{transform:translateY(0) rotate(-2deg)}
+  to  {transform:translateY(-4px) rotate(2deg)}
+}
+@media (prefers-reduced-motion:reduce){ .katze{display:none} }
+
+/* ═══════════ STERNENSTAUB ═══════════
+   Das Osterei „glitzer". Ein Funke je Mausbewegung (gebremst in
+   js/eier.js), der aufsteigt, zur Seite treibt und verschwindet.
+   Über allem außer Fenstern — er soll vor dem Zeiger liegen. */
+.funke{
+  position:fixed;z-index:60;pointer-events:none;
+  font-style:normal;line-height:1;
+  transform:translate(-50%,-50%);
+  animation:funkeWeg .95s ease-out forwards
+}
+@keyframes funkeWeg{
+  0%  {opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(0)}
+  18% {opacity:1;transform:translate(-50%,-50%) scale(1.1) rotate(0)}
+  100%{opacity:0;
+       transform:translate(calc(-50% + var(--drift,0px)),calc(-50% - 34px)) scale(.5) rotate(var(--dreh,0deg))}
+}
+@media (prefers-reduced-motion:reduce){ .funke{display:none} }
 
 /* ═══════════ HALL OF FAME ═══════════
    Eine eigene Seite mit sechs Vitrinen. Die Karten wachsen von selbst mit —

@@ -303,7 +303,9 @@
     var track = $('#marquee-track');
     var players = GK.playerList().sort(function (a, b) { return b.balance - a.balance; });
     var lines = [
-      '👑 GAMBAKING — DAS FANTASY CASINO',
+      /* Der Name kommt aus js/eier.js, nicht aus dem Text: wer das Ei 420
+         hat, spielt im GanjaKing, und das Laufband soll das wissen. */
+      '👑 ' + (GK.markeVoll ? GK.markeVoll() : 'GAMBAKING') + ' — DAS FANTASY CASINO',
       '💸 KEIN ECHTGELD · NUR EHRE',
       /* Die Zahl kommt aus der Registry, nicht aus dem Text — sonst steht
          hier nach dem nächsten neuen Spiel wieder eine veraltete. Was der
@@ -795,33 +797,29 @@
        Steht nur da, wenn es etwas zu zeigen gibt. Wer keins hat, soll
        nicht einmal ahnen, dass es welche gibt. */
     if (GK.eierListe && GK.eierListe().length) {
+      /* Jede Spielerei bekommt ihren eigenen Schalter — hübsch ist nicht
+         gleich dauerhaft erwünscht. Der Schalter gilt fürs Gerät, das
+         Osterei bleibt davon unberührt. */
       var eierZeilen = GK.eierListe().map(function (e) {
-        return el('div', { class: 'ei-zeile' }, [
+        var kopf = el('div', { class: 'ei-zeile' }, [
           el('span', { class: 'ei-emoji', text: e.emoji || '🥚' }),
           el('span', { class: 'ei-text' }, [
             el('b', { text: e.name }),
             el('span', { class: 'ei-was', text: e.was })
           ])
         ]);
-      });
-      /* Der Rauch ist hübsch, aber nicht jeder will ihn dauerhaft. Ein
-         Schalter fürs Gerät — das Osterei bleibt davon unberührt. */
-      if (GK.hatOsterei && GK.hatOsterei('420') && GK.rauchSchalten) {
-        var rauchBox = el('input', { type: 'checkbox' });
-        rauchBox.checked = GK.rauchLaeuft();
-        rauchBox.addEventListener('change', function () {
+        if (!e.schalter || !GK.eiSchalten) return kopf;
+        var box = el('input', { type: 'checkbox' });
+        box.checked = e.an;
+        box.addEventListener('change', function () {
           GK.sfx('click');
-          GK.rauchSchalten(rauchBox.checked);
+          GK.eiSchalten(e.id, box.checked);
         });
-        eierZeilen.push(el('label', { class: 'party-schalter' }, [
-          rauchBox,
-          el('span', {}, [
-            el('b', { text: '🌿 Rauch anzeigen' }),
-            el('span', { class: 'party-schalter-was',
-                         text: 'Nur für dieses Gerät. Der Sender bleibt so oder so.' })
-          ])
+        kopf.appendChild(el('label', { class: 'ei-schalter', title: 'Nur für dieses Gerät' }, [
+          box, el('i')
         ]));
-      }
+        return kopf;
+      });
       nodes.push(
         el('div', { class: 'bet-label', text: 'GEFUNDEN' }),
         el('div', { class: 'ei-liste' }, eierZeilen),
@@ -3818,6 +3816,9 @@
     });
     GK.on('xp', renderLevel);
     GK.on('level-up', celebrateLevel);
+    /* Aus GambaKing wird GanjaKing (Osterei 420) — das Laufband trägt den
+       Namen und wird sonst erst beim nächsten Anstrich neu gebaut. */
+    GK.on('marke', renderMarquee);
 
     // Feed-Zeiten frisch halten
     setInterval(renderFeed, 60000);

@@ -85,14 +85,30 @@
     'Den hast du schon eingelöst': 'You already redeemed that one',
     'Dieser Code ist abgelaufen': 'This code has expired',
     'Dieser Code ist aufgebraucht': 'This code is used up',
+    'Nur für dieses Gerät': 'For this device only',
+    /* Die Ostereier: Name und Beschreibung stehen im Konto-Fenster, der
+       Jubelruf einmalig beim Einlösen. */
     'Reggae & Rauch': 'Reggae & Smoke',
-    'Ein versteckter Sender und Rauch über dem Bildschirm.':
-      'A hidden station and smoke across the screen.',
-    '🌿 Rauch anzeigen': '🌿 Show smoke',
-    'Nur für dieses Gerät. Der Sender bleibt so oder so.':
-      'For this device only. The station stays either way.',
+    'Versteckter Sender, Rauch über dem Bildschirm — und die Krone heißt anders.':
+      'A hidden station, smoke across the screen — and the crown goes by another name.',
     '🌿 Ganja FM ist jetzt in der Senderauswahl': '🌿 Ganja FM is now in the station list',
     'Heavyweight Reggae, rund um die Uhr': 'Heavyweight reggae, around the clock',
+    'Digitaler Regen': 'Digital Rain',
+    'Grüne Zeichen rieseln hinter dem Casino herunter.':
+      'Green characters trickle down behind the casino.',
+    '🟩 Folge dem weißen Kaninchen': '🟩 Follow the white rabbit',
+    'Discokugel': 'Disco Ball',
+    'Eine Kugel hängt über der Seite und wirft wandernde Lichtkegel.':
+      'A ball hangs above the page and throws roaming cones of light.',
+    '🪩 Die Kugel hängt': '🪩 The ball is up',
+    'Casinokatze': 'Casino Cat',
+    'Ab und zu spaziert eine Katze unten durchs Bild. Sie tut nichts.':
+      'Every now and then a cat strolls across the bottom. It does nothing.',
+    '🐈 Da ist eine Katze reingelaufen': '🐈 A cat wandered in',
+    'Sternenstaub': 'Stardust',
+    'Der Mauszeiger zieht eine Spur aus Funken hinter sich her.':
+      'The mouse pointer trails a wake of sparks.',
+    '✨ Der Zeiger funkelt jetzt': '✨ Your pointer sparkles now',
     /* Aktionscodes im Panel */
     '🎟 AKTIONSCODES': '🎟 PROMO CODES',
     'WAS GIBT ER?': 'WHAT DOES IT GIVE?', 'WIE OFT INSGESAMT?': 'HOW MANY IN TOTAL?',
