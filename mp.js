@@ -320,19 +320,44 @@ function createMP(deps) {
        raiseWie     Wie oft er es dann wirklich tut.
        potAnteil    Wie gross er setzt, gemessen am Pot.
        bluff        Wie oft er ohne Hand Druck macht.
+       abfangen     Wie oft er einen Einsatz mitgeht, den er rechnerisch
+                    passen muesste — der Preis dafuer, dass ein Bluff des
+                    Gegners auch mal auffliegt.
+       liest        Wie stark er sich merkt, wer dauernd erhoeht.
 
      Der Anfaenger geht fast immer mit und erhoeht kaum — die klassische
      Mitgeh-Maschine. Der Hai passt, sobald sich das Mitgehen nicht rechnet,
      setzt gross und blufft. */
   var BOT_STUFEN = {
     leicht: { name: 'Anfänger', laune: 0.30, foldAb: -0.18, raiseAb: 0.88,
-              raiseWie: 0.20, potAnteil: 0.35, bluff: 0, denk: [900, 1700] },
+              raiseWie: 0.20, potAnteil: 0.35, bluff: 0.03,
+              abfangen: 0.28, liest: 0.15, denk: [900, 1700] },
     mittel: { name: 'Solide',   laune: 0.16, foldAb: -0.06, raiseAb: 0.80,
-              raiseWie: 0.45, potAnteil: 0.60, bluff: 0.05, denk: [650, 1500] },
+              raiseWie: 0.45, potAnteil: 0.60, bluff: 0.10,
+              abfangen: 0.18, liest: 0.6,  denk: [650, 1500] },
     schwer: { name: 'Hai',      laune: 0.07, foldAb: 0.02,  raiseAb: 0.66,
-              raiseWie: 0.70, potAnteil: 0.85, bluff: 0.14, denk: [500, 1100] }
+              raiseWie: 0.70, potAnteil: 0.85, bluff: 0.20,
+              abfangen: 0.22, liest: 1.0,  denk: [500, 1100] }
   };
   function stufeVon(s) { return BOT_STUFEN[s && s.level] || BOT_STUFEN.mittel; }
+
+  /* Hoechstens so viele Erhoehungen je Setzrunde, bevor die Bots nur noch
+     mitgehen. Ohne die Grenze koennten sich zwei Bluffer gegenseitig
+     hochschaukeln, bis einer all-in ist — an einem Tisch, an dem der
+     Mensch laengst gepasst hat. */
+  var BOT_MAX_ERHOEHUNGEN = 3;
+
+  /**
+   * Wie oft dieser Platz erhoeht, statt nur mitzugehen (0..1).
+   *
+   * Die ersten Zuege zaehlen nicht: aus zwei Haenden laesst sich niemand
+   * lesen, und ein einzelnes Erhoehen zu Beginn ergaebe sonst eine Quote
+   * von 1,0. Bis dahin gilt der Normalfall.
+   */
+  function druckQuote(s) {
+    if (!s || !s.druck || s.druck.zuege < 6) return 0.25;
+    return clamp(s.druck.erhoeht / s.druck.zuege, 0, 1);
+  }
 
   function addBot(t, opts) {
     t.stillSeit = now();
@@ -427,20 +452,50 @@ function createMP(deps) {
     var wert = staerke + laune;
     var einsatz = Math.max(h.minRaise, Math.floor((h.pot || t.bb) * L.potAnteil));
 
+    /* Wer bei jeder Hand erhoeht, erhoeht auch mit nichts — sein Einsatz
+       sagt dann nichts mehr ueber seine Karten. Genau hier lag der Fehler:
+       ein Bot, der bei einer Erhoehung mit schlechten Karten *immer*
+       aussteigt, ist keine Gegenwehr, sondern eine Gelddruckmaschine. Man
+       erhoeht einfach jede Hand und gewinnt sie, ohne je Karten zu zeigen.
+
+       Das Misstrauen waechst mit der Erhoehungsquote des Gegners und
+       senkt, was der Bot zum Mitgehen braucht. Gegen einen ruhigen
+       Spieler kommt es nie zum Tragen — der bleibt glaubwuerdig. */
+    var gegner = h.letzterErhoeher >= 0 ? t.seats[h.letzterErhoeher] : null;
+    var misstrauen = clamp((druckQuote(gegner) - 0.25) * L.liest, 0, 0.3);
+    var offen = (h.erhoehungen || 0) < BOT_MAX_ERHOEHUNGEN;
+    var raiseAb = L.raiseAb - misstrauen * 0.5;
+    var blufft = offen && Math.random() < L.bluff + misstrauen * 0.5;
+
     if (fehlt <= 0) {
       // nichts zu zahlen: mit starker Hand setzen, sonst klopfen
-      if (wert > L.raiseAb - 0.08 && Math.random() < L.raiseWie) {
+      if (wert > raiseAb - 0.08 && Math.random() < L.raiseWie) {
         return !botAction(t, s, 'raise', h.toCall + einsatz);
       }
       /* Bluff ohne Hand: nur wenn schon Karten liegen — vor dem Flop weiss
          er zu wenig, um Druck zu machen. */
-      if (L.bluff && h.board.length >= 3 && wert < 0.4 && Math.random() < L.bluff) {
+      if (blufft && h.board.length >= 3 && wert < 0.4) {
         return !botAction(t, s, 'raise', h.toCall + einsatz);
       }
       return !botAction(t, s, 'check');
     }
-    if (wert < potOdds + L.foldAb) return !botAction(t, s, 'fold');
-    if (wert > L.raiseAb && Math.random() < L.raiseWie) {
+
+    /* Bluffen gegen einen Einsatz — das ist der Zug, den es vorher gar
+       nicht gab. Vor dem Flop nur gegen einen, dem er ohnehin nicht mehr
+       glaubt; sonst weiss er zu wenig, um glaubhaft Druck zu machen. */
+    if (blufft && wert < raiseAb && fehlt < s.stack &&
+        (h.board.length >= 3 || misstrauen > 0.15)) {
+      return !botAction(t, s, 'raise', h.toCall + einsatz);
+    }
+    if (wert + misstrauen < potOdds + L.foldAb) {
+      /* Und ab und zu schaut er einfach nach — aber nur, wenn es fast
+         nichts kostet und der Stapel es hergibt. */
+      if (potOdds < 0.2 && fehlt < s.stack && Math.random() < L.abfangen) {
+        return !botAction(t, s, 'call');
+      }
+      return !botAction(t, s, 'fold');
+    }
+    if (wert > raiseAb && Math.random() < L.raiseWie) {
       return !botAction(t, s, 'raise', h.toCall + einsatz);
     }
     return !botAction(t, s, 'call');
@@ -740,6 +795,9 @@ function createMP(deps) {
       pot: 0,
       toCall: 0,
       minRaise: t.bb,
+      /* Erhoehungen der laufenden Setzrunde. Deckelt, wie weit sich zwei
+         bluffende Bots gegenseitig hochschaukeln duerfen. */
+      erhoehungen: 0,
       turn: -1,
       deadline: 0,
       ende: 0,
@@ -1984,6 +2042,7 @@ function createMP(deps) {
         h.minRaise = Math.max(h.minRaise, ziel - h.toCall);
         h.toCall = ziel;
         h.letzterErhoeher = i;
+        h.erhoehungen = (h.erhoehungen || 0) + 1;
         // eine echte Erhoehung oeffnet die Runde wieder
         t.seats.forEach(function (x, k) { if (x && x.h && k !== i) x.h.dran = false; });
       }
@@ -1992,6 +2051,14 @@ function createMP(deps) {
     } else {
       return { error: 'Unbekannter Zug', code: 400 };
     }
+
+    /* Fuer das Bild, das die Bots vom Gegner haben: gezaehlt wird jeder
+       Zug und davon die Erhoehungen. Das haengt am Platz, nicht an der
+       Hand — sonst waere das Gedaechtnis nach jeder Hand wieder leer und
+       kein Bot bekaeme je mit, dass da einer dauernd Druck macht. */
+    if (!s.druck) s.druck = { zuege: 0, erhoeht: 0 };
+    s.druck.zuege++;
+    if (was === 'raise' || was === 'allin') s.druck.erhoeht++;
 
     s.h.dran = true;
     weiter(t);
@@ -2086,6 +2153,7 @@ function createMP(deps) {
     });
     h.toCall = 0;
     h.minRaise = t.bb;
+    h.erhoehungen = 0;
   }
 
   function karten(t, n) {

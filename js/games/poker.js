@@ -132,15 +132,22 @@
   }
 
   /* ─────────────── Die drei Gegner ───────────────
-     call  = ab welcher Handstärke mitgegangen wird
-     raise = ab wann erhöht wird
-     bluff = wie oft ohne alles erhöht wird */
+     call      = ab welcher Handstärke mitgegangen wird
+     raise     = ab wann erhöht wird
+     bluff     = wie oft ohne alles erhöht wird
+     abfangen  = wie oft er einen Einsatz mitgeht, den er rechnerisch
+                 passen müsste — der Preis dafür, dass ein Bluff auch
+                 mal auffliegt
+     liest     = wie stark er sich merkt, wer dauernd erhöht */
   var BOTS = [
     { name: 'Baron von Bluff', icon: 'flame',  color: '#ff2fd0', call: 0.40, raise: 0.70, bluff: 0.15,
+      abfangen: 0.26, liest: 0.9,
       says: ['Ich rieche Angst.', 'Das war zu leicht.', 'Chips sind nur Konfetti.'] },
-    { name: 'Gräfin Eiskalt',  icon: 'gem',    color: '#00e5ff', call: 0.58, raise: 0.82, bluff: 0.03,
+    { name: 'Gräfin Eiskalt',  icon: 'gem',    color: '#00e5ff', call: 0.58, raise: 0.82, bluff: 0.06,
+      abfangen: 0.14, liest: 1.0,
       says: ['Geduld ist eine Waffe.', 'Ich warte auf Besseres.', 'Wie erwartet.'] },
     { name: 'Onkel Kalle',     icon: 'clover', color: '#7cff3b', call: 0.28, raise: 0.90, bluff: 0.07,
+      abfangen: 0.34, liest: 0.35,
       says: ['Ach komm, ich schau mal.', 'Einmal ist keinmal!', 'Hab ich doch gesagt.'] }
   ];
 
@@ -149,7 +156,8 @@
 
   /**
    * Entscheidung eines Gegners: Handstärke gegen Pot-Odds und Charakter.
-   * ctx = { board, need, pot, street, raises, soft }
+   * ctx = { board, need, pot, street, raises, druck, soft }
+   * druck ist, wie oft der Mensch bisher erhöht hat (0..1).
    * soft ist der Admin-Luck-Zuschlag: je höher, desto öfter steigen sie aus.
    */
   function botDecide(bot, cards, ctx) {
@@ -157,12 +165,35 @@
     if (ctx.need > 0 && ctx.soft > 0 && Math.random() < ctx.soft) return 'fold';
 
     var odds = ctx.need > 0 ? ctx.need / (ctx.pot + ctx.need) : 0;
-    var needed = bot.call + odds * 0.6 - ctx.street * 0.02;
-    var bluffing = Math.random() < bot.bluff;
 
-    if (ctx.raises < MAX_RAISES && (s >= bot.raise || (bluffing && s > 0.25))) return 'raise';
+    /* Wer bei jeder Hand erhöht, erhöht auch mit nichts — sein Einsatz
+       sagt dann nichts mehr über seine Karten. Genau hier lag der Fehler:
+       ein Gegner, der bei einer Erhöhung mit schlechten Karten *immer*
+       aussteigt, ist keine Gegenwehr, sondern eine Gelddruckmaschine. Man
+       erhöht einfach jede Hand und gewinnt sie, ohne je Karten zu zeigen.
+
+       Das Misstrauen wächst mit der Erhöhungsquote und senkt, was der Bot
+       zum Mitgehen braucht. Es kommt gegen einen ruhigen Spieler nie zum
+       Tragen — der bleibt glaubwürdig. */
+    var misstrauen = Math.min(0.3, Math.max(0, (ctx.druck - 0.25) * bot.liest));
+    var needed = bot.call + odds * 0.6 - ctx.street * 0.02 - misstrauen;
+
+    /* Bluffen darf er jetzt auch mit echtem Müll, nicht nur mit einer
+       halben Hand — und gegen einen Dauererhöher öfter. Wer nur mit
+       Ansatz blufft, blufft immer noch nachvollziehbar. */
+    var bluffing = Math.random() < bot.bluff + misstrauen * 0.5;
+    var raiseAb = bot.raise - misstrauen * 0.5;
+
+    if (ctx.raises < MAX_RAISES && (s >= raiseAb || (bluffing && s > 0.12))) return 'raise';
     if (ctx.need === 0) return 'check';
-    return s >= needed ? 'call' : 'fold';
+    if (s >= needed) return 'call';
+
+    /* Und ab und zu schaut er einfach nach — aber nur, wenn es fast
+       nichts kostet. Einen dicken Einsatz mit nichts zu bezahlen wäre
+       nicht mutig, sondern dumm. */
+    if (odds < 0.2 && Math.random() < bot.abfangen) return 'call';
+
+    return 'fold';
   }
 
   GK.registerGame({
@@ -199,6 +230,10 @@
       var button = Math.floor(Math.random() * 4);
       var running = false, showdown = false;
       var toCall = 0, raises = 0, onHumanAction = null;
+      /* Wie oft der Mensch erhöht, statt nur mitzugehen — über alle Hände
+         dieser Sitzung. Daran messen die Gegner, ob sie ihm noch glauben:
+         wer immer erhöht, erhöht auch mit nichts. */
+      var druckZuege = 0, druckErhoeht = 0;
       /* Wer als naechstes dran ist und wie es nach der Setzrunde weitergeht —
          beides braucht der Wiederaufbau, um die Runde fortzusetzen. */
       var pendingIdx = 0, roundDone = null;
@@ -529,6 +564,14 @@
             GK.sfx('card');
           }
 
+          /* Gezählt wird, was am Ende wirklich passiert ist — aus einem
+             Erhöhen kann unterwegs noch ein Mitgehen oder ein Passen
+             geworden sein. */
+          if (p.me) {
+            druckZuege++;
+            if (action === 'raise') druckErhoeht++;
+          }
+
           p.acted = true;
           p.turn = false;
           idx = (p.idx + 1) % N;
@@ -541,9 +584,22 @@
         next();
       }
 
+      /**
+       * Wie oft der Mensch erhöht (0..1).
+       *
+       * Die ersten Züge zählen nicht: aus zwei Händen lässt sich niemand
+       * lesen, und ein einzelnes Erhöhen zu Beginn ergäbe sonst eine
+       * Quote von 1,0. Bis dahin gilt der Normalfall.
+       */
+      function druckQuote() {
+        if (druckZuege < 6) return 0.25;
+        return Math.min(1, druckErhoeht / druckZuege);
+      }
+
       function botMove(p) {
         return botDecide(p.bot, p.cards, {
           board: board, need: toCall - p.bet, pot: pot, street: street, raises: raises,
+          druck: druckQuote(),
           // Admin-Luck macht den Tisch weich: die Gegner steigen öfter aus
           soft: GK.luckify(0.5) - 0.5
         });
@@ -738,6 +794,7 @@
           handCount: handCount, deck: deck, board: board, pot: pot,
           stake: stake, street: street, button: button, toCall: toCall,
           raises: raises, showdown: showdown, pendingIdx: pendingIdx,
+          druckZuege: druckZuege, druckErhoeht: druckErhoeht,
           seats: seats.map(function (p) {
             return {
               cards: p.cards, bet: p.bet, total: p.total,
@@ -768,6 +825,7 @@
         stake = st.stake; street = st.street || 0; button = st.button || 0;
         toCall = st.toCall || 0; raises = st.raises || 0; showdown = !!st.showdown;
         pendingIdx = st.pendingIdx || 0;
+        druckZuege = st.druckZuege || 0; druckErhoeht = st.druckErhoeht || 0;
 
         st.seats.forEach(function (sv, i) {
           var p = seats[i];
