@@ -2808,6 +2808,20 @@
     emojiBauen();
 
     var wrSkinBox = el('div', { class: 'webradio-skins' });
+    /* Ein Sender kann an einem Osterei hängen — dann hört ihn nur, wer
+       das Ei gefunden hat. So ist auch Ganja FM angelegt: ein ganz
+       normales Webradio, nur mit einer Kennung daran. Deshalb lässt es
+       sich hier ändern wie jedes andere. */
+    function eiAufschrift(e) {
+      return (e.emoji || '🥚') + ' ' + GK.txt('nur mit „' + e.name + '"',
+                                              'only with "' + e.name + '"');
+    }
+    var wrEi = el('select', { class: 'mp-feld' });
+    wrEi.appendChild(el('option', { value: '',
+                                    text: GK.txt('— für alle hörbar', '— audible to everyone') }));
+    (GK.eierAlle ? GK.eierAlle() : []).forEach(function (e) {
+      wrEi.appendChild(el('option', { value: e.id, text: eiAufschrift(e) }));
+    });
     var wrSpeichern = el('button', { class: 'btn btn-small btn-lime', text: '＋ ANLEGEN' });
     var wrNeu = el('button', { class: 'btn btn-small btn-ghost', text: '✕ FORMULAR LEEREN' });
     var wrId = '';                 // leer = ein neuer Eintrag
@@ -2829,6 +2843,7 @@
       wrWas.value = (eintrag && eintrag.was) || '';
       var gewaehlt = (eintrag && eintrag.skins) || [];
       wrSkinFelder.forEach(function (b) { b.checked = gewaehlt.indexOf(b.dataset.skin) >= 0; });
+      wrEi.value = (eintrag && eintrag.ei) || '';
       wrSpeichern.textContent = wrId ? '✓ ÄNDERN' : '＋ ANLEGEN';
       emojiBauen();                       // Markierung auf das Zeichen des Eintrags
     }
@@ -2865,11 +2880,20 @@
             wrBauen();
           });
         });
+        /* Haengt der Sender an einem Osterei, gehoert das in die Zeile —
+           sonst wundert sich der Admin, warum ihn niemand findet. */
+        var eiName = '';
+        if (r.ei) {
+          (GK.eierAlle ? GK.eierAlle() : []).forEach(function (e) {
+            if (e.id === r.ei) eiName = eiAufschrift(e);
+          });
+          if (!eiName) eiName = '🥚 ' + GK.txt('nur mit Osterei ', 'only with easter egg ') + r.ei;
+        }
         var zeile = el('div', { class: 'webradio-zeile' }, [
           el('span', { class: 'webradio-ic', text: r.icon || '📻' }),
           el('span', { class: 'webradio-text' }, [
             el('b', { text: r.name }),
-            el('span', { text: wo }),
+            el('span', { text: wo + (eiName ? ' · ' + eiName : '') }),
             titelZeile2
           ]),
           senderRegler('webradio', r.id, r.volume === undefined ? 1 : r.volume, wrBauen),
@@ -2890,7 +2914,7 @@
                               .map(function (b) { return b.dataset.skin; });
       GK.net.op('webRadioSet', {
         id: wrId, name: wrName.value, icon: wrIcon.value,
-        url: wrUrl.value, was: wrWas.value, skins: skins
+        url: wrUrl.value, was: wrWas.value, skins: skins, ei: wrEi.value
       }).then(function (out) {
         if (!out || out.error) return;             // die Meldung kommt vom Netzteil
         wrFormular(null);
@@ -3433,9 +3457,10 @@
                     el('label', { class: 'mp-label', text: 'UNTERZEILE' }), wrWas,
                     el('label', { class: 'mp-label', text: 'IN WELCHEN ANSTRICHEN?' }),
                     wrSkinBox,
+                    el('label', { class: 'mp-label', text: 'WER DARF IHN HÖREN?' }), wrEi,
                     el('div', { style: 'height:10px' }),
                     el('div', { class: 'modal-actions' }, [wrSpeichern, wrNeu]),
-                    el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.' })
+                    el('p', { class: 'hint', text: 'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Hängt ein Sender an einem Osterei, hört ihn nur, wer das Ei gefunden hat — für alle anderen gibt es ihn nicht. Eine Zeile anklicken holt sie zum Ändern herunter.' })
                   ], true)
       ] },
       { id: 'zahlen', icon: '📊', name: 'Statistiken', felder: [

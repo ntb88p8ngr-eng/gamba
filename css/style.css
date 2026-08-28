@@ -824,16 +824,19 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
      überschriebe das erste. */
   animation:katzeGang .42s ease-in-out infinite alternate
 }
+/* Die Spiegelung ist nicht beliebig: das Emoji 🐈 schaut von Haus aus
+   nach links. Wer nach rechts läuft, muss also gespiegelt werden — sonst
+   geht die Katze rückwärts durchs Bild. */
 @keyframes katzeWeg{
-  0%   {transform:translateX(-16vw) scaleX(1)}
-  26%  {transform:translateX(112vw) scaleX(1)}
+  0%   {transform:translateX(-16vw) scaleX(-1)}
+  26%  {transform:translateX(112vw) scaleX(-1)}
   /* Der Sprung um einen Hauch: hier dreht sie sich außerhalb des Bildes
      um, das sieht niemand. */
-  26.1%{transform:translateX(112vw) scaleX(-1)}
-  48%  {transform:translateX(112vw) scaleX(-1)}
-  74%  {transform:translateX(-16vw) scaleX(-1)}
-  74.1%{transform:translateX(-16vw) scaleX(1)}
-  100% {transform:translateX(-16vw) scaleX(1)}
+  26.1%{transform:translateX(112vw) scaleX(1)}
+  48%  {transform:translateX(112vw) scaleX(1)}
+  74%  {transform:translateX(-16vw) scaleX(1)}
+  74.1%{transform:translateX(-16vw) scaleX(-1)}
+  100% {transform:translateX(-16vw) scaleX(-1)}
 }
 @keyframes katzeGang{
   from{transform:translateY(0) rotate(-2deg)}

@@ -123,7 +123,10 @@ function emptyDB() {
       /* Ob die Codes fuer die Ostereier schon einmal angelegt wurden.
          Siehe eierCodesAnlegen() — die Flagge verhindert, dass ein
          geloeschter Code beim naechsten Start wiederkommt. */
-      eierCodes: 0
+      eierCodes: 0,
+      /* Dasselbe fuer die Sender, die an einem Osterei haengen.
+         Siehe eierSenderAnlegen(). */
+      eierSender: 0
     }
   };
 }
@@ -811,7 +814,19 @@ var OSTEREIER = {
   '420': {
     name: 'Reggae & Rauch',
     was: 'Versteckter Reggae-Sender, Rauch über dem Bildschirm — und aus GambaKing wird GanjaKing.',
-    code: '420'
+    code: '420',
+    /* Der Sender wird beim ersten Start als ganz normales Webradio
+       angelegt — nur mit der Kennung dieses Ostereis daran. Damit steht
+       er im Panel wie jeder andere und laesst sich umbenennen, umhaengen
+       oder loeschen. Das hier ist der Startwert, nicht die Wahrheit:
+       sobald er in den Einstellungen liegt, gilt, was dort steht. */
+    sender: {
+      id: 'ei-reggae',
+      name: 'Ganja FM',
+      was: 'Heavyweight Reggae, rund um die Uhr',
+      icon: '🌿',
+      url: 'https://ice6.somafm.com/reggae-128-mp3'
+    }
   },
   'matrix': {
     name: 'Digitaler Regen',
@@ -881,6 +896,33 @@ function eierCodesAnlegen() {
   saveDB();
 }
 eierCodesAnlegen();
+
+/**
+ * Sender, die zu einem Osterei gehoeren, einmalig als Webradio anlegen.
+ *
+ * Danach sind es normale Eintraege in den Einstellungen: der Admin kann
+ * sie umbenennen, ihnen eine andere Adresse geben, sie einem anderen Ei
+ * zuordnen oder sie loeschen. Genau wie bei den Codes gilt die Flagge —
+ * ein geloeschter Sender kommt beim naechsten Start nicht zurueck.
+ */
+function eierSenderAnlegen() {
+  if (db.settings.eierSender) return;
+  db.settings.eierSender = 1;
+  var liste = db.settings.webRadios = db.settings.webRadios || [];
+  Object.keys(OSTEREIER).forEach(function (k) {
+    var s = OSTEREIER[k].sender;
+    if (!s) return;
+    var da = false;
+    liste.forEach(function (r) { if (r.id === s.id) da = true; });
+    if (da) return;
+    liste.push({
+      id: s.id, name: s.name, icon: s.icon || '📻', was: s.was || '',
+      url: s.url, skins: [], volume: 1, ei: k
+    });
+  });
+  saveDB();
+}
+eierSenderAnlegen();
 
 /* Ein Stueck darf gross sein — der 80er-Mix wiegt allein hundert Megabyte. */
 var UPLOAD_MAX = 220 * 1024 * 1024;
@@ -1392,7 +1434,13 @@ function applyOp(op) {
 
       ak.benutzt.push(p.id);
       pushFeed('🎟 ' + p.name + ' hat einen Code eingelöst: ' + was, 'admin');
-      return { ok: true, was: was, art: ak.art, ei: ak.ei || '', wert: ak.wert || 0 };
+      /* Der Stand muss mit: der Browser wendet das Osterei sofort an, und
+         dafuer muss er es am Konto schon sehen. Ohne ihn wirkte ein
+         frisch eingeloester Code erst beim naechsten Abgleich — man gab
+         den Code ein, bekam „freigeschaltet" zu lesen und es passierte
+         nichts. */
+      return { ok: true, was: was, art: ak.art, ei: ak.ei || '', wert: ak.wert || 0,
+               state: publicState() };
     }
 
     /* ── Einen Aktionscode anlegen oder aendern (nur Admin) ── */
@@ -1792,8 +1840,19 @@ function applyOp(op) {
            alle Zuhoerer. */
         volume: op.volume === undefined
           ? (eintragVorher && eintragVorher.volume !== undefined ? eintragVorher.volume : 1)
-          : Math.round(clamp(Number(op.volume) || 0, 0, 2) * 100) / 100
+          : Math.round(clamp(Number(op.volume) || 0, 0, 2) * 100) / 100,
+        /* Haengt der Sender an einem Osterei, sieht ihn nur, wer das Ei
+           hat — leer heisst: fuer alle. Eine unbekannte Kennung waere ein
+           Sender, den niemand je zu Gesicht bekommt; das ist bestimmt
+           nicht gemeint, also lieber eine Absage als ein stiller Fehler. */
+        ei: (function () {
+          var k = clean(op.ei, 24).trim();
+          return k && OSTEREIER[k] ? k : '';
+        })()
       };
+      if (clean(op.ei, 24).trim() && !eintrag.ei) {
+        return { error: 'Dieses Osterei gibt es nicht', code: 400 };
+      }
       var wo = -1;
       for (var wi = 0; wi < liste.length; wi++) if (liste[wi].id === eintrag.id) wo = wi;
       if (wo >= 0) liste[wo] = eintrag;

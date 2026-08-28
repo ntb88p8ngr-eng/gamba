@@ -16,7 +16,8 @@
      zeigen(an)         — schaltet die Spielerei an oder aus
      schalter           — Aufschrift des Schalters (fehlt er, laesst sich
                           das Ei nicht abschalten)
-     sender             — optional: ein Webradio, das dazukommt
+     sender             — optional: true, wenn ein Webradio dazugehoert
+                          (der Sender selbst liegt in den Einstellungen)
      jubel              — optional: die einmalige Geste beim Einloesen
    Mehr braucht es nicht.
    ═══════════════════════════════════════════════════════════ */
@@ -36,18 +37,14 @@
       emoji: '🌿',
       was: 'Versteckter Sender, Rauch über dem Bildschirm — und die Krone heißt anders.',
       schalter: 'Rauch & Ganja-Krone',
-      /* Der Sender taucht in der Musikauswahl auf, sobald das Ei da ist.
-         Er sieht aus wie ein Webradio aus dem Panel und wird auch genauso
-         behandelt — nur dass ihn nicht der Admin angelegt hat. */
-      sender: {
-        id: 'ei-reggae',
-        name: 'Ganja FM',
-        was: 'Heavyweight Reggae, rund um die Uhr',
-        icon: '🌿',
-        url: 'https://ice6.somafm.com/reggae-128-mp3',
-        volume: 1
-      },
-      jubel: { text: '🌿 Ganja FM ist jetzt in der Senderauswahl', emojis: ['🌿', '💨', '🍃'] },
+      /* Der Sender dazu ist ein ganz normales Webradio aus dem Panel, nur
+         mit der Kennung dieses Eis daran — der Server legt ihn beim
+         ersten Start an (eierSenderAnlegen), danach gehoert er dem Admin.
+         Deshalb steht er hier nicht mehr: sonst gaebe es zwei Wahrheiten,
+         und die im Code waere die falsche. */
+      sender: true,
+      jubel: { text: '🌿 Ein versteckter Sender steht jetzt in der Musikauswahl',
+               emojis: ['🌿', '💨', '🍃'] },
       zeigen: function (an) { rauchZeigen(an); markeSetzen(an); }
     },
 
@@ -125,20 +122,16 @@
   };
 
   /**
-   * Versteckte Sender, die ein Osterei mitbringt.
+   * Alle Ostereier, die es gibt — nicht nur die eigenen.
    *
-   * js/music.js haengt sie an die Senderliste an. Wer das Ei nicht hat,
-   * bekommt eine leere Liste und merkt von dem Sender nichts — auch nicht
-   * in der Auswahl.
+   * Das Admin-Panel braucht die Liste, um einem Webradio ein Ei zuordnen
+   * zu koennen. Sie verraet nichts: was es zu finden gibt, steht ohnehin
+   * in dieser Datei, und das Panel sieht nur der Admin.
    */
-  GK.eierSender = function () {
-    var raus = [];
-    Object.keys(EIER).forEach(function (k) {
-      if (EIER[k].sender && hat(k)) {
-        raus.push(Object.assign({ web: true, ei: k }, EIER[k].sender));
-      }
+  GK.eierAlle = function () {
+    return Object.keys(EIER).map(function (k) {
+      return { id: k, name: EIER[k].name, emoji: EIER[k].emoji };
     });
-    return raus;
   };
 
   /* ── 420: Rauch ───────────────────────────────────────────────────

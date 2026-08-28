@@ -869,23 +869,21 @@
     if (GK.sfxPack && GK.sfxPack.radio) {
       GK.sfxPack.radio().forEach(function (r) { if (passt(r)) liste.push(r); });
     }
+    /* Ein Webradio kann an einem Osterei haengen. Dann sieht es nur, wer
+       das Ei hat — für alle anderen gibt es den Sender schlicht nicht,
+       auch nicht in der Auswahl. Die versteckten stehen hinten: ein Fund
+       gehört ans Ende der Liste, nicht an den Anfang. */
+    var versteckt = [];
     Music.webRadios().forEach(function (r) {
       if (!r || !r.url || !passt(r)) return;
-      liste.push({
+      if (r.ei && !(GK.hatOsterei && GK.hatOsterei(r.ei))) return;
+      (r.ei ? versteckt : liste).push({
         id: r.id, name: r.name, was: r.was || '', icon: r.icon || '📻',
-        url: r.url, web: true,
+        url: r.url, web: true, ei: r.ei || '',
         volume: r.volume === undefined ? 1 : Number(r.volume)
       });
     });
-    /* Versteckte Sender aus Ostereiern. Wer das Ei nicht hat, bekommt
-       eine leere Liste und merkt von ihnen nichts. Sie stehen hinten:
-       ein Fund gehoert ans Ende der Auswahl, nicht an den Anfang. */
-    if (GK.eierSender) {
-      GK.eierSender().forEach(function (r) {
-        if (r && r.url) liste.push(r);
-      });
-    }
-    return liste;
+    return liste.concat(versteckt);
   };
 
   /** Sender zu einer Kennung — oder null, wenn es ihn hier nicht gibt. */

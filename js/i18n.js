@@ -78,6 +78,8 @@
 
     /* Aktionscodes und Ostereier */
     'AKTIONSCODE': 'PROMO CODE', 'GEFUNDEN': 'FOUND',
+    'WER DARF IHN HÖREN?': 'WHO MAY HEAR IT?',
+    'Dieses Osterei gibt es nicht': 'No such easter egg',
     '🎟 EINLÖSEN': '🎟 REDEEM',
     'z. B. WILLKOMMEN': 'e.g. WELCOME',
     'Gib einen Code ein': 'Enter a code',
@@ -91,7 +93,8 @@
     'Reggae & Rauch': 'Reggae & Smoke',
     'Versteckter Sender, Rauch über dem Bildschirm — und die Krone heißt anders.':
       'A hidden station, smoke across the screen — and the crown goes by another name.',
-    '🌿 Ganja FM ist jetzt in der Senderauswahl': '🌿 Ganja FM is now in the station list',
+    '🌿 Ein versteckter Sender steht jetzt in der Musikauswahl':
+      '🌿 A hidden station is now in the music list',
     'Heavyweight Reggae, rund um die Uhr': 'Heavyweight reggae, around the clock',
     'Digitaler Regen': 'Digital Rain',
     'Grüne Zeichen rieseln hinter dem Casino herunter.':
@@ -427,8 +430,8 @@
     'Noch kein Webradio angelegt.': 'No web radio set up yet.',
     'überall': 'everywhere',
     'Webradio gespeichert': 'Web radio saved',
-    'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Eine Zeile anklicken holt sie zum Ändern herunter.':
-      'The address of a radio stream as a station on the net provides it — it must start with http:// or https://. A playlist (.pls or .m3u) works too: the server pulls the real address out of it. A web radio runs the way it runs — no seeking, no skipping. What is playing shows up in the music window, as long as the station sends it along. With no boxes ticked it appears in every skin. Click a row to load it for editing.',
+    'Die Adresse eines Radiostroms, wie ihn ein Sender im Netz anbietet — sie muss mit http:// oder https:// anfangen. Eine Wiedergabeliste (.pls oder .m3u) geht auch: der Server holt die eigentliche Adresse selbst heraus. Ein Webradio läuft, wie es läuft — spulen und weiterschalten geht nicht. Was gerade gespielt wird, steht im Musikfenster, sofern der Sender es mitschickt. Ohne Häkchen erscheint es in jedem Anstrich. Hängt ein Sender an einem Osterei, hört ihn nur, wer das Ei gefunden hat — für alle anderen gibt es ihn nicht. Eine Zeile anklicken holt sie zum Ändern herunter.':
+      'The address of a radio stream as a station on the net provides it — it must start with http:// or https://. A playlist (.pls or .m3u) works too: the server pulls the real address out of it. A web radio runs the way it runs — no seeking, no skipping. What is playing shows up in the music window, as long as the station sends it along. With no boxes ticked it appears in every skin. If a station is tied to an easter egg, only players who found that egg can hear it — for everyone else it does not exist. Click a row to load it for editing.',
     'Wird geladen …': 'Loading …',
     'Kein Server': 'No server',
     'Sender läuft nicht': 'Station is not running',
