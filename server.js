@@ -324,6 +324,11 @@ function newPlayer(name, avatar, id) {
     /* Freigeschaltete Ostereier, als Liste von Kennungen. Kommt ueber
        einen Aktionscode und bleibt dann am Konto haengen. */
     eier: [],
+    /* Wann dieser Spieler zuletzt zurueckgesetzt wurde. Alles im
+       Rundenprotokoll, was davor liegt, zaehlt fuer die Ruhmeshalle nicht
+       mehr — das Protokoll selbst bleibt fuer die Statistik stehen.
+       0 = nie zurueckgesetzt. */
+    wipeStand: 0,
     luck: 50,
     xp: 0,
     claimedLevel: 1,
@@ -427,6 +432,13 @@ function alleZuruecksetzen(mitXp) {
     x.mioAt = 0; x.mio100At = 0;
     x.rekorde = { crash: 0, flappy: 0, penguin: 0, jump: 0 };
     x.lastBailout = 0;
+    /* Der haerteste Einzelschlag steht in keiner Spalte, sondern ergibt
+       sich aus dem Rundenprotokoll — und das ueberlebt einen Wipe
+       absichtlich, weil daran die Statistik im Panel haengt. Ohne diese
+       Marke blieb die Auszeichnung deshalb als einzige stehen, waehrend
+       alles andere auf Anfang ging. Ab hier zaehlt fuer die Ruhmeshalle
+       nur noch, was danach passiert ist. */
+    x.wipeStand = Date.now();
     if (mitXp) { x.xp = 0; x.claimedLevel = 1; }
   });
 }
@@ -1505,6 +1517,8 @@ function applyOp(op) {
       rp.rekorde = { crash: 0, flappy: 0, penguin: 0, jump: 0 };
       rp.xp = 0; rp.claimedLevel = 1;
       rp.lastBailout = 0;
+      // Wie beim grossen Wipe: alte Runden zaehlen fuer ihn nicht mehr.
+      rp.wipeStand = Date.now();
       break;
     }
 
@@ -2174,11 +2188,21 @@ function handleRequest(req, res) {
     var runden = Array.isArray(db.runden) ? db.runden : [];
 
     /* Der haerteste Einzelverlust steht in keiner Spalte — er ergibt sich
-       erst aus den Runden: Einsatz minus Rueckfluss. */
+       erst aus den Runden: Einsatz minus Rueckfluss.
+
+       Zwei Dinge muessen dabei stimmen, sonst zeigt die Halle etwas an,
+       was es nicht mehr gibt: die Runde muss zu einem Spieler gehoeren,
+       den es noch gibt, und sie muss nach dessen letztem Zuruecksetzen
+       liegen. Das Rundenprotokoll ueberlebt einen Wipe naemlich — daran
+       haengt die Statistik im Panel —, und ohne diese Pruefung blieb
+       diese eine Auszeichnung als einzige ueber den Wipe stehen. */
     var schlimmste = null;
     runden.forEach(function (r) {
       var weg = (r.e || 0) - (r.w || 0);
       if (weg <= 0) return;
+      var p = db.players[r.p];
+      if (!p) return;
+      if ((r.t || 0) < (p.wipeStand || 0)) return;
       if (!schlimmste || weg > schlimmste.weg) schlimmste = { weg: weg, p: r.p, g: r.g, t: r.t };
     });
 

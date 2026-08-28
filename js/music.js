@@ -1303,8 +1303,17 @@
   Music.toggle = function () {
     if (Music.playing && Music.enabled) { wunschVergessen(); Music.stop(); }
     else {
-      wunschVergessen();
-      Music.start();
+      wunschUhrAus();
+      Music.wanted = false;
+      /* Von allein spielt nach dem Neuladen nichts mehr (siehe
+         Music.load). Wer hier aber einschaltet, soll den Sender
+         zurückbekommen, den er zuletzt hörte, statt beim eingebauten
+         Stück zu landen. Der Wunsch wird dabei verbraucht — beim
+         nächsten Einschalten läuft einfach weiter, was läuft. */
+      var wunsch = Music._radioWunsch;
+      Music._radioWunsch = '';
+      Music.enabled = true;
+      if (!wunsch || !Music.radioAn(wunsch)) Music.start();
       /* Nach einer Pause steht die Sendung woanders — also nachsehen und
          an die richtige Stelle springen, statt dort weiterzumachen, wo
          man ausgestiegen ist. */
@@ -1436,10 +1445,17 @@
         Music.trackIdx = GK.clamp(d.trackIdx, 0, TRACKS.length - 1);
       }
       if (d.volume !== undefined) Music.volume = d.volume;
-      /* Der Sender wird nur gemerkt, nicht gestartet — das passiert wie bei
-         der Musik selbst erst nach der ersten Interaktion. */
+      /* Der Sender wird nur gemerkt, nicht gestartet. */
       if (d.radio) Music._radioWunsch = d.radio;
-      Music.wanted = !!d.enabled;   // erst nach der ersten Interaktion starten
+      /* Beim Laden bleibt es still — immer. Hier stand einmal
+         `Music.wanted = !!d.enabled`, und damit lief nach jedem Neuladen
+         ungefragt wieder los, was zuletzt lief. Eine Seite, die von
+         selbst anfängt zu spielen, ist selten das, was jemand will.
+
+         Gemerkt wird trotzdem alles: Stück, Lautstärke und Sender stehen
+         weiter im Speicher und kommen zurück, sobald jemand auf die Note
+         drückt. Nur der Startschuss fehlt. */
+      Music.wanted = false;
     } catch (e) {}
   };
 
