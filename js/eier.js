@@ -46,7 +46,7 @@
       sender: true,
       /* Ohne Emoji-Regen: fuer 420 gibt es echten Rauch aus der Zigarre,
          und schwebende Wolken-Zeichen daneben sahen aus wie Aufkleber. */
-      jubel: { text: '🌿 Pepe ist da — und er raucht' },
+      jubel: { text: '🌿 Pepe ist da, er raucht, und der Sender läuft' },
       zeigen: function (an) {
         rauchZeigen(an); markeSetzen(an); pepeZeigen(an); blaetterZeigen(an);
       }
@@ -252,27 +252,7 @@
     bild.draggable = false;          // sonst greift das Ziehen des Browsers
     box.appendChild(bild);
 
-    /* Der Qualm aus der Zigarre: feste Woelkchen mit versetztem Takt
-       statt neu erzeugter — das laeuft ohne Uhr und kostet nichts. */
-    var qualm = document.createElement('span');
-    qualm.className = 'pepe-qualm';
-    qualm.style.left = GLUT_X + '%';
-    qualm.style.top = GLUT_Y + '%';
-    for (var i = 1; i <= 5; i++) {
-      var w = document.createElement('i');
-      w.className = 'pepe-wolke w' + i;
-      qualm.appendChild(w);
-    }
-    /* Und vier grosse, die nicht nach einem halben Meter aufgeben,
-       sondern bis an den oberen Rand steigen. Sie sind es, die den Stau
-       da oben speisen — ohne sie haenge der Dunst da, ohne dass je
-       jemand gesehen haette, wie er dorthin kommt. */
-    for (var j = 1; j <= 4; j++) {
-      var st = document.createElement('i');
-      st.className = 'pepe-steiger s' + j;
-      qualm.appendChild(st);
-    }
-    box.appendChild(qualm);
+    /* Der Qualm haengt bewusst *nicht* an Pepe — siehe qualmZeigen(). */
 
     /* ── Verschieben ──
        Zeigerereignisse statt Maus und Finger getrennt: damit gilt
@@ -301,16 +281,20 @@
       try { box.releasePointerCapture(e.pointerId); } catch (x) {}
       pepeMerken(box);
       /* Ein Klick ohne Weg ist kein Ziehen, sondern ein Antippen — dann
-         gibt es einen Zug an der Zigarre. */
+         gibt es einen Zug an der Zigarre: die Glut geht auf und es kommt
+         eine Ladung Rauch auf einmal. */
       if (weit < 3) {
         box.classList.remove('zug');
         void box.offsetWidth;
         box.classList.add('zug');
+        for (var z = 0; z < 5; z++) {
+          // jedes zweite gross, damit der Zug auch oben ankommt
+          setTimeout(function (g) { return function () { wolkeStossen(g); }; }(z % 2 === 0), z * 130);
+        }
         if (GK.sfx) GK.sfx('chip');
       }
     }
-    /* Die Marke muss wieder weg, sonst qualmt er nach dem ersten
-       Antippen für immer schneller. */
+    /* Die Marke muss wieder weg, sonst glüht die Zigarre für immer. */
     box.addEventListener('animationend', function (e) {
       if (e.animationName === 'pepeZug') box.classList.remove('zug');
     });
@@ -334,12 +318,91 @@
     if (!an) {
       if (box) box.remove();
       window.removeEventListener('resize', pepeRuecken);
+      qualmZeigen(false);
       return;
     }
     if (box) return;
     box = pepeBauen();
     window.addEventListener('resize', pepeRuecken);
+    qualmZeigen(true);
     requestAnimationFrame(function () { box.classList.add('da'); });
+  }
+
+  /* ── 420: der Qualm ───────────────────────────────────────────────
+     Der Rauch haengt in einer eigenen Ebene, nicht an Pepe.
+
+     Vorher waren es feste Woelkchen als Kinder des Frosches. Das lief
+     ohne Uhr und kostete nichts — sah beim Verschieben aber falsch aus:
+     die ganze Rauchsaeule sprang mit, auch der Rauch, der laengst in der
+     Luft hing. Rauch bleibt aber stehen, wo er ausgestossen wurde.
+
+     Also wird jedes Woelkchen einzeln an der Stelle erzeugt, an der die
+     Glut in diesem Moment steht, und danach von Pepe nichts mehr wissen.
+     Zieht man ihn herum, zieht er eine Fahne hinter sich her — wie eine
+     Zigarre, die man durch die Luft schwenkt. */
+  var QUALM_TAKT = 620;        // alle 0,62 s ein Woelkchen
+  var QUALM_GROSS = 5;         // jedes fuenfte steigt bis nach oben durch
+  var qualmUhr = null;
+  var qualmZahl = 0;
+
+  /** Wo die Glut gerade steht — in Fensterkoordinaten. */
+  function glutPunkt() {
+    var pe = document.getElementById('pepe');
+    if (!pe) return null;
+    var r = pe.getBoundingClientRect();
+    if (!r.width) return null;
+    return { x: r.left + r.width * GLUT_X / 100,
+             y: r.top + r.height * GLUT_Y / 100 };
+  }
+
+  function wolkeStossen(gross) {
+    var lage = glutPunkt();
+    var ebene = document.getElementById('qualm');
+    if (!lage || !ebene) return;
+    var w = document.createElement('i');
+    w.className = gross ? 'qualm-steiger' : 'qualm-wolke';
+    w.style.left = lage.x.toFixed(0) + 'px';
+    w.style.top = lage.y.toFixed(0) + 'px';
+    /* Zwei Zufaelle je Woelkchen, damit der Faden nicht wie ein Strich
+       aussieht: wohin es seitlich zieht und wie gross es wird. */
+    w.style.setProperty('--drift', (Math.random() * 40 - 8).toFixed(0) + 'px');
+    w.style.setProperty('--gross', (0.75 + Math.random() * 0.6).toFixed(2));
+    w.addEventListener('animationend', function () { w.remove(); });
+    ebene.appendChild(w);
+  }
+
+  function qualmTakt() {
+    /* Im Hintergrund nicht weiterrauchen: der Browser drosselt die Uhr,
+       und beim Zurueckkommen kaeme alles auf einmal. */
+    if (document.hidden) return;
+    qualmZahl++;
+    wolkeStossen(qualmZahl % QUALM_GROSS === 0);
+  }
+
+  function qualmZeigen(an) {
+    var ebene = document.getElementById('qualm');
+    if (!an) {
+      if (qualmUhr) { clearInterval(qualmUhr); qualmUhr = null; }
+      if (ebene) ebene.remove();
+      return;
+    }
+    if (ebene) return;
+    /* Wer keine Bewegung will, bekommt keinen Qualm — ein Standbild aus
+       Wolken waere nur ein Fleck vor dem Frosch. */
+    try {
+      if (window.matchMedia &&
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    } catch (e) {}
+    ebene = document.createElement('div');
+    ebene.id = 'qualm';
+    ebene.className = 'qualm';
+    ebene.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(ebene);
+    qualmZahl = 0;
+    /* Ein paar Wolken sofort, sonst steht die Zigarre die erste halbe
+       Minute kalt da. */
+    for (var i = 0; i < 8; i++) setTimeout(qualmTakt, i * QUALM_TAKT / 2);
+    qualmUhr = setInterval(qualmTakt, QUALM_TAKT);
   }
 
   /* ── 420: Blätter ─────────────────────────────────────────────────
@@ -570,6 +633,27 @@
    * Geste, und der Schalter wird zurueckgesetzt. Wer ein Ei einloest,
    * will es sehen, auch wenn er es vor drei Konten mal abgeschaltet hat.
    */
+  /**
+   * Den Sender dieses Ostereis auflegen.
+   *
+   * Gesucht wird nicht nach einer festen Kennung, sondern nach dem Ei am
+   * Sender: welcher Eintrag daranhaengt, entscheidet der Admin, und er
+   * darf ihn umbenennen, ohne dass hier etwas nachgezogen werden muss.
+   */
+  function senderAnwerfen(eiId) {
+    if (!GK.music || !GK.music.sender) return false;
+    var liste = GK.music.sender();
+    for (var i = 0; i < liste.length; i++) {
+      if (liste[i].ei !== eiId) continue;
+      /* Der Klick auf „Einlösen" ist die Interaktion, die der Browser zum
+         Abspielen verlangt — deshalb geht das hier und nicht beim
+         Seitenaufbau. */
+      GK.music.entsperrt = true;
+      return !!GK.music.radioAn(liste[i].id);
+    }
+    return false;
+  }
+
   GK.osterei = function (id, frisch) {
     var e = EIER[id];
     if (!e) return;
@@ -578,6 +662,11 @@
     /* Bringt das Ei einen Sender mit, hat sich die Senderliste geaendert —
        das Musikfenster soll es mitbekommen, auch wenn es offen steht. */
     if (e.sender && GK.emit) GK.emit('musik-liste');
+    /* Und frisch eingeloest wird er gleich aufgelegt: einen versteckten
+       Sender erst suchen zu muessen, nachdem man ihn freigeschaltet hat,
+       ist eine Enttaeuschung. Wer ihn nicht will, schaltet die Musik aus
+       wie immer. */
+    if (frisch && e.sender) senderAnwerfen(id);
     if (frisch && e.jubel) {
       GK.toast(e.jubel.text, 'gold', e.emoji);
       if (GK.emojiRain && e.jubel.emojis) GK.emojiRain(e.jubel.emojis, 30);

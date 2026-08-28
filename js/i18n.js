@@ -94,7 +94,8 @@
     'Versteckter Sender, Rauch, ein rauchender Pepe zum Verschieben, segelnde Blätter — und die Krone heißt anders.':
       'A hidden station, smoke, a smoking Pepe you can drag around, drifting leaves — and the crown goes by another name.',
     'Zieh mich hin, wo du willst': 'Drag me wherever you like',
-    '🌿 Pepe ist da — und er raucht': '🌿 Pepe is here — and he is smoking',
+    '🌿 Pepe ist da, er raucht, und der Sender läuft':
+      '🌿 Pepe is here, he is smoking, and the station is on',
     'Heavyweight Reggae, rund um die Uhr': 'Heavyweight reggae, around the clock',
     'Digitaler Regen': 'Digital Rain',
     'Grüne Zeichen rieseln hinter dem Casino herunter.':

@@ -742,74 +742,66 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
   30%{filter:drop-shadow(0 10px 18px rgba(0,0,0,.5)) drop-shadow(0 0 16px rgba(255,90,30,.9))}
 }
 .pepe.zug .pepe-bild{animation:pepeZug 1.1s ease-out}
-.pepe.zug .pepe-wolke{animation-duration:2.4s}
 
-/* Der Qualm sitzt auf der Glut — die Stelle setzt js/eier.js, weil sie
-   am Bild hängt und nicht am Kasten. */
-.pepe-qualm{
-  position:absolute;width:0;height:0;pointer-events:none
-}
-.pepe-wolke{
-  position:absolute;left:0;top:0;display:block;
-  width:26px;height:26px;border-radius:50%;
-  /* Kein `screen` wie beim Umgebungsrauch: Pepe steht mal über einer
-     dunklen Kachel und mal über dem hellen Schriftzug, und `screen`
-     verschwindet über allem Hellen restlos. Eine normale, kräftige
-     Deckung ist über beidem zu sehen. */
+/* ═══════════ DER QUALM ═══════════
+   Eigene Ebene, nicht Teil von Pepe. Das ist der Punkt: früher hingen
+   die Wölkchen als Kinder am Frosch, und beim Verschieben sprang die
+   ganze Rauchsäule mit — auch der Rauch, der längst in der Luft hing.
+   Jedes Wölkchen wird jetzt einzeln an der Stelle erzeugt, an der die
+   Glut gerade steht (js/eier.js), und bleibt dann dort stehen.
+
+   Die Ebene liegt eine Stufe unter Pepe (42), damit der Rauch hinter
+   der Zigarre hervorkommt statt vor ihr zu kleben. */
+.qualm{position:fixed;inset:0;z-index:41;pointer-events:none;overflow:hidden}
+.qualm-wolke,.qualm-steiger{
+  position:fixed;display:block;border-radius:50%;
+  /* Kein `screen` wie beim Stau: Pepe steht mal über einer dunklen
+     Kachel und mal über dem hellen Schriftzug, und `screen` verschwindet
+     über allem Hellen restlos. Eine normale, kräftige Deckung ist über
+     beidem zu sehen. */
   background:radial-gradient(circle at 42% 40%,
     rgba(248,252,250,.92), rgba(214,230,222,.6) 52%, rgba(196,214,204,0) 74%);
+  will-change:transform,opacity
+}
+/* Der Faden am Mund: klein, kurzlebig, dicht an dicht. */
+.qualm-wolke{
+  width:26px;height:26px;margin:-13px 0 0 -13px;
   filter:blur(3px);
   opacity:0;
-  animation:pepeQualm 4.6s ease-out infinite
+  animation:qualmZieht 4.6s ease-out forwards
 }
-/* Fünf Wölkchen mit versetztem Takt ergeben einen durchgehenden Faden —
-   ohne dass eine Uhr im Hintergrund ständig neue erzeugen müsste. Die
-   negativen Verzögerungen sorgen dafür, dass der Faden schon steht,
-   wenn Pepe aufgeht. */
-.pepe-wolke.w1{animation-delay:-0.2s}
-.pepe-wolke.w2{animation-delay:-1.1s}
-.pepe-wolke.w3{animation-delay:-2.0s}
-.pepe-wolke.w4{animation-delay:-2.9s}
-.pepe-wolke.w5{animation-delay:-3.8s}
-@keyframes pepeQualm{
-  0%  {opacity:0;   transform:translate(-50%,-50%) translate(0,0) scale(.3)}
+@keyframes qualmZieht{
+  0%  {opacity:0;transform:scale(calc(var(--gross,1) * .3))}
   12% {opacity:1}
-  /* Der seitliche Drift wechselt unterwegs die Richtung — gerade nach
-     oben sieht aus wie ein Strich, nicht wie Rauch. */
-  45% {transform:translate(-50%,-50%) translate(18px,-58px) scale(1.4)}
+  45% {transform:translate(calc(var(--drift,16px) * .55),-58px) scale(calc(var(--gross,1) * 1.4))}
   70% {opacity:.62}
-  100%{opacity:0;   transform:translate(-50%,-50%) translate(-8px,-130px) scale(2.9)}
+  100%{opacity:0;transform:translate(var(--drift,16px),-130px) scale(calc(var(--gross,1) * 2.9))}
 }
-/* Die grossen Steiger gehen den ganzen Weg bis an den oberen Rand — sie
-   sind die sichtbare Verbindung zwischen der Zigarre und dem Stau da
-   oben. 100vh reichen von jeder Stelle aus, an die man Pepe zieht. */
-.pepe-steiger{
-  position:absolute;left:0;top:0;display:block;
-  width:46px;height:46px;border-radius:50%;
-  background:radial-gradient(circle at 45% 42%,
-    rgba(242,250,246,.7), rgba(210,228,218,.42) 54%, rgba(196,214,204,0) 76%);
+/* Und die großen, die nicht nach einem halben Meter aufgeben, sondern
+   bis an den oberen Rand steigen. Sie sind es, die den Stau da oben
+   speisen — ohne sie hinge der Dunst da, ohne dass je jemand gesehen
+   hätte, wie er dorthin kommt. */
+.qualm-steiger{
+  width:46px;height:46px;margin:-23px 0 0 -23px;
   filter:blur(7px);
   opacity:0;
-  animation:pepeSteigt 13s linear infinite
+  animation:qualmSteigt 13s linear forwards
 }
-.pepe-steiger.s1{animation-delay:-0.5s}
-.pepe-steiger.s2{animation-delay:-3.8s}
-.pepe-steiger.s3{animation-delay:-7.1s}
-.pepe-steiger.s4{animation-delay:-10.4s}
-@keyframes pepeSteigt{
-  0%  {opacity:0;   transform:translate(-50%,-50%) translate(0,0) scale(.4)}
+@keyframes qualmSteigt{
+  0%  {opacity:0;transform:scale(calc(var(--gross,1) * .4))}
   10% {opacity:.75}
-  50% {transform:translate(-50%,-50%) translate(34px,-50vh) scale(2.2)}
-  /* Oben angekommen loest er sich nicht auf, sondern geht in den Stau
+  50% {transform:translate(calc(var(--drift,20px) * 1.7),-50vh) scale(calc(var(--gross,1) * 2.2))}
+  /* Oben angekommen löst er sich nicht auf, sondern geht in den Stau
      über — deshalb verblasst er erst ganz am Schluss. */
   88% {opacity:.4}
-  100%{opacity:0;   transform:translate(-50%,-50%) translate(6px,-100vh) scale(3.6)}
+  100%{opacity:0;transform:translate(var(--drift,20px),-100vh) scale(calc(var(--gross,1) * 3.6))}
 }
+
 @media (max-width:640px){ .pepe{width:132px} }
 @media (prefers-reduced-motion:reduce){
   .pepe{transition:none}
-  .pepe-wolke{animation:none;opacity:.5;transform:translate(-50%,-50%) translate(8px,-30px) scale(1.4)}
-  .pepe-steiger{animation:none;opacity:0}
+  /* Ohne Bewegung gibt es gar keinen Qualm — js/eier.js legt die Ebene
+     dann erst gar nicht an. */
 }
 
 /* ═══════════ BLÄTTER ═══════════
