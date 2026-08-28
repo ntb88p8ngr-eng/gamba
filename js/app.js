@@ -815,7 +815,13 @@
           GK.sfx('click');
           GK.eiSchalten(e.id, box.checked);
         });
-        kopf.appendChild(el('label', { class: 'ei-schalter', title: 'Nur für dieses Gerät' }, [
+        /* Der Schaltername steht im Zettel, nicht daneben: die Zeile sagt
+           schon, worum es geht, und zwei Beschriftungen nebeneinander
+           machen sie nur eng. */
+        kopf.appendChild(el('label', {
+          class: 'ei-schalter',
+          title: e.schalter + ' — ' + GK.txt('nur für dieses Gerät', 'this device only')
+        }, [
           box, el('i')
         ]));
         return kopf;

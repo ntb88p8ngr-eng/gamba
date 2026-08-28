@@ -14,8 +14,8 @@
    EIER dazu. Ein Eintrag braucht:
      name, emoji, was   — was im Konto-Fenster steht
      zeigen(an)         — schaltet die Spielerei an oder aus
-     schalter           — Aufschrift des Schalters (fehlt er, laesst sich
-                          das Ei nicht abschalten)
+     schalter           — was der Schalter im Konto-Fenster abschaltet
+                          (fehlt er, laesst sich das Ei nicht abschalten)
      sender             — optional: true, wenn ein Webradio dazugehoert
                           (der Sender selbst liegt in den Einstellungen)
      jubel              — optional: die einmalige Geste beim Einloesen
@@ -35,17 +35,21 @@
     '420': {
       name: 'Reggae & Rauch',
       emoji: '🌿',
-      was: 'Versteckter Sender, Rauch über dem Bildschirm — und die Krone heißt anders.',
-      schalter: 'Rauch & Ganja-Krone',
+      was: 'Versteckter Sender, Rauch, ein rauchender Pepe zum Verschieben, ' +
+           'segelnde Blätter — und die Krone heißt anders.',
+      schalter: 'Rauch, Pepe & Ganja-Krone',
       /* Der Sender dazu ist ein ganz normales Webradio aus dem Panel, nur
          mit der Kennung dieses Eis daran — der Server legt ihn beim
          ersten Start an (eierSenderAnlegen), danach gehoert er dem Admin.
          Deshalb steht er hier nicht mehr: sonst gaebe es zwei Wahrheiten,
          und die im Code waere die falsche. */
       sender: true,
-      jubel: { text: '🌿 Ein versteckter Sender steht jetzt in der Musikauswahl',
-               emojis: ['🌿', '💨', '🍃'] },
-      zeigen: function (an) { rauchZeigen(an); markeSetzen(an); }
+      /* Ohne Emoji-Regen: fuer 420 gibt es echten Rauch aus der Zigarre,
+         und schwebende Wolken-Zeichen daneben sahen aus wie Aufkleber. */
+      jubel: { text: '🌿 Pepe ist da — und er raucht' },
+      zeigen: function (an) {
+        rauchZeigen(an); markeSetzen(an); pepeZeigen(an); blaetterZeigen(an);
+      }
     },
 
     'matrix': {
@@ -134,37 +138,244 @@
     });
   };
 
-  /* ── 420: Rauch ───────────────────────────────────────────────────
-     Drei Schwaden, die langsam durchs Bild ziehen, jede mit eigenem
-     Takt. Sie liegen ueber dem Hintergrund und unter allem Inhalt und
-     nehmen keine Klicks an — man soll sie sehen und sonst nichts von
-     ihnen merken. */
+  /* ── 420: der Rauchstau ──────────────────────────────────────────
+     Der Rauch kommt aus Pepes Zigarre und steigt bis an den oberen
+     Rand. Dort geht er nicht weg: er staut sich, und je laenger geraucht
+     wird, desto dichter haengt er und desto weiter reicht er nach unten.
+
+     Fruehere Fassung: fuenf Schwaden, die quer durchs Bild zogen. Die
+     kamen aus dem Nichts und sahen aus wie Flecken — mit dem, was auf
+     dem Bildschirm zu sehen war, hatten sie nichts zu tun. */
+  var STAU_VOLL = 420000;      // nach sieben Minuten haengt er am dichtesten
+  var STAU_TAKT = 3500;        // so oft wird nachgestellt (wie die CSS-Blende)
+  var stauAb = 0;
+  var stauUhr = null;
+
+  function stauStellen() {
+    var box = document.getElementById('rauch');
+    if (!box) return;
+    var f = Math.min(1, (Date.now() - stauAb) / STAU_VOLL);
+    /* Von Anfang an ein Hauch, damit sofort etwas zu sehen ist — und
+       gedeckelt, damit das Casino auch nach einer Stunde noch bedienbar
+       bleibt. Voller als das waere kein Spass mehr, sondern Nebel. */
+    box.style.setProperty('--stau', (0.12 + f * 0.5).toFixed(3));
+    box.style.setProperty('--tief', (18 + f * 82).toFixed(1) + '%');
+  }
+
   function rauchZeigen(an) {
     var box = document.getElementById('rauch');
+    if (!an) {
+      if (stauUhr) { clearInterval(stauUhr); stauUhr = null; }
+      if (box) box.classList.remove('an');
+      document.documentElement.classList.remove('raucht');
+      return;
+    }
     if (!box) {
-      if (!an) return;
       box = document.createElement('div');
       box.id = 'rauch';
       box.className = 'rauch';
       box.setAttribute('aria-hidden', 'true');
-      for (var i = 1; i <= 3; i++) {
-        var s = document.createElement('i');
-        s.className = 'rauch-schwade r' + i;
-        box.appendChild(s);
-      }
+      box.appendChild(Object.assign(document.createElement('i'),
+                                    { className: 'rauch-stau' }));
       document.body.appendChild(box);
       /* Ein Bild erzwingen, bevor die Klasse faellt — sonst springt die
          Deckung von 0 auf 1, statt aufzublenden. */
       void box.offsetWidth;
     }
-    box.classList.toggle('an', !!an);
-    document.documentElement.classList.toggle('raucht', !!an);
+    /* Der Stau faengt bei jedem Einschalten von vorn an. Ihn ueber das
+       Neuladen zu retten hiesse, dass man irgendwann in einen fertigen
+       Nebel zurueckkehrt, ohne je geraucht zu haben. */
+    if (!stauUhr) {
+      stauAb = Date.now();
+      stauStellen();
+      stauUhr = setInterval(stauStellen, STAU_TAKT);
+    }
+    box.classList.add('an');
+    document.documentElement.classList.add('raucht');
   }
 
   /* Alte Namen: das Konto-Fenster hiess frueher direkt nach dem Rauch.
      Sie bleiben, damit nichts bricht, was sie noch ruft. */
   GK.rauchSchalten = function (an) { return GK.eiSchalten('420', an); };
   GK.rauchLaeuft = function () { return laeuft('420'); };
+
+  /* ── 420: Pepe mit Zigarre ────────────────────────────────────────
+     Sitzt unten rechts, raucht vor sich hin und laesst sich mit der
+     Maus (oder dem Finger) verschieben. Wo er zuletzt stand, gehoert
+     zum Geraet — nicht zum Konto. */
+  var PEPE_KEY = 'gambaking:pepe';
+  /* Die Glut sitzt nicht in der Mitte des Bildes, sondern am Ende der
+     Zigarre. Ausgemessen an assets/eier/pepe.webp — dort liegen die
+     roten Punkte bei 96,8 % Breite und 62,4 % Hoehe. Daran haengt der
+     Rauch, sonst qualmt er dem Frosch aus der Stirn. */
+  var GLUT_X = 96.8;
+  var GLUT_Y = 62.4;
+  var PEPE_BREIT = 190;             // Anzeigebreite in Pixeln
+
+  function pepePlatz() {
+    try {
+      var d = JSON.parse(localStorage.getItem(PEPE_KEY) || 'null');
+      if (d && typeof d.x === 'number' && typeof d.y === 'number') return d;
+    } catch (e) {}
+    return null;
+  }
+
+  /** In den sichtbaren Bereich zwingen — auch nach einem Fensterwechsel. */
+  function pepeSetzen(box, x, y) {
+    var b = box.getBoundingClientRect();
+    var maxX = Math.max(0, window.innerWidth - (b.width || PEPE_BREIT));
+    var maxY = Math.max(0, window.innerHeight - (b.height || PEPE_BREIT));
+    box.style.left = Math.min(Math.max(0, x), maxX) + 'px';
+    box.style.top = Math.min(Math.max(0, y), maxY) + 'px';
+  }
+
+  function pepeMerken(box) {
+    try {
+      localStorage.setItem(PEPE_KEY, JSON.stringify({
+        x: parseInt(box.style.left, 10) || 0,
+        y: parseInt(box.style.top, 10) || 0
+      }));
+    } catch (e) {}
+  }
+
+  function pepeBauen() {
+    var box = document.createElement('div');
+    box.id = 'pepe';
+    box.className = 'pepe';
+    box.title = GK.txt ? GK.txt('Zieh mich hin, wo du willst', 'Drag me wherever you like')
+                       : 'Zieh mich hin, wo du willst';
+
+    var bild = document.createElement('img');
+    bild.className = 'pepe-bild';
+    bild.src = 'assets/eier/pepe.webp';
+    bild.alt = '';
+    bild.draggable = false;          // sonst greift das Ziehen des Browsers
+    box.appendChild(bild);
+
+    /* Der Qualm aus der Zigarre: feste Woelkchen mit versetztem Takt
+       statt neu erzeugter — das laeuft ohne Uhr und kostet nichts. */
+    var qualm = document.createElement('span');
+    qualm.className = 'pepe-qualm';
+    qualm.style.left = GLUT_X + '%';
+    qualm.style.top = GLUT_Y + '%';
+    for (var i = 1; i <= 5; i++) {
+      var w = document.createElement('i');
+      w.className = 'pepe-wolke w' + i;
+      qualm.appendChild(w);
+    }
+    /* Und vier grosse, die nicht nach einem halben Meter aufgeben,
+       sondern bis an den oberen Rand steigen. Sie sind es, die den Stau
+       da oben speisen — ohne sie haenge der Dunst da, ohne dass je
+       jemand gesehen haette, wie er dorthin kommt. */
+    for (var j = 1; j <= 4; j++) {
+      var st = document.createElement('i');
+      st.className = 'pepe-steiger s' + j;
+      qualm.appendChild(st);
+    }
+    box.appendChild(qualm);
+
+    /* ── Verschieben ──
+       Zeigerereignisse statt Maus und Finger getrennt: damit gilt
+       derselbe Weg fuer Maus, Touch und Stift. Der Zeiger wird
+       eingefangen, sonst bleibt der Frosch haengen, sobald man beim
+       Ziehen zu schnell wird. */
+    var zieht = false, dx = 0, dy = 0, weit = 0;
+    box.addEventListener('pointerdown', function (e) {
+      zieht = true; weit = 0;
+      var b = box.getBoundingClientRect();
+      dx = e.clientX - b.left;
+      dy = e.clientY - b.top;
+      box.setPointerCapture(e.pointerId);
+      box.classList.add('zieht');
+      e.preventDefault();
+    });
+    box.addEventListener('pointermove', function (e) {
+      if (!zieht) return;
+      weit++;
+      pepeSetzen(box, e.clientX - dx, e.clientY - dy);
+    });
+    function loslassen(e) {
+      if (!zieht) return;
+      zieht = false;
+      box.classList.remove('zieht');
+      try { box.releasePointerCapture(e.pointerId); } catch (x) {}
+      pepeMerken(box);
+      /* Ein Klick ohne Weg ist kein Ziehen, sondern ein Antippen — dann
+         gibt es einen Zug an der Zigarre. */
+      if (weit < 3) {
+        box.classList.remove('zug');
+        void box.offsetWidth;
+        box.classList.add('zug');
+        if (GK.sfx) GK.sfx('chip');
+      }
+    }
+    /* Die Marke muss wieder weg, sonst qualmt er nach dem ersten
+       Antippen für immer schneller. */
+    box.addEventListener('animationend', function (e) {
+      if (e.animationName === 'pepeZug') box.classList.remove('zug');
+    });
+    box.addEventListener('pointerup', loslassen);
+    box.addEventListener('pointercancel', loslassen);
+
+    document.body.appendChild(box);
+    var platz = pepePlatz();
+    if (platz) pepeSetzen(box, platz.x, platz.y);
+    else pepeSetzen(box, window.innerWidth - PEPE_BREIT - 18, window.innerHeight - 250);
+    return box;
+  }
+
+  function pepeRuecken() {
+    var box = document.getElementById('pepe');
+    if (box) pepeSetzen(box, parseInt(box.style.left, 10) || 0, parseInt(box.style.top, 10) || 0);
+  }
+
+  function pepeZeigen(an) {
+    var box = document.getElementById('pepe');
+    if (!an) {
+      if (box) box.remove();
+      window.removeEventListener('resize', pepeRuecken);
+      return;
+    }
+    if (box) return;
+    box = pepeBauen();
+    window.addEventListener('resize', pepeRuecken);
+    requestAnimationFrame(function () { box.classList.add('da'); });
+  }
+
+  /* ── 420: Blätter ─────────────────────────────────────────────────
+     Kleine Blaetter, die langsam nach unten segeln — hinter dem Inhalt,
+     wie der digitale Regen. Jedes bekommt eigene Bahn, Groesse und
+     Dauer, sonst fallen sie wie ein Vorhang statt wie Blaetter. */
+  var BLAETTER = 16;
+
+  function blaetterZeigen(an) {
+    var box = document.getElementById('blaetter');
+    if (!an) { if (box) box.remove(); return; }
+    if (box) return;
+    box = document.createElement('div');
+    box.id = 'blaetter';
+    box.className = 'blaetter';
+    box.setAttribute('aria-hidden', 'true');
+    for (var i = 0; i < BLAETTER; i++) {
+      var b = document.createElement('i');
+      b.className = 'blatt';
+      var gr = 16 + Math.random() * 22;
+      b.style.left = (Math.random() * 100).toFixed(2) + '%';
+      b.style.width = gr.toFixed(0) + 'px';
+      b.style.height = gr.toFixed(0) + 'px';
+      /* Langsam heisst langsam: eine halbe bis anderthalb Minuten von
+         oben nach unten. Die negative Verzoegerung verteilt sie gleich
+         beim Einschalten ueber die ganze Hoehe, statt sie erst oben
+         sammeln zu lassen. */
+      var dauer = 34 + Math.random() * 52;
+      b.style.animationDuration = dauer.toFixed(1) + 's, ' + (5 + Math.random() * 7).toFixed(1) + 's';
+      b.style.animationDelay = '-' + (Math.random() * dauer).toFixed(1) + 's, ' +
+                               '-' + (Math.random() * 9).toFixed(1) + 's';
+      b.style.opacity = (0.3 + Math.random() * 0.4).toFixed(2);
+      box.appendChild(b);
+    }
+    document.body.appendChild(box);
+  }
 
   /* ── 420: die Krone heisst anders ─────────────────────────────────
      Wer das Ei hat, spielt nicht mehr im GambaKing, sondern im

@@ -91,10 +91,10 @@
     /* Die Ostereier: Name und Beschreibung stehen im Konto-Fenster, der
        Jubelruf einmalig beim Einlösen. */
     'Reggae & Rauch': 'Reggae & Smoke',
-    'Versteckter Sender, Rauch über dem Bildschirm — und die Krone heißt anders.':
-      'A hidden station, smoke across the screen — and the crown goes by another name.',
-    '🌿 Ein versteckter Sender steht jetzt in der Musikauswahl':
-      '🌿 A hidden station is now in the music list',
+    'Versteckter Sender, Rauch, ein rauchender Pepe zum Verschieben, segelnde Blätter — und die Krone heißt anders.':
+      'A hidden station, smoke, a smoking Pepe you can drag around, drifting leaves — and the crown goes by another name.',
+    'Zieh mich hin, wo du willst': 'Drag me wherever you like',
+    '🌿 Pepe ist da — und er raucht': '🌿 Pepe is here — and he is smoking',
     'Heavyweight Reggae, rund um die Uhr': 'Heavyweight reggae, around the clock',
     'Digitaler Regen': 'Digital Rain',
     'Grüne Zeichen rieseln hinter dem Casino herunter.':

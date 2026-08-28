@@ -673,67 +673,179 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .ei-schalter input:checked + i::after{transform:translateX(17px);background:#f2fff0}
 .ei-schalter input:focus-visible + i{outline:2px solid var(--cyan);outline-offset:2px}
 
-/* ═══════════ RAUCH ═══════════
-   Das Osterei 420. Drei Schwaden ziehen langsam durchs Bild, jede mit
-   eigenem Takt und eigener Richtung — gleichmäßig wäre es ein Streifen,
-   nicht Rauch.
+/* ═══════════ RAUCHSTAU ═══════════
+   Das Osterei 420. Der Rauch kommt aus Pepes Zigarre (siehe unten),
+   steigt bis an den oberen Rand — und bleibt dort. Diese Ebene ist der
+   Stau: je laenger geraucht wird, desto dichter haengt er und desto
+   weiter reicht er nach unten. Nach ein paar Minuten steht das halbe
+   Casino im Dunst.
 
-   Die Ebene liegt über dem Hintergrund und unter allem Inhalt und nimmt
-   keine Klicks an: man soll sie sehen und sonst nichts von ihr merken. */
+   Zwei Groessen steuern das, beide setzt js/eier.js im Takt:
+     --stau  wie dicht  (0 … 0.62)
+     --tief  wie weit herunter (18 % … 100 %)
+
+   Die Ebene liegt ueber dem Inhalt, aber unter Kopfzeile (50) und
+   Fenstern (60), und nimmt keine Klicks an. Frueher zogen hier fuenf
+   Schwaden quer durchs Bild; die sahen aus wie Flecken und hatten mit
+   der Zigarre nichts zu tun. */
 .rauch{
-  /* Über dem Inhalt, aber unter Kopfzeile (50) und Fenstern (60): Rauch,
-     der hinter den Kacheln läge, wäre keiner — man sähe ihn nur in den
-     Lücken. Klicks gehen hindurch. */
   position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;
   opacity:0;transition:opacity 1.6s ease
 }
 .rauch.an{opacity:1}
-.rauch-schwade{
-  position:absolute;display:block;border-radius:50%;
-  /* Weiche, ungleichmäßige Wolken: zwei Verläufe übereinander, damit die
-     Schwade keinen erkennbaren Mittelpunkt hat.
-     `screen` statt normaler Deckung: Rauch nimmt Licht nicht weg, er
-     streut es. Über einer dunklen Seite ist das der Unterschied zwischen
-     „da hängt was in der Luft" und „da ist ein grauer Fleck". */
-  background:
-    radial-gradient(closest-side ellipse at 38% 45%, rgba(198,232,206,.95), transparent 70%),
-    radial-gradient(closest-side ellipse at 66% 58%, rgba(160,210,180,.8), transparent 72%);
-  filter:blur(30px);
-  mix-blend-mode:screen;
-  will-change:transform,opacity
+.rauch-stau{
+  position:absolute;left:0;right:0;top:0;bottom:0;display:block;
+  /* Kein `screen`: der Dunst soll auch ueber hellen Kacheln und dem
+     Schriftzug zu sehen sein, und `screen` verschwindet ueber allem
+     Hellen restlos. Also echte Deckung — Rauch nimmt Sicht weg. */
+  background:linear-gradient(180deg,
+    rgba(228,240,232,.95) 0%,
+    rgba(214,232,220,.72) calc(var(--tief,18%) * 0.34),
+    rgba(202,224,210,.4)  calc(var(--tief,18%) * 0.7),
+    rgba(194,216,202,0)   var(--tief,18%));
+  opacity:var(--stau,0);
+  /* Die Blende ist so lang wie der Takt, in dem js/eier.js nachstellt —
+     so wirkt es wie Aufziehen und nicht wie Stufen. Nur die Deckung
+     laesst sich weich fahren; ein Farbverlauf ist nicht animierbar. Das
+     faellt nicht auf, weil --tief je Takt nur um deutlich unter ein
+     Prozent wandert. */
+  transition:opacity 3.5s linear
 }
-/* Die negativen Verzögerungen sind Absicht: ohne sie stünden beim
-   Einschalten alle drei Schwaden noch links außerhalb des Bildes, und die
-   erste halbe Minute passierte gar nichts. So ist der Zug schon im
-   Gange, wenn er aufgeht. */
-.rauch-schwade.r1{width:62vw;height:40vh;left:-30vw;top:12vh;animation:rauchzug1 46s linear infinite -14s}
-.rauch-schwade.r2{width:78vw;height:52vh;left:-40vw;top:44vh;animation:rauchzug2 63s linear infinite -34s}
-.rauch-schwade.r3{width:52vw;height:34vh;left:-26vw;top:-6vh;animation:rauchzug3 38s linear infinite -22s}
-@keyframes rauchzug1{
-  0%{transform:translate(0,0) scale(1);opacity:0}
-  10%{opacity:.7}
-  85%{opacity:.62}
-  100%{transform:translate(150vw,-8vh) scale(1.5);opacity:0}
+@media (prefers-reduced-motion:reduce){ .rauch-stau{transition:none} }
+
+/* ═══════════ PEPE MIT ZIGARRE ═══════════
+   Auch Osterei 420. Er sitzt über allem außer Kopfzeile und Fenstern,
+   lässt sich mit Maus oder Finger verschieben und qualmt dabei vor sich
+   hin. Anders als Rauch und Blätter nimmt er Klicks an — sonst ließe er
+   sich nicht anfassen. */
+.pepe{
+  position:fixed;left:0;top:0;z-index:42;
+  width:190px;
+  cursor:grab;touch-action:none;
+  user-select:none;-webkit-user-select:none;
+  opacity:0;transform:scale(.86);
+  transition:opacity .5s ease,transform .5s cubic-bezier(.2,1.5,.4,1)
 }
-@keyframes rauchzug2{
-  0%{transform:translate(0,0) scale(.9);opacity:0}
-  12%{opacity:.6}
-  82%{opacity:.52}
-  100%{transform:translate(160vw,-16vh) scale(1.7);opacity:0}
+.pepe.da{opacity:1;transform:scale(1)}
+.pepe.zieht{cursor:grabbing}
+.pepe.zieht .pepe-bild{transform:scale(1.05) rotate(-2deg)}
+.pepe-bild{
+  display:block;width:100%;height:auto;
+  filter:drop-shadow(0 10px 18px rgba(0,0,0,.5));
+  transition:transform .18s ease;
+  pointer-events:none                 /* das Ziehen hängt am Kasten */
 }
-@keyframes rauchzug3{
-  0%{transform:translate(0,0) scale(1.1);opacity:0}
-  10%{opacity:.5}
-  88%{opacity:.44}
-  100%{transform:translate(155vw,10vh) scale(1.4);opacity:0}
+/* Ein Antippen ist ein Zug an der Zigarre: die Glut geht kurz auf und
+   der Qualm kommt dichter. */
+@keyframes pepeZug{
+  0%,100%{filter:drop-shadow(0 10px 18px rgba(0,0,0,.5))}
+  30%{filter:drop-shadow(0 10px 18px rgba(0,0,0,.5)) drop-shadow(0 0 16px rgba(255,90,30,.9))}
 }
-/* Wer keine Bewegung will, bekommt einen stillen Schleier statt Zug. */
+.pepe.zug .pepe-bild{animation:pepeZug 1.1s ease-out}
+.pepe.zug .pepe-wolke{animation-duration:2.4s}
+
+/* Der Qualm sitzt auf der Glut — die Stelle setzt js/eier.js, weil sie
+   am Bild hängt und nicht am Kasten. */
+.pepe-qualm{
+  position:absolute;width:0;height:0;pointer-events:none
+}
+.pepe-wolke{
+  position:absolute;left:0;top:0;display:block;
+  width:26px;height:26px;border-radius:50%;
+  /* Kein `screen` wie beim Umgebungsrauch: Pepe steht mal über einer
+     dunklen Kachel und mal über dem hellen Schriftzug, und `screen`
+     verschwindet über allem Hellen restlos. Eine normale, kräftige
+     Deckung ist über beidem zu sehen. */
+  background:radial-gradient(circle at 42% 40%,
+    rgba(248,252,250,.92), rgba(214,230,222,.6) 52%, rgba(196,214,204,0) 74%);
+  filter:blur(3px);
+  opacity:0;
+  animation:pepeQualm 4.6s ease-out infinite
+}
+/* Fünf Wölkchen mit versetztem Takt ergeben einen durchgehenden Faden —
+   ohne dass eine Uhr im Hintergrund ständig neue erzeugen müsste. Die
+   negativen Verzögerungen sorgen dafür, dass der Faden schon steht,
+   wenn Pepe aufgeht. */
+.pepe-wolke.w1{animation-delay:-0.2s}
+.pepe-wolke.w2{animation-delay:-1.1s}
+.pepe-wolke.w3{animation-delay:-2.0s}
+.pepe-wolke.w4{animation-delay:-2.9s}
+.pepe-wolke.w5{animation-delay:-3.8s}
+@keyframes pepeQualm{
+  0%  {opacity:0;   transform:translate(-50%,-50%) translate(0,0) scale(.3)}
+  12% {opacity:1}
+  /* Der seitliche Drift wechselt unterwegs die Richtung — gerade nach
+     oben sieht aus wie ein Strich, nicht wie Rauch. */
+  45% {transform:translate(-50%,-50%) translate(18px,-58px) scale(1.4)}
+  70% {opacity:.62}
+  100%{opacity:0;   transform:translate(-50%,-50%) translate(-8px,-130px) scale(2.9)}
+}
+/* Die grossen Steiger gehen den ganzen Weg bis an den oberen Rand — sie
+   sind die sichtbare Verbindung zwischen der Zigarre und dem Stau da
+   oben. 100vh reichen von jeder Stelle aus, an die man Pepe zieht. */
+.pepe-steiger{
+  position:absolute;left:0;top:0;display:block;
+  width:46px;height:46px;border-radius:50%;
+  background:radial-gradient(circle at 45% 42%,
+    rgba(242,250,246,.7), rgba(210,228,218,.42) 54%, rgba(196,214,204,0) 76%);
+  filter:blur(7px);
+  opacity:0;
+  animation:pepeSteigt 13s linear infinite
+}
+.pepe-steiger.s1{animation-delay:-0.5s}
+.pepe-steiger.s2{animation-delay:-3.8s}
+.pepe-steiger.s3{animation-delay:-7.1s}
+.pepe-steiger.s4{animation-delay:-10.4s}
+@keyframes pepeSteigt{
+  0%  {opacity:0;   transform:translate(-50%,-50%) translate(0,0) scale(.4)}
+  10% {opacity:.75}
+  50% {transform:translate(-50%,-50%) translate(34px,-50vh) scale(2.2)}
+  /* Oben angekommen loest er sich nicht auf, sondern geht in den Stau
+     über — deshalb verblasst er erst ganz am Schluss. */
+  88% {opacity:.4}
+  100%{opacity:0;   transform:translate(-50%,-50%) translate(6px,-100vh) scale(3.6)}
+}
+@media (max-width:640px){ .pepe{width:132px} }
 @media (prefers-reduced-motion:reduce){
-  .rauch-schwade{animation:none;opacity:.3;left:auto;right:auto}
-  .rauch-schwade.r1{left:6vw}
-  .rauch-schwade.r2{left:30vw}
-  .rauch-schwade.r3{left:58vw}
+  .pepe{transition:none}
+  .pepe-wolke{animation:none;opacity:.5;transform:translate(-50%,-50%) translate(8px,-30px) scale(1.4)}
+  .pepe-steiger{animation:none;opacity:0}
 }
+
+/* ═══════════ BLÄTTER ═══════════
+   Auch Osterei 420. Sie segeln hinter dem Inhalt nach unten (-1, direkt
+   über der Hintergrundebene): vor den Spielkacheln wären sie im Weg,
+   dahinter sind sie Stimmung. Zwei Animationen laufen übereinander —
+   das Fallen und das Trudeln —, deshalb setzt js/eier.js zwei Dauern
+   und zwei Verzögerungen je Blatt. */
+.blaetter{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden
+}
+.blatt{
+  position:absolute;top:0;display:block;
+  background:url("../assets/eier/blatt.webp") center/contain no-repeat;
+  animation-name:blattFall,blattDreh;
+  animation-timing-function:linear,ease-in-out;
+  animation-iteration-count:infinite,infinite;
+  will-change:transform
+}
+@keyframes blattFall{
+  from{transform:translateY(-12vh)}
+  to  {transform:translateY(112vh)}
+}
+/* Fallen und Trudeln laufen auf demselben Element. Beides über
+   `transform` ginge nicht — die zweite Animation überschriebe die erste.
+   Deshalb nimmt das Fallen `transform` und das Trudeln die eigenen
+   Eigenschaften `rotate` und `translate`; die rechnet der Browser
+   zusammen, statt sie gegeneinander auszuspielen. */
+@keyframes blattDreh{
+  0%  {rotate:0deg;   translate:0 0}
+  25% {rotate:22deg;  translate:14px 0}
+  50% {rotate:-6deg;  translate:0 0}
+  75% {rotate:-24deg; translate:-14px 0}
+  100%{rotate:0deg;   translate:0 0}
+}
+@media (prefers-reduced-motion:reduce){ .blaetter{display:none} }
 
 /* ═══════════ DIGITALER REGEN ═══════════
    Das Osterei „matrix". Anders als der Rauch liegt der Regen *hinter*
