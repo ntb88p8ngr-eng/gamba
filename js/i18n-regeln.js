@@ -102,6 +102,15 @@
       'After every step you can <b>cash out</b> and take the multiplier.',
       '<b>Death ice</b> is 50/50 per step, but pays over 230× at the top.'
     ],
+    cascade: [
+      '<b>6 × 5 stones, no paylines.</b> Quantity pays: <b>8 matching stones</b> anywhere on the board are enough — where they sit does not matter.',
+      '<b>10 or 12 stones</b> of the same kind pay far more than eight.',
+      '<b>Whatever pays, shatters.</b> The rest tumbles down, new stones drop in from above, and it counts again — until nothing shatters any more.',
+      '<b>The chain</b> counts along: the second hit of a spin counts <b>2×</b>, the third <b>3×</b>, the fourth <b>5×</b>, and from the fifth on <b>8×</b>.',
+      '<b>Embers</b> carry a number from 2 to 50 and never shatter. On a win, every ember still on the board pays <b>its number times your bet</b> on top. Without a win they are worthless.',
+      '<b>4, 5 or 6 free tickets</b> pay <b>3×, 10× or 50×</b> and bring <b>8, 12 or 16 free spins</b>.',
+      'During free spins the embers stop paying — they <b>pile up over the whole round</b> and multiply every win by their sum. More tickets extend the run.'
+    ],
     ocean: [
       '<b>5 reels of 5 symbols</b> and <b>15 paylines</b> — straights, zigzags, waves and stairs.',
       'Wins count <b>from the left</b>: from 3 matching symbols on one line.',
