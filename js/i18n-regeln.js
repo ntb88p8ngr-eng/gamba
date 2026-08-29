@@ -155,10 +155,12 @@
     ],
     flappy: [
       'Place your chips and start the flight. <b>Tap, click or press space</b> to make the bird flap — otherwise it drops.',
-      'Every pipe you pass raises the multiplier. The first one only brings <b>+2 %</b>, after that the gain grows with every pipe: the fifth brings <b>+14 %</b>, the tenth <b>+29 %</b>, from the 21st it is <b>+60 %</b>. Leaving early is barely worth it — the money is far in the back.',
+      'Every pipe you pass raises the multiplier. The first one only brings <b>+1.5 %</b>, after that the gain grows with every pipe: the tenth brings <b>+20 %</b>, the twentieth <b>+40 %</b>, from the 31st it would be <b>+60 %</b>. Leaving early is barely worth it — the money is far in the back.',
+      'How far back, the clock shows: after 10 pipes it reads <b>2.7×</b>, after 15 <b>8.3×</b>, after 20 <b>38×</b>, after 25 <b>247×</b>.',
       'With <b>CASH OUT</b> or the <b>S</b> key you secure bet × multiplier at any moment — mid-air included.',
       'Hitting a pipe or the ground costs the whole bet. The ceiling is soft, nothing happens up there.',
-      'With every pipe the <b>gap gets tighter</b>, the pace faster and the spacing shorter. After <b>25 pipes</b> the flight is home and cashes out by itself — that puts <b>1800×</b> on the clock.',
+      'With every pipe the <b>gap gets tighter</b>, the pace faster and the spacing shorter. After <b>30 pipes</b> the flight is home and cashes out by itself — that puts <b>2248×</b> on the clock.',
+      '<b>Every flight has its own wind.</b> Starting pace and ramp are rolled anew — sometimes it starts calmly, sometimes fast right away. What you drew is written under the field when the flight starts.',
       'Going back to the lobby mid-flight pays out the standing multiplier.'
     ],
     jump: [

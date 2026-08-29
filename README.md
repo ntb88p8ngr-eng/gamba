@@ -113,7 +113,7 @@ nginx-Variante und Backup steht in **[docs/DOCKER.md](docs/DOCKER.md)**.
 | 16 | **Pinguin-Sprung** 🔒 Lv15 | 12 Schollen von links nach rechts, 75 % je Sprung, jederzeit aussteigen | 27,5× | 87 % |
 | 17 | **Kristall-Rubbellos** 🔒 Lv20 | 9 Felder, 8 Gewinnlinien gleichzeitig, dazu eine Bonus-Rune | 50× pro Linie | 87 % |
 | 18 | **Mitternachts-Mysterium** 🔒 Lv25 | Seelen setzen sich auf einen 4×4-Altar; jede neue stellt die drei Kerzen zurück | Grand 60× | 85–89 % |
-| 19 | **Flatterflug** 🔒 Lv30 | Flappy-Bird mit Einsatz: jede Röhre erhöht den Multiplikator, der Zuwachs wächst mit — erste Röhre +2 %, zehnte +29 %, ab der 21. je +60 %. Lücke und Tempo ziehen mit an; jederzeit aussteigen | 1800× nach 25 Röhren | Können |
+| 19 | **Flatterflug** 🔒 Lv30 | Flappy-Bird mit Einsatz: jede Röhre erhöht den Multiplikator, der Zuwachs wächst mit — erste Röhre +1,5 %, zehnte +20 %, zwanzigste +40 %. Lücke und Tempo ziehen mit an; Anfangstempo und Steigung werden je Flug neu ausgewürfelt; jederzeit aussteigen | 2248× nach 30 Röhren | Können |
 | 20 | **Endlos-Sprung** 🔒 Lv35 | Doodle-Jump mit Einsatz: von Plattform zu Plattform nach oben, alle 340 Höhenmeter steigt der Multiplikator (erste Stufe +3 %, zehnte +23 %, ab der 27. je +60 %). Fledermäuse abschießen, Sprungfedern mitnehmen, jederzeit aussteigen | 520× nach 25 Stufen | Können |
 | 21 | **Kristall-Kaskade** 🔒 Lv40 | 6×5 ohne Gewinnlinien: 8 gleiche Steine irgendwo zahlen, zerspringen und fallen nach. Kette bis 8×, Glutkerne 2–50×, Freispiele mit ansammelnder Glut | 1325× gemessen | 93,2 % |
 | 22 | **Smaugs Höhle** 🔒 Lv50 | Schiebe-Labyrinth wie beim Verrückten Labyrinth: Kachel drehen, Reihe/Spalte schieben, Schatz sammeln — wacht Smaug auf, jagt er dich zum Ausgang | 100×+ | ~87 % |

@@ -48,12 +48,23 @@
   var ROHR_B = 84;                      // Breite der Mündung
   var ROHR_TREFFER = 76;                // Trefferbreite — etwas gnädiger
 
-  /* Der Zuwachs je Röhre. Klein anfangen und mit jeder Röhre steiler werden:
-     die erste bringt 2 %, die zehnte schon 29 %. Der kleine Anfang ist
-     Absicht — ein früher Ausstieg soll sich kaum lohnen, sonst wäre das
-     Spiel für eine geübte Hand eine Chip-Quelle. Gedeckelt, sonst würde eine
-     einzelne Röhre irgendwann den ganzen Gewinn machen. */
-  var ZUWACHS_START = 0.02, ZUWACHS_STUFE = 0.03, ZUWACHS_MAX = 0.6;
+  /* Der Zuwachs je Röhre. Klein anfangen und mit jeder Röhre steiler werden.
+     Der kleine Anfang ist Absicht — ein früher Ausstieg soll sich kaum
+     lohnen, sonst wäre das Spiel für eine geübte Hand eine Chip-Quelle.
+     Gedeckelt, sonst würde eine einzelne Röhre irgendwann den ganzen
+     Gewinn machen.
+
+     Die Steigung war einmal 0,03 je Röhre, und damit stand der Deckel
+     schon bei der 21. Das Geld lag dadurch zu früh: die zehnte Röhre
+     brachte 29 %, nach 25 Röhren standen 1800× auf der Uhr. Jetzt ist die
+     Steigung flacher und der Flug fünf Röhren länger — dieselben Zahlen
+     gibt es also weiter, aber weiter hinten, und dorthin muss man erst
+     einmal kommen:
+
+       Röhre    10      15      20      25      30
+       vorher    4×     21×    172×   1800×      —
+       jetzt   2,7×    8,3×     38×    247×   2248× */
+  var ZUWACHS_START = 0.015, ZUWACHS_STUFE = 0.02, ZUWACHS_MAX = 0.6;
   function zuwachs(nr) {
     return Math.min(ZUWACHS_MAX, ZUWACHS_START + ZUWACHS_STUFE * (nr - 1));
   }
@@ -64,7 +75,7 @@
   }
   /* Nach so vielen Röhren ist Schluss — der Flug zahlt von selbst aus. Ohne
      Ende wäre der Multiplikator nach oben offen. */
-  var ZIEL = 25;
+  var ZIEL = 30;
 
   /* Schwierigkeit. Beides zieht mit der Zahl der geschafften Röhren an:
      die Lücke wird enger, das Tempo höher, der Abstand kürzer.
@@ -72,7 +83,37 @@
      Das Anfangstempo liegt bewusst über dem gemütlichen Bereich: mit 160
      px/s trudelte der Vogel die ersten Röhren so lahm entlang, dass die
      Runde erst nach einer halben Minute interessant wurde. */
-  function luecke(n) { return Math.max(110, 205 - 5 * n); }
+  function luecke(n) { return Math.max(108, 205 - 5 * n); }
+
+  /* ── Der Wind ──
+     Anfangstempo und Steigung waren fest, und damit lief jeder Flug gleich
+     an: wer die ersten Röhren einmal im Griff hatte, hatte sie für immer im
+     Griff. Beides wird jetzt je Flug ausgewürfelt — das Anfangstempo um
+     rund ein Fünftel nach oben oder unten, die Steigung dazu. Zwei Flüge
+     hintereinander fühlen sich dadurch verschieden an, und die ersten
+     Röhren sind wieder eine Frage statt einer Gewohnheit.
+
+     Damit es nicht willkürlich wirkt, bekommt der Spieler den Wurf gesagt
+     (siehe windName): unberechenbar ja, unfair nein. */
+  var TEMPO_MIN = 158, TEMPO_MAX = 238;
+  var STUFE_MIN = 5.4, STUFE_MAX = 8.4;
+
+  function windWuerfeln() {
+    return {
+      basis: TEMPO_MIN + Math.random() * (TEMPO_MAX - TEMPO_MIN),
+      stufe: STUFE_MIN + Math.random() * (STUFE_MAX - STUFE_MIN)
+    };
+  }
+
+  /** Wie der Wurf heißt — steht einmal beim Start in der Infozeile. */
+  function windName(wind) {
+    var mitte = (TEMPO_MIN + TEMPO_MAX) / 2;
+    var ab = (wind.basis - mitte) / ((TEMPO_MAX - TEMPO_MIN) / 2);
+    if (ab < -0.45) return { text: '🍃 Rückenwind — es geht ruhig los', art: 'gut' };
+    if (ab > 0.45)  return { text: '🌬 Gegenwind — heute wird es schnell', art: 'hart' };
+    return { text: '🌤 Normaler Wind', art: 'normal' };
+  }
+
   /**
    * Tempo der Röhren.
    *
@@ -81,9 +122,15 @@
    * tiefer heißt schneller. Die Lücke bleibt davon unberührt — sie ist das
    * Maß, an dem der Spieler seine Höhe abliest, und sollte sich nicht
    * heimlich ändern.
+   *
+   * Der Deckel hängt am Anfangstempo statt fest bei 370: sonst liefe jeder
+   * Flug am Ende doch wieder gleich schnell, und der Wurf wäre nach zehn
+   * Röhren vergessen.
    */
-  function tempo(n, gluck) {
-    var v = Math.min(370, 185 + 6.5 * n);
+  function tempo(n, gluck, wind) {
+    var basis = wind ? wind.basis : (TEMPO_MIN + TEMPO_MAX) / 2;
+    var stufe = wind ? wind.stufe : (STUFE_MIN + STUFE_MAX) / 2;
+    var v = Math.min(basis * 2.05, basis + stufe * n);
     return v * (1 - ((gluck - 50) / 50) * 0.2);
   }
   function abstand(n) { return Math.max(196, 272 - 2.4 * n); }
@@ -99,10 +146,12 @@
     minLevel: 30,
     rules: [
       'Setze Chips und starte den Flug. <b>Tippen, klicken oder Leertaste</b> lässt den Vogel flattern — sonst fällt er.',
-      'Jede durchflogene Röhre erhöht den Multiplikator. Die erste bringt nur <b>+2 %</b>, danach steigt der Zuwachs mit jeder Röhre: die fünfte bringt <b>+14 %</b>, die zehnte <b>+29 %</b>, ab der 21. sind es <b>+60 %</b>. Früh aussteigen lohnt sich also kaum — das Geld liegt weit hinten.',
+      'Jede durchflogene Röhre erhöht den Multiplikator. Die erste bringt nur <b>+1,5 %</b>, danach steigt der Zuwachs mit jeder Röhre: die zehnte bringt <b>+20 %</b>, die zwanzigste <b>+40 %</b>, ab der 31. wären es <b>+60 %</b>. Früh aussteigen lohnt sich also kaum — das Geld liegt weit hinten.',
+      'Wie weit hinten, zeigt die Uhr: nach 10 Röhren steht sie auf <b>2,7×</b>, nach 15 auf <b>8,3×</b>, nach 20 auf <b>38×</b>, nach 25 auf <b>247×</b>.',
       'Mit <b>AUSSTEIGEN</b> oder der Taste <b>S</b> sicherst du dir jederzeit Einsatz × Multiplikator — auch mitten in der Luft.',
       'Ein Treffer an Röhre oder Boden kostet den ganzen Einsatz. Die Decke ist weich, dort passiert nichts.',
       'Mit jeder Röhre wird die <b>Lücke enger</b>, das Tempo höher und der Abstand kürzer. Nach <b>' + ZIEL + ' Röhren</b> ist der Flug am Ziel und zahlt von selbst aus — dann stehen <b>' + Math.round(multNach(ZIEL)) + '×</b> auf der Uhr.',
+      '<b>Jeder Flug hat seinen eigenen Wind.</b> Anfangstempo und Steigung werden neu ausgewürfelt — mal geht es ruhig los, mal sofort schnell. Was gezogen wurde, steht beim Start in der Zeile unter dem Bild.',
       'Wer mitten im Flug in die Lobby geht, bekommt den Stand von diesem Moment ausgezahlt.'
     ],
     mount: function (root) {
@@ -111,6 +160,9 @@
       var stopped = false, laeuft = false, tot = false, sperreBis = 0;
       var raf = null, letzteZeit = 0;
       var stake = 0, mult = 1, geschafft = 0, ausgestiegen = 0;
+      /* Anfangstempo und Steigung dieses Fluges. Steht erst beim Start
+         fest, damit im Leerlauf nichts vorweggenommen wird. */
+      var wind = null;
       var vy = 0, vogelY = LUFT * 0.42, kippe = 0, flatterAn = 0;
       var rohre = [], teilchen = [], schrift = [];
       var zeitAb = 0, himmelX = 0, bodenX = 0;
@@ -385,10 +437,13 @@
         mult = 1; geschafft = 0; ausgestiegen = 0;
         vogelY = LUFT * 0.42; vy = FLATTER * 0.5; kippe = 0;
         rohre = []; teilchen = []; schrift = [];
+        /* Der Wind gilt für diesen einen Flug — siehe windWuerfeln(). */
+        wind = windWuerfeln();
         neueRohre();
         rohre[0].x = W + 40;
         GK.setResult(resultBox, 'Flügel raus — tippen zum Steigen!', '');
-        infoZeile.textContent = 'Der Flug läuft. Aussteigen geht jederzeit.';
+        var w = windName(wind);
+        infoZeile.textContent = w.text + ' · Aussteigen geht jederzeit.';
         GK.sfx('whoosh');
         sync();
         letzteZeit = 0;
@@ -465,7 +520,7 @@
         zeitAb += dt;
         if (flatterAn > 0) flatterAn -= dt;
 
-        var v = laeuft ? tempo(geschafft, GK.luckOf('flappy')) : 46;   // im Stillstand zieht nur die Kulisse
+        var v = laeuft ? tempo(geschafft, GK.luckOf('flappy'), wind) : 46;   // im Stillstand zieht nur die Kulisse
         himmelX += v * 0.28 * dt;
         bodenX += v * dt;
 
