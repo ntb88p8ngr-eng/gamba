@@ -24,6 +24,29 @@
   window.addEventListener('resize', kopfHoeheMessen);
   window.addEventListener('orientationchange', kopfHoeheMessen);
 
+  /* Und bei jeder Größenänderung der Kopfzeile selbst.
+     Ohne das entstand genau der Fehler, den man auf dem Handy sah: die
+     Titelanzeige klebt mit `sticky` an --kopf-hoehe. Ist der Wert größer
+     als die Kopfzeile inzwischen ist, schiebt `sticky` das Band um die
+     Differenz nach unten — und darunter klafft eine Lücke, durch die man
+     den Hintergrund sieht. Und größer wird der Wert leicht: gemessen
+     wurde nur beim Start und bei `resize`, aber die Kopfzeile ändert ihre
+     Höhe auch sonst — ein langer Spielername bricht um, eine zweistellige
+     Stufe macht die Zeile breiter, die Schrift trifft verspätet ein.
+     Der Beobachter meldet all das, ohne dass man jeden Anlass einzeln
+     kennen muss. */
+  if (window.ResizeObserver) {
+    var kopfWacht = new ResizeObserver(kopfHoeheMessen);
+    var kopf = document.querySelector('.topbar');
+    var band = document.getElementById('jetzt-band');
+    /* Ausdrücklich der Rahmenkasten: der Beobachter meldet sonst nur den
+       Inhaltskasten, und eine Änderung an Polster oder Rahmen ginge
+       unbemerkt durch — gemessen wird aber die volle Höhe. */
+    var wieMessen = { box: 'border-box' };
+    if (kopf) kopfWacht.observe(kopf, wieMessen);
+    if (band) kopfWacht.observe(band, wieMessen);
+  }
+
   function showView(id) {
     /* Wer die Mehrspieler-Seite verlaesst — egal auf welchem Weg: Zurueck-
        Knopf, Logo, ein anderes Spiel —, steht auch vom Tisch auf. Sonst
