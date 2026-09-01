@@ -258,7 +258,7 @@
       }
 
       if (!restore(resume)) { setPhase('bet'); render(); }
-      GK.on('cardtheme', function () { if (playerHand.isConnected) render(); });
+      GK.onWhile('cardtheme', playerHand, render);
       return function () { stopped = true; snapshot(); };
     }
   });

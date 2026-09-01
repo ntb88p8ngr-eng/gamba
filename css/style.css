@@ -700,16 +700,23 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
      Hellen restlos. Also echte Deckung — Rauch nimmt Sicht weg. */
   background:linear-gradient(180deg,
     rgba(228,240,232,.95) 0%,
-    rgba(214,232,220,.72) calc(var(--tief,18%) * 0.34),
-    rgba(202,224,210,.4)  calc(var(--tief,18%) * 0.7),
-    rgba(194,216,202,0)   var(--tief,18%));
+    rgba(214,232,220,.72) 34%,
+    rgba(202,224,210,.4)  70%,
+    rgba(194,216,202,0)   100%);
+  /* Wie weit der Dunst herunterreicht, steckt im Maßstab und nicht mehr
+     im Verlauf. Das ist kein Schönheitsfehler, sondern der Unterschied
+     zwischen zwei Sorten Arbeit: einen Farbverlauf zu ändern heißt, den
+     ganzen Bildschirm neu zu zeichnen — alle 3,5 Sekunden, eine Stunde
+     lang. Maßstab und Deckung dagegen schiebt die Grafikkarte, ohne dass
+     ein Pixel neu berechnet wird. */
+  transform-origin:top center;
+  transform:scaleY(var(--tief,.18));
   opacity:var(--stau,0);
-  /* Die Blende ist so lang wie der Takt, in dem js/eier.js nachstellt —
-     so wirkt es wie Aufziehen und nicht wie Stufen. Nur die Deckung
-     laesst sich weich fahren; ein Farbverlauf ist nicht animierbar. Das
-     faellt nicht auf, weil --tief je Takt nur um deutlich unter ein
-     Prozent wandert. */
-  transition:opacity 3.5s linear
+  /* Genau diese zwei Eigenschaften laufen hier dauerhaft — hier lohnt
+     sich der Hinweis an den Browser, anders als bei den Wölkchen und
+     Blättern, wo er nur Speicher kostet. */
+  will-change:transform,opacity;
+  transition:opacity 3.5s linear,transform 3.5s linear
 }
 @media (prefers-reduced-motion:reduce){ .rauch-stau{transition:none} }
 
@@ -758,15 +765,21 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
   /* Kein `screen` wie beim Stau: Pepe steht mal über einer dunklen
      Kachel und mal über dem hellen Schriftzug, und `screen` verschwindet
      über allem Hellen restlos. Eine normale, kräftige Deckung ist über
-     beidem zu sehen. */
+     beidem zu sehen.
+
+     Die weiche Kante steckt im Verlauf selbst und nicht mehr in einem
+     `filter: blur()`. Ein Weichzeichner zwingt jedes Wölkchen in eine
+     eigene Ebene, die erst gerastert und dann gehalten werden muss —
+     bei einem Dutzend gleichzeitig ist das spürbar, und aussehen tut
+     es genauso. Aus demselben Grund steht hier kein will-change: der
+     Browser legt die Ebene während der Animation ohnehin an. */
   background:radial-gradient(circle at 42% 40%,
-    rgba(248,252,250,.92), rgba(214,230,222,.6) 52%, rgba(196,214,204,0) 74%);
-  will-change:transform,opacity
+    rgba(248,252,250,.9), rgba(226,238,232,.55) 38%,
+    rgba(210,226,218,.22) 62%, rgba(196,214,204,0) 82%)
 }
 /* Der Faden am Mund: klein, kurzlebig, dicht an dicht. */
 .qualm-wolke{
-  width:26px;height:26px;margin:-13px 0 0 -13px;
-  filter:blur(3px);
+  width:34px;height:34px;margin:-17px 0 0 -17px;
   opacity:0;
   animation:qualmZieht 4.6s ease-out forwards
 }
@@ -782,8 +795,7 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
    speisen — ohne sie hinge der Dunst da, ohne dass je jemand gesehen
    hätte, wie er dorthin kommt. */
 .qualm-steiger{
-  width:46px;height:46px;margin:-23px 0 0 -23px;
-  filter:blur(7px);
+  width:62px;height:62px;margin:-31px 0 0 -31px;
   opacity:0;
   animation:qualmSteigt 13s linear forwards
 }
@@ -818,8 +830,11 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
   background:url("../assets/eier/blatt.webp") center/contain no-repeat;
   animation-name:blattFall,blattDreh;
   animation-timing-function:linear,ease-in-out;
-  animation-iteration-count:infinite,infinite;
-  will-change:transform
+  animation-iteration-count:infinite,infinite
+  /* Kein will-change: sechzehn Blätter hießen sechzehn Ebenen, die der
+     Browser dauerhaft im Grafikspeicher hält. Er legt sie ohnehin an,
+     solange eine Transform-Animation läuft — der Hinweis kostet hier
+     also nur Speicher und bringt nichts. */
 }
 @keyframes blattFall{
   from{transform:translateY(-12vh)}
@@ -838,6 +853,16 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
   100%{rotate:0deg;   translate:0 0}
 }
 @media (prefers-reduced-motion:reduce){ .blaetter{display:none} }
+
+/* Alles, was das Osterei 420 dauerhaft bewegt, hält an, sobald der
+   Reiter im Hintergrund liegt — gesetzt wird die Klasse in js/eier.js.
+   Angehaltene Animationen laufen dort weiter, wo sie standen, es gibt
+   also keinen Sprung beim Zurückkommen. */
+html.ei-ruht .blatt,
+html.ei-ruht .qualm-wolke,
+html.ei-ruht .qualm-steiger,
+html.ei-ruht .rauch-stau,
+html.ei-ruht .pepe-bild{animation-play-state:paused}
 
 /* ═══════════ DIGITALER REGEN ═══════════
    Das Osterei „matrix". Anders als der Rauch liegt der Regen *hinter*

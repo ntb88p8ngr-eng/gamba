@@ -159,7 +159,9 @@
        gedeckelt, damit das Casino auch nach einer Stunde noch bedienbar
        bleibt. Voller als das waere kein Spass mehr, sondern Nebel. */
     box.style.setProperty('--stau', (0.12 + f * 0.5).toFixed(3));
-    box.style.setProperty('--tief', (18 + f * 82).toFixed(1) + '%');
+    /* Ohne Einheit: die CSS macht daraus einen Maßstab, keinen
+       Verlaufspunkt — siehe .rauch-stau. */
+    box.style.setProperty('--tief', (0.18 + f * 0.82).toFixed(3));
   }
 
   function rauchZeigen(an) {
@@ -368,6 +370,12 @@
     w.style.setProperty('--drift', (Math.random() * 40 - 8).toFixed(0) + 'px');
     w.style.setProperty('--gross', (0.75 + Math.random() * 0.6).toFixed(2));
     w.addEventListener('animationend', function () { w.remove(); });
+    /* Zweiter Weg hinaus, falls das Ende der Animation nie gemeldet wird
+       — etwa weil der Reiter zwischendurch im Hintergrund lag. Über eine
+       Stunde entstehen hier rund sechstausend Wölkchen; bliebe auch nur
+       jedes hundertste liegen, hätte man am Ende sechzig Ebenen im Bild,
+       die nichts mehr tun außer bremsen. */
+    setTimeout(function () { w.remove(); }, gross ? 15000 : 6000);
     ebene.appendChild(w);
   }
 
@@ -379,10 +387,22 @@
     wolkeStossen(qualmZahl % QUALM_GROSS === 0);
   }
 
+  /* ── Ruhe im Hintergrund ──
+     Liegt der Reiter im Hintergrund, muss dort nichts ziehen, fallen oder
+     qualmen. Das Erzeugen neuer Wölkchen hört ohnehin auf (siehe
+     qualmTakt); die laufenden Animationen der Blätter und des Staus
+     laufen aber weiter und kosten den ganzen Rechner Strom, ohne dass
+     jemand hinsieht. Eine Klasse an der Wurzel hält sie an. */
+  function ruheSchalten() {
+    document.documentElement.classList.toggle('ei-ruht', document.hidden);
+  }
+
   function qualmZeigen(an) {
     var ebene = document.getElementById('qualm');
     if (!an) {
       if (qualmUhr) { clearInterval(qualmUhr); qualmUhr = null; }
+      document.removeEventListener('visibilitychange', ruheSchalten);
+      document.documentElement.classList.remove('ei-ruht');
       if (ebene) ebene.remove();
       return;
     }
@@ -403,6 +423,8 @@
        Minute kalt da. */
     for (var i = 0; i < 8; i++) setTimeout(qualmTakt, i * QUALM_TAKT / 2);
     qualmUhr = setInterval(qualmTakt, QUALM_TAKT);
+    document.addEventListener('visibilitychange', ruheSchalten);
+    ruheSchalten();
   }
 
   /* ── 420: Blätter ─────────────────────────────────────────────────

@@ -325,7 +325,7 @@
       syncMode();
       render(false);
       restore(resume);
-      GK.on('cardtheme', function () { if (playerCards.isConnected) render(false); });
+      GK.onWhile('cardtheme', playerCards, function () { render(false); });
       return function () { stopped = true; snapshot(); };
     }
   });

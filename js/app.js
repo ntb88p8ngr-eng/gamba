@@ -1155,8 +1155,7 @@
     listeBauen();
     /* Kommt das Sound-Pack nach oder wechselt der Anstrich, wird die Liste
        neu gebaut — das Fenster steht dann oft schon offen. */
-    GK.on('musik-liste', function () {
-      if (!list.isConnected) return;
+    GK.onWhile('musik-liste', list, function () {
       listeBauen();
       sync();
     });
@@ -2592,7 +2591,7 @@
       loops.forEach(function (l) { loopBox.appendChild(loopZeile(l)); });
     }
     /* Der Serverstand kommt nach — dann steht hier, was wirklich gilt. */
-    GK.on('musik-liste', function () { if (loopBox.isConnected) loopsMalen(); });
+    GK.onWhile('musik-liste', loopBox, loopsMalen);
     loopsMalen();
 
     function packMalen() {
@@ -2951,7 +2950,7 @@
         GK.toast('Webradio gespeichert', 'gold', '📻');
       });
     });
-    GK.on('musik-liste', function () { if (wrListe.isConnected) wrBauen(); });
+    GK.onWhile('musik-liste', wrListe, wrBauen);
     wrFormular(null);
     wrBauen();
 

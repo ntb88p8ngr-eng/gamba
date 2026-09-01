@@ -494,8 +494,44 @@
 
   /* ─────────────────────────── EVENTS ─────────────────────────── */
   var listeners = {};
-  GK.on = function (ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); };
-  GK.emit = function (ev, data) { (listeners[ev] || []).forEach(function (f) { f(data); }); };
+  GK.on = function (ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); return fn; };
+  GK.off = function (ev, fn) {
+    var l = listeners[ev];
+    if (!l) return;
+    var i = l.indexOf(fn);
+    if (i >= 0) l.splice(i, 1);
+  };
+  /* Ueber eine Kopie: ein Zuhoerer darf sich waehrend des Durchlaufs
+     abmelden, ohne dass der naechste uebersprungen wird. */
+  GK.emit = function (ev, data) {
+    (listeners[ev] || []).slice().forEach(function (f) { f(data); });
+  };
+
+  /**
+   * Ein Zuhoerer, der mit seinem Fenster verschwindet.
+   *
+   * Fenster und Spiele, die sich bei einem Ereignis neu zeichnen wollen,
+   * melden sich beim Aufbauen an — und wurden bisher nie wieder
+   * abgemeldet. GK.on legt sie in einer Liste ab, aus der nichts
+   * herauskommt: wer das Musikfenster zwanzigmal oeffnet, hat danach
+   * zwanzig Zuhoerer, von denen neunzehn auf Knoten zeigen, die es nicht
+   * mehr gibt. Gemessen wuchs allein "musik-liste" bei zwoelf Runden
+   * gewoehnlicher Bedienung von einem auf fuenfundzwanzig — und jeder
+   * einzelne laeuft bei jedem Ereignis mit.
+   *
+   * Deshalb hier die gebundene Fassung: sie haengt an einem Knoten und
+   * traegt sich beim ersten Ereignis nach dessen Verschwinden selbst aus.
+   * Die Aufrufer pruefen ohnehin schon `isConnected` — jetzt reicht das
+   * nicht nur fuer die Anzeige, sondern raeumt auch auf.
+   */
+  GK.onWhile = function (ev, node, fn) {
+    function huelle(data) {
+      if (!node || !node.isConnected) { GK.off(ev, huelle); return; }
+      fn(data);
+    }
+    GK.on(ev, huelle);
+    return huelle;
+  };
 
   /* ─────────────────────────── MONEY ─────────────────────────── */
 
@@ -1408,8 +1444,13 @@
       },
       refresh: function () { input.value = clampVal(input.value); }
     };
-    // nur solange das Widget im DOM hängt (Spielwechsel räumt sich so selbst auf)
-    GK.on('hud', function () { if (input.isConnected && !input.disabled) api.refresh(); });
+    /* Nur solange das Widget im DOM haengt — und danach ist es wirklich
+       weg. Frueher stand hier ein GK.on mit einer isConnected-Pruefung:
+       das ueberspringt den Aufruf zwar, laesst den Zuhoerer aber in der
+       Liste stehen. Jedes geoeffnete Spiel legte einen dazu, und "hud"
+       feuert bei jeder einzelnen Chipbewegung. Nach einer Stunde Spielen
+       lief also bei jedem Einsatz eine Schlange toter Zuhoerer mit. */
+    GK.onWhile('hud', input, function () { if (!input.disabled) api.refresh(); });
     return api;
   };
 

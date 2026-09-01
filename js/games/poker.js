@@ -863,7 +863,7 @@
 
       setActions(false);
       render();
-      GK.on('cardtheme', function () { if (boardEl.isConnected) render(); });
+      GK.onWhile('cardtheme', boardEl, render);
 
       restore(resume);
 
