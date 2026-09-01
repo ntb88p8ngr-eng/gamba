@@ -349,7 +349,7 @@
 
       root.appendChild(GK.panel([
         fsBand, tisch, ergebnis,
-        el('div', { class: 'bet-row' }, [bet.el]),
+        bet.el,
         el('div', { class: 'game-btns' }, [drehKnopf, autoKnopf, endlosKnopf]),
         el('h4', { class: 'pay-title', text: 'AB 8 GLEICHEN — HÖCHSTE STUFE (12+)' }),
         tafel

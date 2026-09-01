@@ -1998,6 +1998,12 @@ body.party-an::before{
    liesse den Compositor auf schwachen Geräten aussteigen (dieselbe
    Erfahrung steht schon bei den Walzenspielen). Was sich bewegt, sind
    deshalb Klassen, keine Elemente. */
+/* Der Kasten selbst bekommt denselben Deckel wie das Raster darin und
+   steht mittig. Ohne ihn lief er über die ganze Breite, während das
+   Raster in seiner Mitte blieb — Einsatzfeld, Chip-Auswahl und Knöpfe
+   klebten dann linksbündig an einer Kante, an der sonst nichts stand. */
+.kk-panel{max-width:min(100%,640px);margin-inline:auto}
+
 .kk-tisch{
   position:relative;
   /* Gedeckelt und mittig: ohne Deckel wächst ein quadratisches Raster mit
