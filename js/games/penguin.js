@@ -144,11 +144,50 @@
         }
       }
 
-      function placePenguin() {
+      /**
+       * Pinguin auf die Scholle setzen, auf der er gerade steht.
+       *
+       * `sofort` heisst: ohne den Weg dorthin. Beides hat eine Ueberblendung
+       * (der Pinguin auf `left`, die Bahn auf `transform`), und die ist beim
+       * Springen genau richtig — beim Aufsetzen zu Beginn einer Runde aber
+       * falsch: dort waere sie ein Rueckwaertsgleiten ueber das halbe Feld.
+       */
+      function placePenguin(sofort) {
         var f = floes[pos];
+        if (sofort) { penguin.style.transition = 'none'; track.style.transition = 'none'; }
         penguin.style.left = (f.offsetLeft + f.offsetWidth / 2) + 'px';
         syncBob(f);
         follow();
+        if (sofort) {
+          /* Ein erzwungenes Neuberechnen dazwischen: sonst fasst der Browser
+             beides in denselben Stilblock und die Bremse greift nicht. */
+          void penguin.offsetWidth;
+          penguin.style.transition = '';
+          track.style.transition = '';
+        }
+      }
+
+      /**
+       * Nach dem Ende einer Runde zurueck ans Ufer.
+       *
+       * Frueher tat das nur lose(), und nach einem Ausstieg blieb der
+       * Pinguin stehen, wo er aufgehoert hatte. Der naechste Start setzte
+       * ihn dann auf null — und weil `left` eine Ueberblendung hat, sah man
+       * ihn ueber das halbe Feld zurueckgleiten. Genau das war die Klage:
+       * „springt beim ersten Klick zurueck auf die erste Scholle".
+       *
+       * Die Pruefung auf `running` ist die zweite Haelfte davon: wer schnell
+       * genug wieder auf LOSSPRINGEN drueckt, hat laengst eine neue Runde —
+       * die darf dieser Nachzuegler nicht mehr anfassen.
+       */
+      function zurueckAnsUfer(nachMs) {
+        wait(nachMs, function () {
+          if (running) return;
+          pos = 0;
+          penguin.classList.remove('splash');
+          floes.forEach(function (f) { f.classList.remove('broken', 'done', 'here', 'next'); });
+          placePenguin(true);
+        });
       }
 
       function sync() {
@@ -180,7 +219,8 @@
         running = true; busy = false; pos = 0;
         floes.forEach(function (f) { f.classList.remove('broken', 'done', 'here', 'next'); });
         penguin.classList.remove('splash');
-        placePenguin();
+        // ohne Weg: er steht am Ufer, er gleitet nicht dorthin
+        placePenguin(true);
         GK.setResult(resultBox, 'Das Eis knackt schon… viel Glück!', '');
         GK.sfx('click');
         sync();
@@ -240,6 +280,10 @@
         stepInfo.textContent = auto ? 'Am anderen Ufer angekommen.' : 'Rechtzeitig abgesprungen.';
         sync();
         GK.clearGameState('penguin');
+        /* Erst darf man sehen, wo man aufgehoert hat — dann watschelt er
+           zurueck ans Ufer, damit die naechste Runde von vorn beginnt und
+           nicht mit einem Rueckwaertsgleiten. */
+        zurueckAnsUfer(1800);
       }
 
       function lose() {
@@ -255,12 +299,7 @@
         GK.shake(scene);
         GK.clearGameState('penguin');
         stepInfo.textContent = 'Platsch. Der Pinguin schwimmt zurück.';
-        wait(1400, function () {
-          pos = 0;
-          penguin.classList.remove('splash');
-          floes.forEach(function (f) { f.classList.remove('broken', 'done', 'here', 'next'); });
-          placePenguin();
-        });
+        zurueckAnsUfer(1400);
         sync();
       }
 
@@ -297,7 +336,18 @@
         return true;
       }
 
-      // erst nach dem Einhängen messen, sonst sind alle Breiten 0
+      /* Die Stelle des Pinguins haengt an den gemessenen Schollenbreiten.
+         Ein einmaliges Messen im naechsten Bild deckt nur den Aufbau ab —
+         aendert sich die Bahn danach noch (Bilder, Schrift, Fensterbreite),
+         steht er daneben. Der Beobachter setzt ihn dann neu.
+         (Beim beklagten Rueckwaertsgleiten war das nicht die Ursache —
+         gemessen hat sich die Breite dabei kaum bewegt. Es ist Vorsorge.) */
+      var bahnWacht = null;
+      if (window.ResizeObserver) {
+        bahnWacht = new ResizeObserver(function () { if (!stopped) placePenguin(); });
+        bahnWacht.observe(track);
+        if (floes[0]) bahnWacht.observe(floes[0]);
+      }
       requestAnimationFrame(function () { if (!stopped) placePenguin(); });
       sync();
       restore(resume);
@@ -307,6 +357,7 @@
         snapshot();
         timers.forEach(clearTimeout);
         window.removeEventListener('resize', onResize);
+        if (bahnWacht) bahnWacht.disconnect();
       };
     }
   });
