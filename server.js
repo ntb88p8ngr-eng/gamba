@@ -1912,6 +1912,9 @@ var MIME = {
   '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.json': 'application/json; charset=utf-8',
+  /* Ohne diesen Typ nimmt kein Browser die Datei als App-Beschreibung an
+     und „Zum Home-Bildschirm" legt nur eine Verknüpfung statt einer App an. */
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   /* Ohne diesen Eintrag gingen alle Karten und Symbole als
@@ -1961,7 +1964,14 @@ function readBody(req) {
    server.js, Dockerfile, .env, data/ — bleibt privat, auch wenn jemand den
    Pfad errät. */
 var PUBLIC_DIRS = { css: 1, js: 1, assets: 1 };
-var PUBLIC_FILES = { 'index.html': 1, 'favicon.ico': 1, 'robots.txt': 1 };
+/* manifest.webmanifest und sw.js gehören zur Installation aufs Handy und
+   müssen deshalb mit hinaus. Der Dienstarbeiter muss dabei im Wurzelver-
+   zeichnis liegen: seine Zuständigkeit reicht nur so weit wie sein
+   eigener Pfad, aus /js/ heraus wäre die Startseite für ihn tabu. */
+var PUBLIC_FILES = {
+  'index.html': 1, 'favicon.ico': 1, 'robots.txt': 1,
+  'manifest.webmanifest': 1, 'sw.js': 1
+};
 
 function serveStatic(req, res, urlPath) {
   var rel;

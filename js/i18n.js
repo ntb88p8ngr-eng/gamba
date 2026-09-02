@@ -46,6 +46,38 @@
     'MULTIPLAYER': 'MULTIPLAYER',
     'LEADERBOARD': 'LEADERBOARD',
     'TAGESBONUS': 'DAILY BONUS',
+    /* Aufs Handy laden — siehe js/appladen.js */
+    'APP LADEN': 'GET THE APP',
+    'GambaKing aufs Handy': 'GambaKing on your phone',
+    'Als App aufs Handy?': 'Put it on your phone?',
+    'Läuft schon': 'Already running',
+    '📲 JETZT INSTALLIEREN': '📲 INSTALL NOW',
+    '📱 ZEIG MIR WIE': '📱 SHOW ME HOW',
+    'Später': 'Later',
+    'Du spielst gerade in der App — sie liegt bereits auf deinem Startbildschirm.':
+      'You are playing in the app already — it is on your home screen.',
+    'GambaKing lässt sich auf den Startbildschirm legen — dann startet es wie eine App: eigenes Symbol, keine Adressleiste und deutlich weniger Gescrolle.':
+      'GambaKing can go on your home screen — then it starts like an app: its own icon, no address bar and a lot less scrolling.',
+    'Auf den Startbildschirm legen, mit eigenem Symbol und ohne Adressleiste. Ein Tipp genügt.':
+      'Put it on your home screen, with its own icon and no address bar. One tap is enough.',
+    'Eigenes Symbol, kein Safari drumherum. <b>Apple lässt das keine Seite selbst tun</b> — einmal drei Schritte von Hand:':
+      'Its own icon, no Safari around it. <b>Apple lets no website do this itself</b> — three steps by hand, once:',
+    'Unten in der Mitte auf <b>Teilen</b> tippen — das Kästchen mit dem Pfeil nach oben.':
+      'Tap <b>Share</b> at the bottom centre — the box with the arrow pointing up.',
+    'In der Liste nach unten wischen bis <b>„Zum Home-Bildschirm"</b>.':
+      'Swipe down the list to <b>“Add to Home Screen”</b>.',
+    'Oben rechts <b>Hinzufügen</b> — fertig, die Krone liegt auf dem Startbildschirm.':
+      'Top right <b>Add</b> — done, the crown sits on your home screen.',
+    'Auf dem iPhone kann nur <b>Safari</b> eine App auf den Startbildschirm legen — Chrome und Firefox dürfen das dort nicht. Öffne diese Seite in Safari und tipp dort wieder auf <b>APP LADEN</b>.':
+      'On an iPhone only <b>Safari</b> may put an app on the home screen — Chrome and Firefox are not allowed to. Open this page in Safari and tap <b>GET THE APP</b> again.',
+    'Im Menü deines Browsers (die drei Punkte) steht <b>„App installieren"</b> oder <b>„Zum Startbildschirm hinzufügen"</b>. Danach startet GambaKing mit eigenem Symbol und ohne Adressleiste.':
+      'Your browser menu (the three dots) has <b>“Install app”</b> or <b>“Add to home screen”</b>. After that GambaKing starts with its own icon and no address bar.',
+    'Die App ist fürs Handy gedacht: <b>öffne diese Seite auf dem iPhone</b> und tipp dort in der Lobby auf <b>APP LADEN</b>. In Chrome am Rechner geht es auch — dort erscheint rechts in der Adressleiste ein kleines Installieren-Symbol.':
+      'The app is meant for your phone: <b>open this page on your iPhone</b> and tap <b>GET THE APP</b> in the lobby. It works in desktop Chrome too — a small install icon shows up at the right of the address bar.',
+    '💡 In der App wird viel weniger gescrollt, und dein Konto bleibt dasselbe — du meldest dich einfach an. ⚠️ Weiterhin <b>kein echtes Geld</b>.':
+      '💡 The app scrolls a lot less, and your account stays the same — just sign in. ⚠️ Still <b>no real money</b>.',
+    'GambaKing liegt jetzt auf deinem Startbildschirm': 'GambaKing is on your home screen now',
+    'Kein Problem — der Knopf bleibt in der Lobby': 'No problem — the button stays in the lobby',
     '🎰 DIE SPIELHALLE': '🎰 THE ARCADE',
     '🏆 LEADERBOARD': '🏆 LEADERBOARD',
     '💰 Chips': '💰 Chips',

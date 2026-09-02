@@ -7,12 +7,43 @@
 <meta name="description" content="GambaKing — das Fantasy-Casino ohne Echtgeld. 22 Spiele, Level-System, Leaderboard und Chaos mit deinen Freunden." />
 <meta name="theme-color" content="#12002b" />
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+
+<!-- ══════════ ALS APP AUFS HANDY ══════════
+     Die Beschreibung sagt dem Handy, wie die App heißen soll, welches
+     Symbol sie bekommt und dass sie ohne Adressleiste startet.
+     apple-mobile-web-app-capable ist Apples eigener, älterer Schalter —
+     ohne ihn öffnet „Zum Home-Bildschirm" auf dem iPhone weiterhin nur
+     Safari mit Adressleiste. black-translucent lässt die Seite unter die
+     Statusleiste laufen; den Platz dafür holt sich das Aussehen über
+     env(safe-area-inset-top) zurück. -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GambaKing" />
+<link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png" />
+<script>
+/* Vor dem ersten Anstrich, genau wie beim Skin: läuft die Seite als
+   installierte App, hängt hier schon die Klasse. Sonst blitzte beim
+   Start kurz die Website-Fassung mit Fußzeile und langem Vorspann auf. */
+try {
+  /* ?app=1 steht in der Startadresse der installierten App und ist
+     zugleich der Weg, sich die App-Ansicht am Rechner anzusehen. */
+  if (window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      /[?&]app=1\b/.test(location.search)) {
+    document.documentElement.classList.add('app-modus');
+  }
+} catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bungee:wght@400&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/style.css" />
 <link rel="stylesheet" href="css/games.css" />
 <link rel="stylesheet" href="css/skins.css" />
+<!-- Gilt nur in der installierten App (html.app-modus) — siehe css/app.css -->
+<link rel="stylesheet" href="css/app.css" />
 <script>
 /* Der gewählte Skin muss vor dem ersten Anstrich stehen — sonst blitzt die
    Seite kurz im Standard auf. Deshalb hier oben und nicht erst in js/skins.js. */
@@ -122,6 +153,8 @@ try {
         <button class="btn btn-ghost" id="btn-goto-board"><span class="btn-ic" data-icon="trophy"></span>LEADERBOARD</button>
         <button class="btn btn-ghost" id="btn-hall"><span class="btn-ic">🏛</span>HALL OF FAME</button>
         <button class="btn btn-ghost" id="btn-daily"><span class="btn-ic" data-icon="gift"></span>TAGESBONUS</button>
+        <!-- In der installierten App versteckt sich der Knopf selbst (js/appladen.js) -->
+        <button class="btn btn-ghost" id="btn-app"><span class="btn-ic">📱</span>APP LADEN</button>
       </div>
     </div>
 
@@ -242,5 +275,6 @@ try {
 <script src="js/i18n-regeln.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/app.js"></script>
+<script src="js/appladen.js"></script>
 </body>
 </html>

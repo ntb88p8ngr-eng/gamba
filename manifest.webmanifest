@@ -1,0 +1,19 @@
+{
+  "name": "GambaKing — Fantasy Casino",
+  "short_name": "GambaKing",
+  "description": "Fantasy-Casino ohne Echtgeld. Spiele, Level, Leaderboard und Chaos mit deinen Freunden.",
+  "id": "/",
+  "start_url": "/?app=1",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12002b",
+  "theme_color": "#12002b",
+  "lang": "de",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "assets/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/app/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

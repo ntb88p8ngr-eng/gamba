@@ -1,0 +1,230 @@
+/* ══════════════════════════════════════════════════════════════════════
+   APP-MODUS
+   ══════════════════════════════════════════════════════════════════════
+
+   Gilt nur, wenn GambaKing als installierte App läuft (Klasse app-modus
+   am <html>, gesetzt in index.html noch vor dem ersten Anstrich). Auf der
+   Website ändert diese Datei nichts.
+
+   Der Unterschied zur Website ist nicht die Farbe, sondern das Scrollen.
+   Auf einem iPhone 13 stehen als App rund 375×730 Punkte zur Verfügung.
+   Gemessen an der Website war die Lobby dort 6609 Punkte hoch — zehn
+   Bildschirme, von denen zwei Drittel Vorspann, Rangliste, Verlauf und
+   Fußzeile waren. Eine App fasst man mit dem Daumen an; was man zum
+   Spielen braucht, soll im Bild stehen.
+
+   Drei Eingriffe:
+
+   1. Die Seite als Ganzes scrollt nicht mehr. Kopfzeile oben und
+      Titelanzeige bleiben stehen, gescrollt wird nur der Inhalt in der
+      Mitte. Damit hört das Mitwandern der Kopfzeile auf, und die
+      festgepinnte Bedienleiste unten kann nicht mehr wegrutschen.
+   2. Der Vorspann schrumpft, die Spielhalle steht in zwei Spalten, und
+      Rangliste und Verlauf bekommen jeweils ihr eigenes kleines Fenster
+      statt der ganzen Seitenlänge.
+   3. Ränder für Kerbe und Bedienbalken (safe-area) — sonst läge die
+      Kopfzeile unter der Uhr und der Hauptknopf unter dem Strich zum
+      Wischen. */
+
+/* ─────────── Das Fenster „aufs Handy laden" ───────────
+   Diese paar Regeln gelten überall, auch auf der Website — das Fenster
+   wird ja gerade dort geöffnet, wo die App noch nicht läuft. */
+
+.appschritte {
+  list-style: none;
+  margin: 14px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.appschritt {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .05);
+  border: 2px solid var(--line);
+}
+.as-nr {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: 999px;
+  font-family: 'Bungee', sans-serif; font-size: .8rem;
+  background: var(--neon); color: #fff;
+}
+.as-text { font-size: .84rem; line-height: 1.4 }
+
+/* ─────────── 1. Nur die Mitte scrollt ─────────── */
+
+html.app-modus, html.app-modus body {
+  height: 100%;
+  overflow: hidden;
+  /* Kein Gummiband am Rand: das Überziehen der ganzen Seite ist genau
+     die Geste, an der man eine Website erkennt. */
+  overscroll-behavior: none;
+}
+
+/* Kopfzeile und Titelanzeige klebten mit `sticky` am oberen Rand der
+   scrollenden Seite. Wenn die Seite nicht mehr scrollt, stehen sie
+   ohnehin — und `static` spart den Kompositor-Aufwand. */
+html.app-modus .topbar,
+html.app-modus .jetzt-band { position: static }
+
+html.app-modus main {
+  flex: 1 1 auto;
+  min-height: 0;                 /* ohne das wächst der Kasten über den Schirm */
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;  /* das Gummiband endet hier, nicht an der Seite */
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+}
+
+/* Die Kopfzeile der Spielansicht klebte an --kopf-hoehe, weil über ihr
+   die echte Kopfzeile mitscrollte. Jetzt ist der scrollende Kasten die
+   Mitte selbst, und oben heißt hier schlicht 0. */
+html.app-modus #view-game .game-header { top: 0 }
+
+/* Spielname und die beiden Knöpfe standen untereinander und nahmen damit
+   83 Punkte am oberen Rand weg — in einer Zeile sind es 44. Der Name
+   darf dabei kürzen; welches Spiel offen ist, sieht man ohnehin. */
+html.app-modus .game-header {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+html.app-modus .game-title {
+  font-size: 1rem;
+  text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
+}
+html.app-modus .game-actions { flex: 0 0 auto; flex-wrap: nowrap }
+html.app-modus .game-actions > .btn { padding: 7px 11px; font-size: .68rem }
+
+/* ─────────── 3. Kerbe und Wischbalken ─────────── */
+
+/* black-translucent lässt die Seite unter die Statusleiste laufen — den
+   Platz holt sich die Kopfzeile hier zurück. */
+html.app-modus .topbar {
+  padding-top: calc(8px + env(safe-area-inset-top));
+  border-radius: 0;
+}
+
+/* ─────────── 2. Weniger Weg zum Spiel ─────────── */
+
+/* Der Vorspann erklärt das Casino jemandem, der es zum ersten Mal sieht.
+   Wer die App auf dem Home-Bildschirm hat, weiß längst Bescheid. */
+html.app-modus .hero { padding: 12px 0 6px }
+html.app-modus .hero-sub,
+html.app-modus .marquee { display: none }
+html.app-modus .hero-crown { transform: scale(.62); margin: -14px 0 -10px }
+html.app-modus .hero-title { font-size: clamp(1.7rem, 9vw, 2.6rem); margin: 0 }
+html.app-modus .hero-tag { margin: 6px 0 10px }
+html.app-modus .hero-tag .tag-pill { font-size: .58rem; padding: 4px 9px }
+
+/* Fünf Knöpfe untereinander waren allein 550 Punkte hoch — mehr als ein
+   halber Bildschirm, bevor das erste Spiel zu sehen war. Als Raster mit
+   zwei Spalten sind es 150. Zufallsspiel bleibt breit: das ist der
+   Knopf, den man ohne Hinsehen trifft. */
+html.app-modus .hero-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+html.app-modus .hero-actions .btn {
+  padding: 11px 8px;
+  font-size: .74rem;
+  border-radius: 13px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, .42);
+  min-width: 0;
+}
+html.app-modus .hero-actions .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0, 0, 0, .42) }
+html.app-modus .hero-actions .btn-ic { font-size: 1.05em }
+html.app-modus .hero-actions #btn-play-random { grid-column: 1 / -1 }
+
+/* Die Levelkarte sagt in der App dasselbe auf halber Höhe. */
+html.app-modus .level-card { padding: 10px 12px; margin-bottom: 12px; border-radius: 15px }
+html.app-modus .lc-top { gap: 8px; margin-bottom: 7px }
+
+/* Die Spielhalle ist ein Startbildschirm, keine Leseseite: zwei Spalten,
+   Symbol und Name. Wozu ein Spiel gut ist, steht in seinen Regeln. */
+html.app-modus .game-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+/* min-height:170px und justify-content:space-between stammen von der
+   Website, wo unter dem Namen noch ein Satz steht. Ohne den Satz war die
+   Kachel eine hohe leere Fläche mit dem Namen ganz unten. */
+html.app-modus .game-card {
+  padding: 12px 10px 11px;
+  border-radius: 17px;
+  min-height: 0;
+  justify-content: flex-start;
+}
+html.app-modus .game-emoji { font-size: 2rem }
+html.app-modus .game-name { font-size: .78rem; margin: 7px 0 0; line-height: 1.15 }
+html.app-modus .game-blurb { display: none }
+html.app-modus .game-badge { top: 7px; right: 7px; font-size: .5rem; padding: 3px 6px }
+/* Der Symbolteil eines gesperrten Spiels trägt sonst dieselbe Höhe wie
+   ein freies — auf zwei Spalten fällt das als Loch auf. */
+html.app-modus .game-card .lock-note { font-size: .62rem }
+
+/* In der App ist der Knopf sinnlos — sie läuft ja schon. Das Verstecken
+   übernimmt js/appladen.js, damit auch der Fall „im Browser, aber schon
+   installiert" abgedeckt ist; hier steht es nur für den Fall, dass das
+   Skript später kommt und der Knopf kurz aufblitzt. */
+html.app-modus #btn-app { display: none }
+
+/* Rangliste und Verlauf bleiben erreichbar, nehmen aber nicht mehr die
+   ganze Seitenlänge. Wer weiterlesen will, scrollt im Kasten. */
+html.app-modus .board { max-height: 46vh; overflow-y: auto; overscroll-behavior: contain }
+html.app-modus .board-wrap { padding: 11px }
+html.app-modus .board-tabs { gap: 6px; margin-bottom: 10px }
+html.app-modus .board-tab { padding: 6px 11px; font-size: .72rem }
+html.app-modus .board-row { padding: 9px 10px; gap: 9px; margin-bottom: 6px }
+html.app-modus .feed { max-height: 34vh; overflow-y: auto; overscroll-behavior: contain }
+
+/* Zugeklappt heißt weg — nicht „nur kleiner". Eine Rangliste mit halber
+   Höhe wäre der schlechteste von beiden Zuständen. */
+html.app-modus .board-wrap.zu,
+html.app-modus .feed.zu { display: none }
+html.app-modus .klappbar {
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+html.app-modus .klapp-pfeil { font-size: .7em; opacity: .7; transition: transform .2s }
+html.app-modus .klappbar.zu .klapp-pfeil { transform: rotate(-90deg) }
+
+/* Die Fußzeile stünde als fester Streifen am unteren Rand — der
+   scrollende Teil ist die Mitte. Ihr Kern hängt darum am Ende der Lobby
+   (js/appladen.js) und die echte Fußzeile bleibt draußen. */
+html.app-modus .footer { display: none }
+.app-fuss {
+  display: none;
+  margin: 18px 0 4px;
+  font-size: .66rem; line-height: 1.4; text-align: center;
+  color: var(--muted);
+}
+html.app-modus .app-fuss { display: block }
+.app-fuss b { color: var(--gold) }
+
+/* Abschnittsüberschriften: eine Zeile reicht. */
+html.app-modus .section-title { font-size: .9rem; margin: 16px 0 9px }
+
+/* ─────────── Was in einer App nichts verloren hat ─────────── */
+
+/* Das Auswählen von Text ist auf einem Handy fast immer ein verrutschter
+   Tipp und nie Absicht. Eingabefelder bleiben ausgenommen. */
+html.app-modus body { -webkit-user-select: none; user-select: none }
+html.app-modus input,
+html.app-modus textarea,
+html.app-modus [contenteditable] { -webkit-user-select: text; user-select: text }
+/* Der graue Blitz beim Antippen verrät sofort den Browser darunter. */
+html.app-modus * { -webkit-tap-highlight-color: transparent }

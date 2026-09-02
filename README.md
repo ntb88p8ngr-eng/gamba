@@ -272,6 +272,48 @@ spielbar, ohne vorher zu scrollen — geprüft bei 402×700 und 375×640 sichtba
 
 ---
 
+## 📱 Als App aufs iPhone
+
+GambaKing lässt sich auf den Startbildschirm legen und läuft dann als eigenständige
+App: eigenes Symbol, keine Adressleiste, kein Safari drumherum. In der Lobby führt
+der Knopf **APP LADEN** durch die Installation; wer die Seite zum ersten Mal auf einem
+Handy öffnet, bekommt außerdem einmalig eine kurze Notiz.
+
+Auf dem iPhone geht das über **Teilen → „Zum Home-Bildschirm"** und *nur in Safari* —
+Apple erlaubt keiner Seite, die Installation selbst auszulösen, und Chrome und Firefox
+dürfen es dort ebenfalls nicht. Auf Android meldet der Browser sich von selbst, dort
+gibt es im Fenster einen echten Installieren-Knopf. Es ist **keine App aus dem App
+Store**: technisch bleibt es dieselbe Seite, nur als App verpackt.
+
+Läuft sie als App, hängt am `<html>` die Klasse `app-modus` und **css/app.css**
+greift — sichtbar am Scrollen. Gemessen auf einem iPhone 13, Website in Safari
+(390×668 sichtbar) gegen App ohne Adressleiste (390×763), gleicher Serverstand:
+
+| | Website | App |
+|---|---|---|
+| Lobby | 7464 px, 12,2 Bildschirme | 833 px, 2,1 Bildschirme |
+| Fantasy Slots | 163 px | 0 px — passt ganz aufs Bild |
+| Royal Blackjack | 528 px | 355 px |
+| Neon Roulette | 550 px | 377 px |
+| Kristall-Kaskade | 434 px | 261 px |
+| Endlos-Sprung | 498 px | 325 px |
+
+Die Lobby-Zahl der Website wächst mit der Rangliste — in der Testdatenbank standen
+viele Konten drin. In der App tut sie das nicht, weil die Rangliste zugeklappt ist;
+genau darum steht dort ein so viel kleinerer Wert.
+
+Was dafür anders ist: die Seite selbst scrollt nicht mehr, nur der Inhalt in der Mitte;
+Kopfzeile und Titelanzeige stehen fest. Der Vorspann schrumpft, die Spielhalle steht in
+zwei Spalten mit Symbol und Namen, Spielname und Knopfzeile liegen in einer Zeile, und
+Rangliste wie Verlauf klappen zu (die App merkt sich, was offen war). Ränder für Kerbe
+und Wischbalken kommen über `env(safe-area-inset-*)`.
+
+**sw.js** ist der Dienstarbeiter dahinter: alles unter `/api/` geht immer ans Netz,
+Seite und Skripte kommen erst aus dem Netz und nur als Rettung aus der Konserve,
+`/assets/` umgekehrt. Einmal geladen startet die App auch ohne Netz.
+
+---
+
 ## ⚠️ Hinweis
 
 GambaKing simuliert Glücksspiel **ausschließlich zu Unterhaltungszwecken**. Es gibt keine
