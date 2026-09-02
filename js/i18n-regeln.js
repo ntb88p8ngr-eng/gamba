@@ -169,7 +169,7 @@
       '<b>Click or tap</b> to shoot a fireball towards the pointer. It clears bats out of the way.',
       '<b>Touching a bat costs your bet</b> — unless you land on it from above, then it bursts and you jump on.',
       'Every <b>340 metres</b> of height the multiplier rises. The first level brings <b>+3 %</b>, the tenth <b>+23 %</b>, from the 27th it is <b>+60 %</b>.',
-      'With <b>CASH OUT</b> you secure bet × multiplier at any moment. After <b>25 levels</b> you reach the sky and it cashes out by itself.',
+      'With <b>CASH OUT</b> or the <b>S</b> key you secure bet × multiplier at any moment. After <b>25 levels</b> you reach the sky and it cashes out by itself.',
       'From <b>level 6</b> the bats spit purple fireballs — those cost your bet too.',
       'Red springs launch you more than twice as high. Crumbling platforms hold for exactly one jump.',
       'Drop off the bottom of the screen and the bet is gone. Going back to the lobby mid-run pays out the standing multiplier.'

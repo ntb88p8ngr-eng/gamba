@@ -760,8 +760,8 @@
       '💡 The <b>trident</b> substitutes for everything except the chest. Five tridents on one line pay <b>1900×</b> the line bet. <b>Endless</b> keeps diving until you stop or run out of chips.',
     '💡 <b>Tippen oder Leertaste</b> — auch zum Starten, <b>S</b> zum Aussteigen. Der Zuwachs je Röhre wächst mit, dafür wird die Lücke enger und das Tempo höher. Nach <b>25 Röhren</b> zahlt der Flug von selbst aus.':
       '💡 <b>Tap or press space</b> — that starts the run too, <b>S</b> cashes out. The gain per pipe keeps growing, but the gap gets tighter and the pace faster. After <b>25 pipes</b> the flight cashes out by itself.',
-    '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.':
-      '💡 <b>A</b>/<b>D</b> to move, <b>click</b> to shoot — on a phone use the buttons on the field and tap the field itself. A tap also starts the run.',
+    '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt, <b>S</b> steigt aus — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.':
+      '💡 <b>A</b>/<b>D</b> to move, <b>click</b> to shoot, <b>S</b> cashes out — on a phone use the buttons on the field and tap the field itself. A tap also starts the run.',
     'Noch am Boden': 'Still on the ground',
     'Hier spielst du gegen <b>echte Leute</b> statt gegen den Automaten. Setz dich an einen offenen Tisch oder mach einen eigenen auf — sobald ein zweiter Platz belegt ist, geht es los.':
       'Here you play against <b>real people</b> instead of the machine. Sit down at an open table or start one of your own — as soon as a second seat is taken, it begins.',

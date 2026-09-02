@@ -94,7 +94,7 @@
       '<b>Klicken oder tippen</b> schießt einen Feuerball in die Richtung des Zeigers. Er räumt Fledermäuse weg.',
       'Eine <b>Fledermaus zu berühren kostet den Einsatz</b> — außer du landest von oben auf ihr, dann platzt sie und du springst weiter.',
       'Alle <b>' + STUFE_H + ' Höhenmeter</b> steigt der Multiplikator. Die erste Stufe bringt <b>+3 %</b>, die zehnte <b>+23 %</b>, ab der 27. sind es <b>+60 %</b>.',
-      'Mit <b>AUSSTEIGEN</b> sicherst du dir jederzeit Einsatz × Multiplikator. Nach <b>' + ZIEL + ' Stufen</b> ist der Himmel erreicht und es wird von selbst ausgezahlt.',
+      'Mit <b>AUSSTEIGEN</b> oder der Taste <b>S</b> sicherst du dir jederzeit Einsatz × Multiplikator. Nach <b>' + ZIEL + ' Stufen</b> ist der Himmel erreicht und es wird von selbst ausgezahlt.',
       'Ab <b>Stufe ' + SPUCK_AB + '</b> spucken die Fledermäuse lila Feuerbälle — auch die kosten den Einsatz.',
       'Rote Sprungfedern schleudern dich mehr als doppelt so hoch. Bröckelnde Plattformen tragen genau einen Absprung.',
       'Fällst du unten aus dem Bild, ist der Einsatz weg. Wer mitten im Lauf in die Lobby geht, bekommt den Stand von diesem Moment ausgezahlt.'
@@ -166,7 +166,7 @@
           el('div', { style: 'height:8px' }),
           cashBtn,
           el('div', { style: 'height:12px' }),
-          el('p', { class: 'hint', html: '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.' })
+          el('p', { class: 'hint', html: '💡 <b>A</b>/<b>D</b> bewegen, <b>Klick</b> schießt, <b>S</b> steigt aus — am Handy die Knöpfe unter dem Feld und ein Tipp aufs Feld. Ein Tipp startet auch den Lauf.' })
         ])
       ]);
       buehne.appendChild(tastenReihe);
@@ -766,6 +766,17 @@
         var z = document.activeElement;
         if (z && /input|textarea|select/i.test(z.tagName)) return;
         var k = ev.code;
+        /* Aussteigen auf Tastendruck, wie beim Flatterflug: beide Hände
+           liegen auf A/D und der Maus, und der Griff zum Knopf am Rand
+           kostete genau die Sekunde, in der die Fledermaus ankam.
+           Nur beim Herunterdrücken — ein Loslassen ist kein Ausstieg. */
+        if (ab && (k === 'KeyS' || ev.key === 's' || ev.key === 'S')) {
+          if (!laeuft || cashBtn.disabled) return;
+          ev.preventDefault();
+          GK.sfx('cash');
+          aussteigen(false);
+          return;
+        }
         if (k === 'KeyA' || k === 'ArrowLeft') { links = ab; ev.preventDefault(); }
         else if (k === 'KeyD' || k === 'ArrowRight') { rechts = ab; ev.preventDefault(); }
         else if (ab && (k === 'Space' || ev.key === ' ')) {
