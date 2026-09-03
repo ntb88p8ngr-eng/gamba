@@ -22,20 +22,30 @@
    Regeln ändert, zählt sie hoch — dann räumt der Arbeiter beim nächsten
    Start alles Alte weg. */
 
-var FASSUNG = 'gk-v1';
+var FASSUNG = 'gk-v2';
 var SPEICHER = FASSUNG + '-alles';
+
+/* ── Wo liegt das Casino? ──
+   Es kann an der Wurzel einer Domain liegen oder unter einem Unterpfad
+   (BASE_PATH, z. B. https://…/gamba/). Feste Pfade wie "/index.html"
+   zeigten im zweiten Fall auf die fremde Hauptseite. Der Arbeiter weiss
+   aber, wo er selbst liegt — und sein Ordner ist die Wurzel des Casinos.
+   Zugleich ist das genau sein Zustaendigkeitsbereich: weiter reicht er
+   ohnehin nicht. */
+var WURZEL = new URL('./', self.location).pathname;      // "/" oder "/gamba/"
+function daheim(pfad) { return new URL(pfad, self.location).href; }
 
 /* Das Nötigste für einen Kaltstart ohne Netz. Fehlt eine Datei, soll die
    Einrichtung trotzdem durchgehen — darum jede für sich und mit
    abgefangenem Fehler statt addAll(), das beim ersten Loch alles hinwirft. */
 var GRUNDSTOCK = [
-  '/', '/index.html',
-  '/css/style.css', '/css/games.css', '/css/skins.css',
-  '/js/core.js', '/js/app.js',
-  '/assets/logo.svg', '/assets/favicon.svg',
-  '/assets/app/icon-192.png', '/assets/app/icon-512.png',
-  '/manifest.webmanifest'
-];
+  './', './index.html',
+  './css/style.css', './css/games.css', './css/skins.css', './css/app.css',
+  './js/core.js', './js/app.js',
+  './assets/logo.svg', './assets/favicon.svg',
+  './assets/app/icon-192.png', './assets/app/icon-512.png',
+  './manifest.webmanifest'
+].map(daheim);
 
 self.addEventListener('install', function (ev) {
   ev.waitUntil(
@@ -84,11 +94,16 @@ self.addEventListener('fetch', function (ev) {
 
   var u;
   try { u = new URL(anfrage.url); } catch (e) { return; }
-  if (u.origin !== self.location.origin) return;        // Schriften, fremde Bilder
-  if (u.pathname.indexOf('/api/') === 0) return;        // Regel 1
+  if (u.origin !== self.location.origin) return;            // Schriften, fremde Bilder
+  /* Liegt das Casino unter einem Unterpfad, gehoert der Rest der Domain
+     jemand anderem — davon lassen wir die Finger. */
+  if (u.pathname.indexOf(WURZEL) !== 0) return;
+  var innen = u.pathname.slice(WURZEL.length);            // "api/state", "assets/…"
+
+  if (innen.indexOf('api/') === 0) return;                // Regel 1
 
   // Regel 3 — Dateien, die sich nie ändern
-  if (u.pathname.indexOf('/assets/') === 0) {
+  if (innen.indexOf('assets/') === 0) {
     ev.respondWith(
       caches.match(anfrage).then(function (treffer) {
         var frisch = ausDemNetz(anfrage).catch(function () { return treffer; });
@@ -105,7 +120,7 @@ self.addEventListener('fetch', function (ev) {
         if (treffer) return treffer;
         /* Ohne Netz und ohne Treffer: bei einem Seitenaufruf wenigstens
            das Haus ausliefern, damit die App startet statt zu scheitern. */
-        if (anfrage.mode === 'navigate') return caches.match('/index.html');
+        if (anfrage.mode === 'navigate') return caches.match(daheim('./index.html'));
         return new Response('', { status: 504, statusText: 'Kein Netz' });
       });
     })

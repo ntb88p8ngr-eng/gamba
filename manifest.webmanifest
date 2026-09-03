@@ -1,10 +1,10 @@
 {
+  "_hinweis": "Alle Adressen hier sind RELATIV zu dieser Datei. Das Casino kann unter der Wurzel einer Domain liegen oder unter einem Unterpfad (BASE_PATH, z. B. /gamba). Mit /?app=1 landete die App auf der Startseite der Domain statt im Casino. ./ zeigt dagegen immer dorthin, wo diese Datei liegt. Ein id-Feld steht bewusst nicht hier: es wuerde gegen den Ursprung aufgeloest und damit wieder an der Wurzel landen; ohne id gilt start_url als Kennung.",
   "name": "GambaKing — Fantasy Casino",
   "short_name": "GambaKing",
   "description": "Fantasy-Casino ohne Echtgeld. Spiele, Level, Leaderboard und Chaos mit deinen Freunden.",
-  "id": "/",
-  "start_url": "/?app=1",
-  "scope": "/",
+  "start_url": "./?app=1",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#12002b",

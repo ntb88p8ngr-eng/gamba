@@ -314,6 +314,15 @@ zwei Spalten mit Symbol und Namen, Spielname und Knopfzeile liegen in einer Zeil
 Rangliste wie Verlauf klappen zu (die App merkt sich, was offen war). Ränder für Kerbe
 und Wischbalken kommen über `env(safe-area-inset-*)`.
 
+**Unter einem Unterpfad** (`BASE_PATH=/gamba`, siehe docker-compose.yml) muss die App
+auf `https://…/gamba/` zeigen und nicht auf die Wurzel der Domain. Alle Adressen im
+Manifest sind deshalb **relativ zur Manifest-Datei** (`./?app=1`, `./`), und der
+Dienstarbeiter leitet seine Wurzel aus seinem eigenen Ort ab. Ein `id`-Feld steht
+absichtlich nicht im Manifest: es würde gegen den Ursprung aufgelöst und damit wieder
+an der Wurzel landen. Wer eine ältere Fassung schon auf dem Home-Bildschirm hatte, muss
+das Symbol einmal löschen und neu hinzufügen — die Startadresse steckt in der
+Verknüpfung.
+
 **sw.js** ist der Dienstarbeiter dahinter: alles unter `/api/` geht immer ans Netz,
 Seite und Skripte kommen erst aus dem Netz und nur als Rettung aus der Konserve,
 `/assets/` umgekehrt. Einmal geladen startet die App auch ohne Netz.
