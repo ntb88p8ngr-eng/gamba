@@ -47,6 +47,12 @@
   /* ── Wer schaut da zu? ── */
 
   function appLaeuft() {
+    /* Die Klasse hängt index.html noch vor dem ersten Anstrich ans <html>,
+       aus denselben Merkmalen — und zusätzlich aus ?app=1, mit dem die
+       Startadresse der App arbeitet. Ohne diese Zeile bot die App sich
+       selbst noch einmal zum Installieren an, sobald sie über ihre
+       Startadresse und nicht über den Systemschalter erkannt wurde. */
+    if (document.documentElement.classList.contains('app-modus')) return true;
     try {
       return window.matchMedia('(display-mode: standalone)').matches ||
              window.navigator.standalone === true;
@@ -145,7 +151,14 @@
 
   function knopfZeigen() {
     var k = document.getElementById('btn-app');
-    if (k) k.hidden = appLaeuft();
+    if (!k) return;
+    /* Nur dort, wo die App auch etwas nützt: auf einem Handy, und solange
+       sie nicht ohnehin schon läuft. Am Rechner stand der Knopf zwischen
+       den fünf Knöpfen der Lobby und führte zu einem Fenster, das im
+       Kern „mach das auf dem Handy" sagt. Wer am Rechner doch
+       installieren will, hat dafür das kleine Symbol rechts in der
+       Adressleiste seines Browsers — GK.appLaden() bleibt aufrufbar. */
+    k.hidden = appLaeuft() || !istHandy();
   }
 
   /* ── Die kleine Notiz beim ersten Besuch ── */
