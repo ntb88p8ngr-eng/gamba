@@ -46,6 +46,13 @@
     'MULTIPLAYER': 'MULTIPLAYER',
     'LEADERBOARD': 'LEADERBOARD',
     'TAGESBONUS': 'DAILY BONUS',
+    /* Eigener Mindesteinsatz im Konto */
+    'EIGENER MINDESTEINSATZ': 'YOUR OWN MINIMUM BET',
+    '💾 SETZEN': '💾 SET',
+    'AUS': 'OFF',
+    '0 = aus': '0 = off',
+    'Gilt für <b>alle Spiele</b> und zählt nur, wenn er <b>höher</b> ist als der Mindesteinsatz des Spiels. Über den Höchsteinsatz eines Spiels und über dein Guthaben geht er nie hinaus. <b>0</b> schaltet ihn ab.':
+      'Applies to <b>every game</b> and only counts when it is <b>higher</b> than that game’s own minimum. It never goes beyond a game’s maximum or beyond your balance. <b>0</b> turns it off.',
     /* Aufs Handy laden — siehe js/appladen.js */
     'APP LADEN': 'GET THE APP',
     'GambaKing aufs Handy': 'GambaKing on your phone',

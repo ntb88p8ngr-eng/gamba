@@ -763,6 +763,54 @@
       );
     }
 
+    /* ── Eigener Mindesteinsatz ──
+       Wer nicht mehr um zehn Chips spielen will, setzt hier seine eigene
+       Untergrenze. Sie gilt in jedem Spiel und zieht ausschliesslich nach
+       oben: liegt sie unter dem, was ein Spiel ohnehin verlangt, aendert
+       sie dort nichts. Zwei Deckel liegen darueber — der Hoechsteinsatz
+       des Spiels und das eigene Guthaben (siehe GK.einsatzGrenzen). */
+    var minFeld = el('input', {
+      class: 'input', type: 'number', min: '0', step: '1',
+      placeholder: '0 = aus', value: String(GK.eigenMinBet ? GK.eigenMinBet() : 0)
+    });
+    var minKnopf = el('button', { class: 'btn btn-gold btn-small', text: '💾 SETZEN' });
+    var minAus = el('button', { class: 'btn btn-ghost btn-small', text: 'AUS' });
+    var minSagt = el('p', { class: 'code-sagt', hidden: 'hidden' });
+
+    function minMelden(txt, gut) {
+      minSagt.textContent = txt;
+      minSagt.className = 'code-sagt ' + (gut ? 'gut' : 'schlecht');
+      minSagt.hidden = false;
+    }
+    function minSetzen(wert) {
+      wert = Math.max(0, Math.floor(Number(wert) || 0));
+      minFeld.value = String(wert);
+      GK.setEigenMinBet(wert);
+      GK.sfx(wert ? 'cash' : 'click');
+      if (!wert) {
+        minMelden(GK.txt('Aus — es gilt wieder der Mindesteinsatz des Spiels.',
+                         'Off — each game’s own minimum applies again.'), true);
+      } else {
+        minMelden(GK.txt('Ab jetzt mindestens ' + GK.fmt(wert) + ' Chips pro Runde.',
+                         'From now on at least ' + GK.fmt(wert) + ' chips per round.'), true);
+      }
+    }
+    minKnopf.addEventListener('click', function () { minSetzen(minFeld.value); });
+    minAus.addEventListener('click', function () { minSetzen(0); });
+    minFeld.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); minSetzen(minFeld.value); }
+    });
+    nodes.push(
+      el('div', { class: 'bet-label', text: 'EIGENER MINDESTEINSATZ' }),
+      el('div', { class: 'code-zeile min-zeile' }, [minFeld, minKnopf, minAus]),
+      minSagt,
+      el('p', { class: 'hint', html:
+        'Gilt für <b>alle Spiele</b> und zählt nur, wenn er <b>höher</b> ist als der ' +
+        'Mindesteinsatz des Spiels. Über den Höchsteinsatz eines Spiels und über dein ' +
+        'Guthaben geht er nie hinaus. <b>0</b> schaltet ihn ab.' }),
+      el('div', { style: 'height:14px' })
+    );
+
     /* ── Aktionscode ──
        Ein Feld, ein Knopf, eine Zeile Antwort. Was der Code kann, steht
        nicht dabei: das ist der Reiz daran. */

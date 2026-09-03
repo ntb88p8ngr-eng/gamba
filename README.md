@@ -142,6 +142,12 @@ verbraucht und trotzdem alles verzockt, muss bis morgen warten oder den Admin fr
 * **Anmelden:** bei jedem Besuch. Die Sitzung liegt im `sessionStorage` — ein Reload im
   selben Tab bleibt angemeldet, ein neuer Besuch verlangt wieder das Passwort.
 * **Passwort ändern:** im Kontomenü (Klick auf den eigenen Namen oben rechts).
+* **Eigener Mindesteinsatz:** ebenfalls im Kontomenü. Er gilt in **allen Spielen** und
+  zieht nur nach oben — liegt er unter dem Mindesteinsatz eines Spiels, ändert er dort
+  nichts. Über den Höchsteinsatz eines Spiels und über das eigene Guthaben geht er nie
+  hinaus (sonst stünde nach einem Wipe eine Zahl im Feld, die niemand bezahlen kann).
+  `0` schaltet ihn ab. Er hängt am Konto, nicht am Gerät, und gilt nicht für den
+  Einkauf an einem Multiplayer-Tisch — den setzt dort der Gastgeber.
 * **Passwort vergessen:** der Admin setzt es im Admin-Panel per 🔑 neu. Dabei fliegen
   alle laufenden Sitzungen dieses Kontos raus.
 

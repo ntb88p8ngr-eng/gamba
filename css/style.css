@@ -641,6 +641,10 @@ main{max-width:1240px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,
 .code-zeile{display:flex;gap:8px;align-items:center}
 .code-zeile .input{flex:1 1 auto;min-width:0;text-transform:uppercase;letter-spacing:.06em}
 .code-zeile .btn{flex:0 0 auto}
+/* Die Zeile des eigenen Mindesteinsatzes teilt sich das Layout mit dem
+   Aktionscode, aber nicht dessen Schreibweise: Großbuchstaben und
+   Sperrung sind für Codes gedacht, nicht für eine Zahl. */
+.min-zeile .input{text-transform:none;letter-spacing:0;text-align:center}
 .code-sagt{margin:7px 0 0;font-size:.82rem}
 .code-sagt.gut{color:var(--lime)}
 .code-sagt.schlecht{color:var(--red)}

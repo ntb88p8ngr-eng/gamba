@@ -852,12 +852,36 @@
   };
 
   /**
+   * Der selbst gesetzte Mindesteinsatz aus dem Konto — 0 heisst: keiner.
+   *
+   * Er haengt am Spieler und nicht am Geraet: wer ihn am Rechner setzt,
+   * findet ihn auf dem Handy wieder.
+   */
+  GK.eigenMinBet = function () {
+    var p = GK.player();
+    var w = p && Number(p.minEinsatz);
+    return w > 0 ? Math.floor(w) : 0;
+  };
+
+  /** Eigenen Mindesteinsatz setzen; 0 schaltet ihn ab. */
+  GK.setEigenMinBet = function (wert) {
+    var p = GK.player();
+    if (!p) return Promise.resolve(null);
+    wert = GK.clamp(Math.floor(Number(wert) || 0), 0, 1000000);
+    p.minEinsatz = wert;
+    /* Erst hier eintragen, dann melden: ohne Server bleibt es beim
+       lokalen Stand und wirkt trotzdem. */
+    return GK.commit('minEinsatz', { id: p.id, wert: wert });
+  };
+
+  /**
    * Der Rahmen, in dem in einem Spiel gesetzt werden darf.
    *
-   * Drei Quellen, in dieser Reihenfolge: was das Spiel selbst vorgibt, was
-   * der Admin dafuer eingestellt hat und — waehrend einer Party — was der
-   * Gastgeber fuer diese Runde festgelegt hat. Enger gewinnt, damit keine
-   * Einstellung eine andere aushebelt.
+   * Vier Quellen, in dieser Reihenfolge: was das Spiel selbst vorgibt, was
+   * der Admin dafuer eingestellt hat, was — waehrend einer Party — der
+   * Gastgeber fuer diese Runde festgelegt hat, und zuletzt der eigene
+   * Mindesteinsatz aus dem Konto. Enger gewinnt, damit keine Einstellung
+   * eine andere aushebelt.
    */
   GK.einsatzGrenzen = function (id, eigenMin, eigenMax) {
     var min = Math.max(1, Math.floor(eigenMin || 1));
@@ -871,6 +895,24 @@
     if (GK.party && GK.party.an && GK.party.daten) {
       enger(GK.party.daten.minBet, GK.party.daten.maxBet);
     }
+
+    /* Der eigene Mindesteinsatz zieht nur nach oben. Liegt er unter dem,
+       was das Spiel ohnehin verlangt, aendert er nichts — genau so ist er
+       gemeint: „nie unter dieser Summe spielen".
+       Zwei Deckel bleiben ueber ihm:
+       - die Obergrenze des Spiels. Wer 5000 einstellt, soll an einem
+         Tisch mit Deckel 500 nicht ploetzlich 5000 setzen muessen.
+       - das eigene Guthaben. Sonst stuende nach einem Wipe im Feld eine
+         Zahl, die niemand mehr bezahlen kann, und jede Runde endete mit
+         „Nicht genug Chips" statt mit einem Spiel. */
+    var eigen = GK.eigenMinBet();
+    if (eigen > min) {
+      var deckel = max || Infinity;
+      var kasse = GK.chips();
+      if (kasse > 0) deckel = Math.min(deckel, kasse);
+      min = Math.max(min, Math.min(eigen, Math.max(min, deckel)));
+    }
+
     /* Eine Obergrenze unter der Untergrenze gaebe ein Feld, in dem nichts
        mehr geht — dann zaehlt die Untergrenze. */
     if (max && max < min) max = min;
@@ -1373,7 +1415,11 @@
 
     var input = GK.el('input', {
       class: 'bet-input', type: 'number', min: min, step: 1,
-      value: Math.min(opts.start || 10, maxFn())
+      /* Auch nach oben festhalten: mit einem selbst gesetzten
+         Mindesteinsatz liegt der Vorschlag des Spiels (meist 10 oder 25)
+         darunter, und im Feld stuende dann eine Zahl, mit der gar nicht
+         gespielt wird — gesetzt wuerde trotzdem die Untergrenze. */
+      value: Math.max(min, Math.min(opts.start || 10, maxFn()))
     });
 
     function clampVal(v) {

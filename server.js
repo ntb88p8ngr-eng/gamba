@@ -333,6 +333,10 @@ function newPlayer(name, avatar, id) {
        0 = nie zurueckgesetzt. */
     wipeStand: 0,
     luck: 50,
+    /* Selbst gesetzter Mindesteinsatz, 0 = keiner. Er hebt die Untergrenze
+       in jedem Spiel an — nach unten zieht er nie, das Spiel bleibt der
+       Herr seiner eigenen Grenzen. Siehe GK.einsatzGrenzen in js/core.js. */
+    minEinsatz: 0,
     xp: 0,
     claimedLevel: 1,
     pw: '',
@@ -1311,7 +1315,7 @@ function webTitelGrund(url) {
 
 var ADMIN_OPS = { grant: 1, grantXp: 1, deletePlayer: 1, resetPlayer: 1, resetAll: 1, setPin: 1, luck: 1, gameLuck: 1, gameRule: 1, statReset: 1, setWipe: 1, wipe: 1, resetPassword: 1, radioSkip: 1, radioPick: 1, webRadioSet: 1, webRadioDel: 1, packTrack: 1, packStation: 1, packMove: 1, loopRegel: 1, codeSet: 1, codeDel: 1 };
 /* Diese Operationen darf nur der angemeldete Spieler selbst ausloesen. */
-var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, code: 1 };
+var SELF_OPS = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, code: 1, minEinsatz: 1 };
 
 function applyOp(op) {
   var type = op && op.type;
@@ -1332,7 +1336,7 @@ function applyOp(op) {
   }
 
   var p = op.id ? db.players[op.id] : null;
-  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, code: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1, resetPassword: 1 };
+  var needsPlayer = { wager: 1, payout: 1, bailout: 1, bonus: 1, xp: 1, rekord: 1, code: 1, grant: 1, grantXp: 1, deletePlayer: 1, luck: 1, resetPassword: 1, minEinsatz: 1 };
   if (needsPlayer[type] && !p) return { error: 'Spieler nicht gefunden', code: 404 };
 
   switch (type) {
@@ -1394,6 +1398,17 @@ function applyOp(op) {
       if (wert > welche[art]) return { error: 'So weit kommt hier niemand', code: 400 };
       if (!p.rekorde || typeof p.rekorde !== 'object') p.rekorde = {};
       if (wert > (p.rekorde[art] || 0)) p.rekorde[art] = wert;
+      break;
+    }
+
+    /* ── Eigener Mindesteinsatz ──
+       Eine Einstellung, kein Guthaben: sie kostet nichts und kann nichts
+       einbringen, darum steht sie hier ohne weitere Pruefung. Nur der
+       Spieler selbst darf sie setzen (SELF_OPS), 0 schaltet sie ab.
+       Die Obergrenze ist willkuerlich hoch — sie soll nur verhindern,
+       dass eine verirrte Zahl als Wert im Konto landet. */
+    case 'minEinsatz': {
+      p.minEinsatz = clamp(int(op.wert), 0, 1e6);
       break;
     }
 
